@@ -29,6 +29,7 @@ class TableCreatorDT(TinyDT):
         self.do_pure = False
         self.do_parallel = True
         self.debug = False
+        self.num_cores = cpu_count()
 
         # self.fix_method = fix_method  # nearest, intermediate, interpolate
         self.header1_line = FortranRecordWriter("(99(a14))")
@@ -118,10 +119,9 @@ class TableCreatorDT(TinyDT):
             Zs = np.concatenate(Zs)
 
         if self.do_parallel:
-            num_cores = cpu_count()
             print(f"Creating grid of tables with prefix {self.fname_prefix}",
-                  f"using {num_cores:.0f} cores.")
-            Parallel(n_jobs=num_cores)(
+                  f"using {self.num_cores:.0f} cores.")
+            Parallel(n_jobs=self.num_cores)(
                 delayed(self.make_eos_files)(X=Xs[i], Z=Zs[i])
                 for i in range(len(Xs)))
         else:
@@ -309,6 +309,7 @@ class TableCreatorPT(TinyPT):
         self.do_pure = False
         self.do_parallel = True
         self.debug = False
+        self.num_cores = cpu_count()
 
         self.header1_line = FortranRecordWriter("(99(a14))")
         self.header2_line = FortranRecordWriter("(/,7x,a)")
@@ -406,10 +407,10 @@ class TableCreatorPT(TinyPT):
             Zs = np.concatenate(Zs)
 
         if self.do_parallel:
-            num_cores = cpu_count()
+            self.num_cores = cpu_count()
             print(f"Creating grid of tables with prefix {self.fname_prefix}",
-                  f"using {num_cores:.0f} cores.")
-            Parallel(n_jobs=num_cores)(
+                  f"using {self.num_cores:.0f} cores.")
+            Parallel(n_jobs=self.num_cores)(
                 delayed(self.make_eos_files)(X=Xs[i], Z=Zs[i])
                 for i in range(len(Xs)))
         else:
