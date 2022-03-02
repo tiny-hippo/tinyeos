@@ -1,6 +1,7 @@
 import os
 import pickle
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from pathlib import Path
 
 
@@ -32,7 +33,7 @@ class TableLoader:
         z_DT_table (ndarray): heavy-element (logRho, logT) table
         z_PT_table (ndarray): heavy-element (logP, logT) table
     """
-    def __init__(self, which_heavy="water", which_hhe="cms") -> None:
+    def __init__(self, which_heavy: str = "water", which_hhe: str = "cms") -> None:
         """ _init__ method. Sets the equation of state
         boundaries and loads the tables.
 
@@ -54,7 +55,7 @@ class TableLoader:
         self.load_z_DT_table(which_heavy)
         self.load_z_PT_table(which_heavy)
 
-    def load_xy_DT_tables(self, which_hhe="cms") -> None:
+    def load_xy_DT_tables(self, which_hhe: str = "cms") -> None:
         """ Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
@@ -90,7 +91,7 @@ class TableLoader:
             data = pickle.load(file)
         self.y_DT_table = data
 
-    def load_xy_PT_tables(self, which_hhe="cms") -> None:
+    def load_xy_PT_tables(self, which_hhe: str = "cms") -> None:
         """ Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
@@ -122,7 +123,7 @@ class TableLoader:
             data = pickle.load(file)
         self.y_PT_table = data
 
-    def load_z_DT_table(self, which_heavy) -> None:
+    def load_z_DT_table(self, which_heavy: str) -> None:
         """ Loads the heavy-element (logRho, logT) tables.
 
         Args:
@@ -152,7 +153,7 @@ class TableLoader:
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
         self.z_DT_table = data
 
-    def load_z_PT_table(self, which_heavy):
+    def load_z_PT_table(self, which_heavy: str):
         """ Loads the heavy-element (logP, logT) tables.
 
         Args:
@@ -181,16 +182,16 @@ class TableLoader:
         self.z_PT_table = data
 
     @staticmethod
-    def make_monotonic(data, element, DT) -> np.ndarray:
+    def make_monotonic(data: ArrayLike, element: str, DT: bool) -> NDArray:
         """ Makes the data monotonic with respect to logT.
 
         Args:
-            data (ndarray): The input data.
+            data (ArrayLike): The input data.
             element (str): Which table to load.
             DT (bool): whether to do (logRho, logT) or (logP, logT)
 
         Returns:
-            ndarray: Monotonic version of the data.
+            NDArray: Monotonic version of the data.
         """
 
         x = data[:, 0]  # logT

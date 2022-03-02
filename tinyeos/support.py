@@ -1,22 +1,73 @@
 import numpy as np
-from numba import jit, njit
+from typing import Tuple
+from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from sklearn.neighbors._base import _get_weights
 
-# Constants
-m_e = 9.10938e-28  # Electron mass in g
-k_b = 1.3806503e-16  # Boltzmann constant in erg/K
-h = 6.260755e-27  # Planck constant in erg s
-Na = 6.02214199e23  # Avogadro's constant
+# constants
+m_e = 9.10938e-28  # electron mass in g
+k_b = 1.3806503e-16  # boltzmann constant in erg/K
+h = 6.260755e-27  # planck constant in erg s
+Na = 6.02214199e23  # avogadro's constant
+Zsun = 0.014  # solar heavy-element mass fraction
 Xproto = 0.705  # protosolar helium abundance
 Yproto = 0.275  # protosolar hydrogen abundance
 proto_ratio = Yproto / Xproto
 
 
-@njit
-def get_X(Z) -> float:
+class NearestND(NDInterpolatorBase):
+    def __init__(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        rescale: bool = False,
+        tree_options: bool = None,
+    ):
+        NDInterpolatorBase.__init__(
+            self, x, y, rescale=rescale, need_contiguous=False, need_values=False
+        )
+        if tree_options is None:
+            tree_options = dict()
+        self.tree = cKDTree(self.points, **tree_options)
+        self.values = np.asarray(y)
+
+    def __call__(self, *args: Tuple, k: int = 1, weights: str = "uniform"):
+        xi = _ndim_coords_from_arrays(args, ndim=self.points.shape[1])
+        xi = self._check_call_shape(xi)
+        xi = self._scale_x(xi)
+        dist, i = self.tree.query(xi, k=k)
+
+        if k == 1:
+            return self.values[i]
+
+        if xi.ndim == 1:
+            which_axis = 0
+        elif xi.ndim == 2:
+            which_axis = 1
+        else:
+            msg = "input dimension not supported"
+            raise NotImplementedError(msg)
+
+        if weights in [None, "uniform"]:
+            return np.average(self.values[i], axis=which_axis)
+        else:
+            if xi.ndim == 1:
+                weight_matrix = dist
+            elif xi.ndim == 2:
+                weight_matrix = _get_weights(dist, weights=weights)
+                weight_matrix = np.repeat(
+                    weight_matrix[:, :, np.newaxis], self.values.shape[-1], axis=2
+                )
+            else:
+                msg = "input dimension not supported"
+                raise NotImplementedError(msg)
+
+            return np.average(self.values[i], axis=which_axis, weights=weight_matrix)
+
+
+def get_X(Z: ArrayLike) -> ArrayLike:
     """Calculates the hydrogen mass fraction given
     a heavy-element fraction Z and assuming protosolar
     composition.
@@ -31,7 +82,38 @@ def get_X(Z) -> float:
     return X
 
 
-def get_1d_spline(x, y, K=1, S=0) -> UnivariateSpline:
+def get_Z_from_FeH(FeH: ArrayLike) -> ArrayLike:
+    """Calculates the heavy-element mass fraction
+    given a metallicity.
+
+    Args:
+        FeH (ArrayLike): Metallicity
+
+    Returns:
+        ArrayLike: Heavy-element mass fraction
+    """
+    Z = Zsun * 10**FeH
+    return Z
+
+
+def get_FeH_from_Z(Z: float) -> float:
+    """Calculates the metallicity given a heavy-
+    element mass fraction.
+
+    Args:
+        Z (float): Heavy-element mass fraction
+
+    Returns:
+        float: Metallicity
+    """
+    Z = max(Z, Zsun)
+    FeH = np.log10(Z / Zsun)
+    return FeH
+
+
+def get_1d_spline(
+    x: ArrayLike, y: ArrayLike, K: int = 1, S: int = 0
+) -> UnivariateSpline:
     """Wrapper for UniviarateSpline.
 
     Args:
@@ -48,8 +130,7 @@ def get_1d_spline(x, y, K=1, S=0) -> UnivariateSpline:
     return spl
 
 
-@jit(nopython=False, forceobj=True)
-def check_composition(X, Z) -> tuple:
+def check_composition(X: float, Z: float) -> Tuple:
     """Checks whether input composition adds up to less than 1,
     and formats the mass fractions.
 
@@ -76,8 +157,9 @@ def check_composition(X, Z) -> tuple:
     return (X, Y, Z)
 
 
-@jit(nopython=False, forceobj=True)
-def ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z) -> float:
+def ideal_mixing_law(
+    rho_x: float, rho_y: float, rho_z: float, X: float, Y: float, Z: float
+) -> float:
     """Implementation of the ideal mixing law:
     1 / rho = X / rho_x + Y / rho_y + Z / rho_y
 
@@ -110,8 +192,7 @@ def ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z) -> float:
     return x_rho_x + y_rho_y + z_rho_z
 
 
-@njit
-def get_eta(logT, logRho, log_free_e) -> float:
+def get_eta(logT: float, logRho: float, log_free_e: float) -> float:
     """Calculates the inverse electron chemical potential
     by inverting the fermi integral using the
     rational function approximation for Fermi-Dirac
@@ -149,7 +230,7 @@ def get_eta(logT, logRho, log_free_e) -> float:
         eta = np.log(f * rn / den)
 
     else:
-        ff = 1.0 / f**(1.0 / (1 + an))
+        ff = 1.0 / f ** (1.0 / (1 + an))
         rn = ff + a2[m2]
         rn = rn * ff + a2[m2 - 1]
         den = b2[k2 + 1]
@@ -163,50 +244,3 @@ def get_eta(logT, logRho, log_free_e) -> float:
         eta = -999
 
     return eta
-
-
-class NearestND(NDInterpolatorBase):
-    def __init__(self, x, y, rescale=False, tree_options=None):
-        NDInterpolatorBase.__init__(self,
-                                    x,
-                                    y,
-                                    rescale=rescale,
-                                    need_contiguous=False,
-                                    need_values=False)
-        if tree_options is None:
-            tree_options = dict()
-        self.tree = cKDTree(self.points, **tree_options)
-        self.values = np.asarray(y)
-
-    def __call__(self, *args, k=1, weights="uniform"):
-        xi = _ndim_coords_from_arrays(args, ndim=self.points.shape[1])
-        xi = self._check_call_shape(xi)
-        xi = self._scale_x(xi)
-        dist, i = self.tree.query(xi, k=k)
-
-        if k == 1:
-            return self.values[i]
-
-        if xi.ndim == 1:
-            which_axis = 0
-        elif xi.ndim == 2:
-            which_axis = 1
-        else:
-            raise NotImplementedError()
-
-        if weights in [None, "uniform"]:
-            return np.average(self.values[i], axis=which_axis)
-        else:
-            if xi.ndim == 1:
-                weight_matrix = dist
-            elif xi.ndim == 2:
-                weight_matrix = _get_weights(dist, weights=weights)
-                weight_matrix = np.repeat(weight_matrix[:, :, np.newaxis],
-                                          self.values.shape[-1],
-                                          axis=2)
-            else:
-                raise NotImplementedError()
-
-            return np.average(self.values[i],
-                              axis=which_axis,
-                              weights=weight_matrix)
