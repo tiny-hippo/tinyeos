@@ -1,12 +1,12 @@
 import os
-from typing import Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from typing import Tuple
 from pathlib import Path
 from scipy.optimize import root_scalar
-from interpolantsbuilder import InterpolantsBuilder
-from support import get_eta, ideal_mixing_law, check_composition
-from definitions import *
+from tinyeos.interpolantsbuilder import InterpolantsBuilder
+from tinyeos.support import get_eta, ideal_mixing_law, check_composition
+from tinyeos.definitions import *
 
 
 class TinyDT(InterpolantsBuilder):

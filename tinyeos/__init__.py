@@ -1,3 +1,3 @@
-from tinydteos import TinyDT
-from tinypteos import TinyPT
-from tinykap import TinyFreedmanKap
+from tinyeos.tinydteos import TinyDT
+from tinyeos.tinypteos import TinyPT
+from tinyeos.tinykap import TinyFreedmanKap

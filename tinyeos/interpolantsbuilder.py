@@ -1,15 +1,14 @@
-from multiprocessing.dummy import Array
 import os
 import numpy as np
-from typing import Tuple
 from numpy.typing import ArrayLike
-from tableloader import TableLoader
+from typing import Tuple
+from pathlib import Path
 from scipy.interpolate import (
     RectBivariateSpline,
     RegularGridInterpolator,
     SmoothBivariateSpline,
 )
-from pathlib import Path
+from tinyeos.tableloader import TableLoader
 
 
 class InterpolantsBuilder(TableLoader):

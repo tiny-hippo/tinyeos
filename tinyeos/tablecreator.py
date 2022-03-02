@@ -3,9 +3,9 @@ import numpy as np
 from fortranformat import FortranRecordWriter
 from joblib import Parallel, delayed
 from multiprocessing import cpu_count
-from tinydteos import TinyDT
-from tinypteos import TinyPT
-from support import NearestND
+from tinyeos.tinydteos import TinyDT
+from tinyeos.tinypteos import TinyPT
+from tinyeos.support import NearestND
 
 
 class TableCreatorDT(TinyDT):
