@@ -9,7 +9,7 @@ from tinyeos.definitions import *
 
 class TinyPT(InterpolantsBuilder):
     """Temperature-pressure equation of state for a mixture of hydrogen,
-    helium and a heavy element.
+    helium and a heavy element. Units are cgs everywhere.
 
     Equations of state implemented:
         Hydrogen-Helium:
@@ -22,11 +22,6 @@ class TinyPT(InterpolantsBuilder):
             SiO2 (QEoS, More et al. 1988),
             Mixture of water and rock (QEoS),
             Iron (QEoS, more et al. 1998).
-
-    To-do: Allow input to be array_like for faster calculation.
-
-    Attributes:
-        # to-do: list attributes
     """
 
     def __init__(
@@ -39,16 +34,16 @@ class TinyPT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
-            which_heavy (str, optional): Which heavy-element equation of state
+            which_heavy (str, optional): which heavy-element equation of state
             to use. Defaults to "water". Options are "water", "rock",
             "mixture", "aqua" or "iron".
-            which_hhe (str, optional): Which hydrogen-helium equation of state
+            which_hhe (str, optional): which hydrogen-helium equation of state
             to use. Defaults to "cms". Options are "cms" or "scvh".
-            build_interpolants (bool, optional): Whether to build interpolants.
+            build_interpolants (bool, optional): whether to build interpolants.
             Defaults to False.
 
         Raises:
-            NotImplementedError: Raised if which_heavy or which_hhe choices
+            NotImplementedError: raised if which_heavy or which_hhe choices
             are unavailable.
         """
 
@@ -84,7 +79,7 @@ class TinyPT(InterpolantsBuilder):
         self.i_lfe = i_lfe
 
         self.kwargs = {"grid": False}
-        self.cache_path = Path(__file__).parent / "data/interpolants"
+        self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["water", "rock", "aqua", "mixture"]:
             raise NotImplementedError("Invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
@@ -106,10 +101,10 @@ class TinyPT(InterpolantsBuilder):
         else:
             raise NotImplementedError("Invalid option for which_heavy.")
 
-        self.interpPT_x = self.load_interp("interpPT_x_" + which_hhe + ".npy")
-        self.interpPT_y = self.load_interp("interpPT_y_" + which_hhe + ".npy")
-        self.interpPT_z = self.load_interp("interpPT_z_" + which_heavy + ".npy")
-        self.interpDT_z = self.load_interp("interpDT_z_" + which_heavy + ".npy")
+        self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
+        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
+        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
+        self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
         self.interpPT_logRho_x = self.interpPT_x[0]
         self.interpPT_logS_x = self.interpPT_x[1]
@@ -143,56 +138,69 @@ class TinyPT(InterpolantsBuilder):
         self.interpDT_logS_z = self.interpDT_z[1]
 
     def __call__(self, logT: float, logP: float, X: float, Z: float) -> NDArray:
+        """__call__ method acting as convenience wrapper for the evaluate method.
+        Calculates the equation of state output for the mixture.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+
+        Returns:
+            NDArray: Equation of state output. The index of the individual
+            quantities is defined in the __init__ method.
+        """
         return self.evaluate(logT, logP, X, Z)
 
-    def load_interp(self, filename: str) -> object:
+    def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
 
         Args:
-            filename (str): Name of the interpolant cache file.
+            filename (str): name of the interpolant cache file.
 
         Raises:
-            FileNotFoundError: Raised if the interpolant was not found.
+            FileNotFoundError: raised if the interpolant was not found.
 
         Returns:
-            object: Bivariate spline loaded from the cache file.
+            object: bivariate spline loaded from the cache file.
         """
         src = os.path.join(self.cache_path, filename)
         if not os.path.isfile(src):
             raise FileNotFoundError("Missing interpolant cache" + src)
         return np.load(src, allow_pickle=True)
 
-    def check_PT(self, logT: ArrayLike, logP: ArrayLike) -> None:
+    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> None:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
         Args:
-            logT (float or ndarray): Log10 of the temperature.
-            logP (float or ndarray): Log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
         """
         assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
         assert np.all(logP >= self.logP_min) and np.all(logP <= self.logP_max)
 
-    def ideal_mixture(
+    def __ideal_mixture(
         self, logT: float, logP: float, X: float, Z: float, debug: bool = False
     ) -> float:
         """Calculates the total density of the gas using the ideal
         mixing law.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
-            X (float): Hydrogen mass-fraction
-            Y (float): Helium mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            debug (bool, optional): Enables additional output.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            debug (bool, optional): enables additional output.
             Defaults to False.
 
         Returns:
-            float: Total density of the mixure.
+            float: total density of the mixure.
         """
 
-        self.check_PT(logT, logP)
+        self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
 
         if Z == 1:
@@ -231,15 +239,15 @@ class TinyPT(InterpolantsBuilder):
 
         return logRho
 
-    def evaluate_x(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_x(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logRho = self.interpPT_logRho_x(logT, logP, **self.kwargs)
@@ -269,15 +277,15 @@ class TinyPT(InterpolantsBuilder):
 
         return res_x
 
-    def evaluate_y(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_y(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for helium.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logRho = self.interpPT_logRho_y(logT, logP, **self.kwargs)
@@ -307,15 +315,15 @@ class TinyPT(InterpolantsBuilder):
 
         return res_y
 
-    def evaluate_z(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_z(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for the heavy element..
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
         logRho = self.interpPT_logRho_z(logT, logP, **self.kwargs)
         logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
@@ -352,35 +360,35 @@ class TinyPT(InterpolantsBuilder):
         """Calculates the equation of state output for the mixture.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
-            X (float): Hydrogen mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            debug (bool, optional): Whether to enable additional output.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            debug (bool, optional): whether to enable additional output.
             Defaults to False.
 
         Returns:
-            NDArray: Equation of state output. The index of the individual
+            NDArray: equation of state output. The index of the individual
             quantities is defined in the __init__ method.
         """
 
-        self.check_PT(logT, logP)
+        self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
 
         if X > 0:
-            res_x = self.evaluate_x(logT, logP)
+            res_x = self.__evaluate_x(logT, logP)
         else:
             res_x = np.zeros(self.num_vals)
         if Y > 0:
-            res_y = self.evaluate_y(logT, logP)
+            res_y = self.__evaluate_y(logT, logP)
         else:
             res_y = np.zeros(self.num_vals)
         if Z > 0:
-            res_z = self.evaluate_z(logT, logP)
+            res_z = self.__evaluate_z(logT, logP)
         else:
             res_z = np.zeros(self.num_vals)
 
-        logRho = self.ideal_mixture(logT, logP, X, Z)
+        logRho = self.__ideal_mixture(logT, logP, X, Z)
         logRho_x = res_x[self.i_logRho]
         logRho_y = res_y[self.i_logRho]
         logRho_z = res_z[self.i_logRho]

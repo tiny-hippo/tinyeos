@@ -9,26 +9,38 @@ from tinyeos.support import NearestND
 
 
 class TableCreatorDT(TinyDT):
+    """Creates density-temperature tables for use with the stellar evolution
+    code MESA.
+    """
+
     def __init__(
         self,
         which_heavy: str = "water",
         which_hhe: str = "cms",
-        build_interpolants: bool = False,
+        do_parallel: bool = True,
+        num_cores: int = cpu_count(),
+        smooth_vals: bool = False,
         fix_vals: bool = True,
+        build_interpolants: bool = False,
+        debug: bool = False,
     ) -> None:
+
         super().__init__(
             which_heavy=which_heavy,
             which_hhe=which_hhe,
             build_interpolants=build_interpolants,
         )
+
         self.fix_vals = fix_vals
-        self.smooth_vals = False
+        self.smooth_vals = smooth_vals
+        self.do_parallel = do_parallel
+        self.num_cores = num_cores
+        self.debug = debug
+
+        # these are mostly for debugging purposes
         self.check_if_file_exists = False
         self.do_single = False
         self.do_pure = False
-        self.do_parallel = True
-        self.debug = False
-        self.num_cores = cpu_count()
 
         # self.fix_method = fix_method  # nearest, intermediate, interpolate
         self.header1_line = FortranRecordWriter("(99(a14))")
@@ -104,7 +116,7 @@ class TableCreatorDT(TinyDT):
             X = 0.50
             Z = 0.20
             print(f"Creating a single table for X = {X:.2f} and Z = {Z:.2f}")
-            results = self.make_eos_files(X, Z)
+            results = self.__make_eos_files(X, Z)
             return results
 
         if self.do_pure:
@@ -124,7 +136,7 @@ class TableCreatorDT(TinyDT):
                 f"using {self.num_cores:.0f} cores.",
             )
             Parallel(n_jobs=self.num_cores)(
-                delayed(self.make_eos_files)(X=Xs[i], Z=Zs[i]) for i in range(len(Xs))
+                delayed(self.__make_eos_files)(X=Xs[i], Z=Zs[i]) for i in range(len(Xs))
             )
         else:
             for i in range(len(Xs)):
@@ -134,9 +146,9 @@ class TableCreatorDT(TinyDT):
                     f"Creating single table with prefix {self.fname_prefix}",
                     f"with X = {X:.2f} and Z = {Z:.2f}.",
                 )
-                self.make_eos_files(X, Z)
+                self.__make_eos_files(X, Z)
 
-    def make_eos_files(self, X: float, Z: float) -> None:
+    def __make_eos_files(self, X: float, Z: float) -> None:
         assert X + Z <= 1
         X = np.round(X, 2)
         Z = np.round(Z, 2)
@@ -303,26 +315,38 @@ class TableCreatorDT(TinyDT):
 
 
 class TableCreatorPT(TinyPT):
+    """Creates pressure-temperature tables for use with the stellar evolution
+    code MESA.
+    """
+
     def __init__(
         self,
         which_heavy: str = "water",
         which_hhe: str = "cms",
-        build_interpolants: str = False,
-        fix_vals: str = True,
+        do_parallel: bool = True,
+        num_cores: int = cpu_count(),
+        smooth_vals: bool = False,
+        fix_vals: bool = True,
+        build_interpolants: bool = False,
+        debug: bool = False,
     ) -> None:
+
         super().__init__(
             which_heavy=which_heavy,
             which_hhe=which_hhe,
             build_interpolants=build_interpolants,
         )
+
         self.fix_vals = fix_vals
-        self.smooth_vals = False
+        self.smooth_vals = smooth_vals
+        self.do_parallel = do_parallel
+        self.num_cores = num_cores
+        self.debug = debug
+
+        # these are mostly for debugging purposes
         self.check_if_file_exists = False
         self.do_single = False
         self.do_pure = False
-        self.do_parallel = True
-        self.debug = False
-        self.num_cores = cpu_count()
 
         self.header1_line = FortranRecordWriter("(99(a14))")
         self.header2_line = FortranRecordWriter("(/,7x,a)")
@@ -393,7 +417,7 @@ class TableCreatorPT(TinyPT):
             X = 0.80
             Z = 0.10
             print(f"Creating a single table for X = {X:.2f} and Z = {Z:.2f}")
-            results = self.make_eos_files(Z, X)
+            results = self.__make_eos_files(Z, X)
             return results
 
         # for i, Z in enumerate(Zs):
@@ -425,7 +449,7 @@ class TableCreatorPT(TinyPT):
                 f"using {self.num_cores:.0f} cores.",
             )
             Parallel(n_jobs=self.num_cores)(
-                delayed(self.make_eos_files)(X=Xs[i], Z=Zs[i]) for i in range(len(Xs))
+                delayed(self.__make_eos_files)(X=Xs[i], Z=Zs[i]) for i in range(len(Xs))
             )
         else:
             for i in range(len(Xs)):
@@ -435,9 +459,9 @@ class TableCreatorPT(TinyPT):
                     f"Creating single table with prefix {self.fname_prefix}",
                     f"with X = {X:.2f} and Z = {Z:.2f}.",
                 )
-                self.make_eos_files(X, Z)
+                self.__make_eos_files(X, Z)
 
-    def make_eos_files(self, Z: float, X: float) -> None:
+    def __make_eos_files(self, Z: float, X: float) -> None:
         assert X + Z <= 1
         X = np.round(X, 2)
         Z = np.round(Z, 2)
@@ -596,40 +620,3 @@ class TableCreatorPT(TinyPT):
             dst = os.path.join(debug_dir, dname)
             np.save(dst, dbg_arr)
         return results
-
-
-if __name__ == "__main__":
-    del_logT = 0.02
-    del_logQ = 0.03
-    del_logW = 0.2
-    logT_min = 2.00
-    logT_max = 6.00
-    logQ_min = -4.00
-    logQ_max = 5.50
-    logW_min = -19  # logP_min - 4 * logT_max = -19
-    logW_max = 7  # logP_max - 4 * logT_min = 7
-    del_X = 0.1
-    del_Z = 0.1
-
-    # example
-    Tdt = TableCreatorDT(
-        which_heavy="water", which_hhe="scvh", build_interpolants=False, fix_vals=True
-    )
-    Tdt.do_parallel = False
-    Tdt.smooth_vals = True
-    # for debugging
-    del_logT = 0.2
-    del_logQ = 0.2
-    Tdt.debug = False
-
-    Tdt.create_tables(
-        del_logT,
-        del_logQ,
-        logT_min,
-        logT_max,
-        logQ_min,
-        logQ_max,
-        del_X,
-        del_Z,
-        "scvh_h2o_smoothed-eosDT_",
-    )
