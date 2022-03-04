@@ -86,7 +86,7 @@ class TinyDT(InterpolantsBuilder):
         self.i_lfe = i_lfe
 
         self.kwargs = {"grid": False}
-        self.cache_path = Path(__file__).parent / "data/interpolants"
+        self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["water", "rock", "aqua", "mixture"]:
             raise NotImplementedError("Invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
@@ -108,13 +108,13 @@ class TinyDT(InterpolantsBuilder):
         else:
             raise NotImplementedError("Invalid option for which_heavy.")
 
-        self.interpPT_x = self.load_interp("interpPT_x_" + which_hhe + ".npy")
-        self.interpPT_y = self.load_interp("interpPT_y_" + which_hhe + ".npy")
-        self.interpPT_z = self.load_interp("interpPT_z_" + which_heavy + ".npy")
+        self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
+        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
+        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
 
-        self.interpDT_x = self.load_interp("interpDT_x_" + which_hhe + ".npy")
-        self.interpDT_y = self.load_interp("interpDT_y_" + which_hhe + ".npy")
-        self.interpDT_z = self.load_interp("interpDT_z_" + which_heavy + ".npy")
+        self.interpDT_x = self.__load_interp("interpDT_x_" + which_hhe + ".npy")
+        self.interpDT_y = self.__load_interp("interpDT_y_" + which_hhe + ".npy")
+        self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
         self.interpDT_logP_x = self.interpDT_x[0]
         self.interpDT_logS_x = self.interpDT_x[1]
@@ -153,7 +153,7 @@ class TinyDT(InterpolantsBuilder):
     def __call__(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
         return self.evaluate(logT, logRho, X, Z)
 
-    def load_interp(self, filename: str) -> object:
+    def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
 
         Args:
@@ -171,7 +171,7 @@ class TinyDT(InterpolantsBuilder):
             raise FileNotFoundError("Missing interpolant cache" + src)
         return np.load(src, allow_pickle=True)
 
-    def check_DT(self, logT: ArrayLike, logRho: ArrayLike) -> None:
+    def __check_DT(self, logT: ArrayLike, logRho: ArrayLike) -> None:
         """Makes sure that input temperature and density
         are within equation of state limits.
 
@@ -183,7 +183,7 @@ class TinyDT(InterpolantsBuilder):
         assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
         assert np.all(logRho >= self.logRho_min) and np.all(logRho <= self.logRho_max)
 
-    def ideal_mixture(
+    def __ideal_mixture(
         self,
         logT: float,
         logRho: float,
@@ -208,7 +208,7 @@ class TinyDT(InterpolantsBuilder):
             densities and gas pressure.
         """
 
-        self.check_DT(logT, logRho)
+        self.__check_DT(logT, logRho)
 
         if Z == 1:
             conv = True
@@ -241,7 +241,7 @@ class TinyDT(InterpolantsBuilder):
                 # found bracket
                 try:
                     sol = root_scalar(
-                        self.optimize_1d,
+                        self.__optimize_1d,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -281,7 +281,7 @@ class TinyDT(InterpolantsBuilder):
             if have_bracket:
                 try:
                     sol = root_scalar(
-                        self.optimize_1d,
+                        self.__optimize_1d,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -309,7 +309,7 @@ class TinyDT(InterpolantsBuilder):
             logRho_z = self.logRho_min
 
         if debug:
-            res = self.optimize_1d(logRho_z, logRho, logT, X, Y, Z)
+            res = self.__optimize_1d(logRho_z, logRho, logT, X, Y, Z)
             logP_x = self.interpDT_logP_x(logT, logRho_x, **self.kwargs)
             logP_y = self.interpDT_logP_y(logT, logRho_y, **self.kwargs)
 
@@ -328,7 +328,7 @@ class TinyDT(InterpolantsBuilder):
 
         return (conv, logRho_x, logRho_y, logRho_z, logP)
 
-    def optimize_1d(
+    def __optimize_1d(
         self, xhat: float, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> float:
         """Defines the root finding problem to find the
@@ -372,7 +372,7 @@ class TinyDT(InterpolantsBuilder):
         f = np.log10(1 / rho) - np.log10(ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z))
         return f
 
-    def get_bracket(
+    def __get_bracket(
         self, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> Tuple:
         """Finds the bracket in the heavy-element density.
@@ -442,7 +442,7 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def get_xy_bracket(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
+    def __get_xy_bracket(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
         """Finds the bracket in the hydrogen density.
 
         Args:
@@ -506,7 +506,7 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def evaluate_x(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_x(self, logT: float, logRho: float) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
@@ -544,7 +544,7 @@ class TinyDT(InterpolantsBuilder):
 
         return res_x
 
-    def evaluate_y(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_y(self, logT: float, logRho: float) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
@@ -582,7 +582,7 @@ class TinyDT(InterpolantsBuilder):
 
         return res_y
 
-    def evaluate_z(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_z(self, logT: float, logRho: float) -> NDArray:
         """Calculates equation of state output for the heavy element.
 
         Args:
@@ -650,11 +650,11 @@ class TinyDT(InterpolantsBuilder):
             algorithm failed, the output will be filled with negative ones.
         """
 
-        self.check_DT(logT, logRho)
+        self.__check_DT(logT, logRho)
 
         X, Y, Z = check_composition(X, Z)
 
-        xhat = self.ideal_mixture(logT, logRho, X, Y, Z)
+        xhat = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not xhat[0]:
             if debug:
                 print("Failed in density root find")
@@ -674,15 +674,15 @@ class TinyDT(InterpolantsBuilder):
         rho_z = 10**logRho_z
 
         if X > 0:
-            res_x = self.evaluate_x(logT, logRho_x)
+            res_x = self.__evaluate_x(logT, logRho_x)
         else:
             res_x = np.zeros(self.num_vals)
         if Y > 0:
-            res_y = self.evaluate_y(logT, logRho_y)
+            res_y = self.__evaluate_y(logT, logRho_y)
         else:
             res_y = np.zeros(self.num_vals)
         if Z > 0:
-            res_z = self.evaluate_z(logT, logRho_z)
+            res_z = self.__evaluate_z(logT, logRho_z)
         else:
             res_z = np.zeros(self.num_vals)
 
@@ -699,7 +699,7 @@ class TinyDT(InterpolantsBuilder):
                 X = Y * XY_ratio
                 # re-do ideal mixing calculation with Z = 0
                 Z = 0
-                xhat = self.ideal_mixture(logT, logRho, X, Y, Z)
+                xhat = self.__ideal_mixture(logT, logRho, X, Y, Z)
                 if not xhat[0]:
                     if debug:
                         print(
@@ -723,15 +723,15 @@ class TinyDT(InterpolantsBuilder):
                 rho_z = 10**logRho_z
 
         if X > 0:
-            res_x = self.evaluate_x(logT, logRho_x)
+            res_x = self.__evaluate_x(logT, logRho_x)
         else:
             res_x = np.zeros(self.num_vals)
         if Y > 0:
-            res_y = self.evaluate_y(logT, logRho_y)
+            res_y = self.__evaluate_y(logT, logRho_y)
         else:
             res_y = np.zeros(self.num_vals)
         if Z > 0:
-            res_z = self.evaluate_z(logT, logRho_z)
+            res_z = self.__evaluate_z(logT, logRho_z)
         else:
             res_z = np.zeros(self.num_vals)
 

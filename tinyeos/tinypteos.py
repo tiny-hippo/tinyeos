@@ -84,7 +84,7 @@ class TinyPT(InterpolantsBuilder):
         self.i_lfe = i_lfe
 
         self.kwargs = {"grid": False}
-        self.cache_path = Path(__file__).parent / "data/interpolants"
+        self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["water", "rock", "aqua", "mixture"]:
             raise NotImplementedError("Invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
@@ -106,10 +106,10 @@ class TinyPT(InterpolantsBuilder):
         else:
             raise NotImplementedError("Invalid option for which_heavy.")
 
-        self.interpPT_x = self.load_interp("interpPT_x_" + which_hhe + ".npy")
-        self.interpPT_y = self.load_interp("interpPT_y_" + which_hhe + ".npy")
-        self.interpPT_z = self.load_interp("interpPT_z_" + which_heavy + ".npy")
-        self.interpDT_z = self.load_interp("interpDT_z_" + which_heavy + ".npy")
+        self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
+        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
+        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
+        self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
         self.interpPT_logRho_x = self.interpPT_x[0]
         self.interpPT_logS_x = self.interpPT_x[1]
@@ -145,7 +145,7 @@ class TinyPT(InterpolantsBuilder):
     def __call__(self, logT: float, logP: float, X: float, Z: float) -> NDArray:
         return self.evaluate(logT, logP, X, Z)
 
-    def load_interp(self, filename: str) -> object:
+    def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
 
         Args:
@@ -162,7 +162,7 @@ class TinyPT(InterpolantsBuilder):
             raise FileNotFoundError("Missing interpolant cache" + src)
         return np.load(src, allow_pickle=True)
 
-    def check_PT(self, logT: ArrayLike, logP: ArrayLike) -> None:
+    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> None:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
@@ -173,7 +173,7 @@ class TinyPT(InterpolantsBuilder):
         assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
         assert np.all(logP >= self.logP_min) and np.all(logP <= self.logP_max)
 
-    def ideal_mixture(
+    def __ideal_mixture(
         self, logT: float, logP: float, X: float, Z: float, debug: bool = False
     ) -> float:
         """Calculates the total density of the gas using the ideal
@@ -192,7 +192,7 @@ class TinyPT(InterpolantsBuilder):
             float: Total density of the mixure.
         """
 
-        self.check_PT(logT, logP)
+        self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
 
         if Z == 1:
@@ -231,7 +231,7 @@ class TinyPT(InterpolantsBuilder):
 
         return logRho
 
-    def evaluate_x(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_x(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
@@ -269,7 +269,7 @@ class TinyPT(InterpolantsBuilder):
 
         return res_x
 
-    def evaluate_y(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_y(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for helium.
 
         Args:
@@ -307,7 +307,7 @@ class TinyPT(InterpolantsBuilder):
 
         return res_y
 
-    def evaluate_z(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_z(self, logT: float, logP: float) -> NDArray:
         """Calculates equation of state output for the heavy element..
 
         Args:
@@ -364,23 +364,23 @@ class TinyPT(InterpolantsBuilder):
             quantities is defined in the __init__ method.
         """
 
-        self.check_PT(logT, logP)
+        self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
 
         if X > 0:
-            res_x = self.evaluate_x(logT, logP)
+            res_x = self.__evaluate_x(logT, logP)
         else:
             res_x = np.zeros(self.num_vals)
         if Y > 0:
-            res_y = self.evaluate_y(logT, logP)
+            res_y = self.__evaluate_y(logT, logP)
         else:
             res_y = np.zeros(self.num_vals)
         if Z > 0:
-            res_z = self.evaluate_z(logT, logP)
+            res_z = self.__evaluate_z(logT, logP)
         else:
             res_z = np.zeros(self.num_vals)
 
-        logRho = self.ideal_mixture(logT, logP, X, Z)
+        logRho = self.__ideal_mixture(logT, logP, X, Z)
         logRho_x = res_x[self.i_logRho]
         logRho_y = res_y[self.i_logRho]
         logRho_z = res_z[self.i_logRho]

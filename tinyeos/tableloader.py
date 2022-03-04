@@ -44,18 +44,18 @@ class TableLoader:
             to use. Defaults to "cms".
         """
 
-        self.table_path = Path(__file__).parent / "data/tables"
+        self.tables_path = Path(__file__).parent / "data/eos/tables"
         self.logRho_max = 2.00
         self.logRho_min = -8.00
         self.logT_max = 6.00
         self.logT_min = 2.00
 
-        self.load_xy_DT_tables(which_hhe)
-        self.load_xy_PT_tables(which_hhe)
-        self.load_z_DT_table(which_heavy)
-        self.load_z_PT_table(which_heavy)
+        self.__load_xy_DT_tables(which_hhe)
+        self.__load_xy_PT_tables(which_hhe)
+        self.__load_z_DT_table(which_heavy)
+        self.__load_z_PT_table(which_heavy)
 
-    def load_xy_DT_tables(self, which_hhe: str = "cms") -> None:
+    def __load_xy_DT_tables(self, which_hhe: str = "cms") -> None:
         """ Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
@@ -67,10 +67,10 @@ class TableLoader:
         """
 
         if which_hhe == "cms":
-            src = os.path.join(self.table_path, "hydrogen_DT_table.pkl")
+            src = os.path.join(self.tables_path, "hydrogen_DT_table.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.table_path,
+            src = os.path.join(self.tables_path,
                                "hydrogen_scvh_extended_DT_table.pkl")
         else:
             raise NotImplementedError("This table is not available.")
@@ -82,16 +82,16 @@ class TableLoader:
         self.x_DT_table = data
 
         if which_hhe == "cms":
-            src = os.path.join(self.table_path, "helium_DT_table.pkl")
+            src = os.path.join(self.tables_path, "helium_DT_table.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.table_path,
+            src = os.path.join(self.tables_path,
                                "helium_scvh_extended_DT_table.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_DT_table = data
 
-    def load_xy_PT_tables(self, which_hhe: str = "cms") -> None:
+    def __load_xy_PT_tables(self, which_hhe: str = "cms") -> None:
         """ Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
@@ -103,9 +103,9 @@ class TableLoader:
         """
 
         if which_hhe == "cms":
-            src = os.path.join(self.table_path, "hydrogen_PT_table.pkl")
+            src = os.path.join(self.tables_path, "hydrogen_PT_table.pkl")
         elif which_hhe == "scvh":
-            src = os.path.join(self.table_path, "hydrogen_scvh_PT_table.pkl")
+            src = os.path.join(self.tables_path, "hydrogen_scvh_PT_table.pkl")
         else:
             raise NotImplementedError("This table is not available.")
         with open(src, "rb") as file:
@@ -116,14 +116,14 @@ class TableLoader:
         self.x_PT_table = data
 
         if which_hhe == "cms":
-            src = os.path.join(self.table_path, "helium_PT_table.pkl")
+            src = os.path.join(self.tables_path, "helium_PT_table.pkl")
         elif which_hhe == "scvh":
-            src = os.path.join(self.table_path, "helium_scvh_PT_table.pkl")
+            src = os.path.join(self.tables_path, "helium_scvh_PT_table.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_PT_table = data
 
-    def load_z_DT_table(self, which_heavy: str) -> None:
+    def __load_z_DT_table(self, which_heavy: str) -> None:
         """ Loads the heavy-element (logRho, logT) tables.
 
         Args:
@@ -146,14 +146,14 @@ class TableLoader:
         else:
             raise NotImplementedError("This heavy element is not available")
 
-        src = os.path.join(self.table_path, fname)
+        src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
         self.z_DT_table = data
 
-    def load_z_PT_table(self, which_heavy: str):
+    def __load_z_PT_table(self, which_heavy: str):
         """ Loads the heavy-element (logP, logT) tables.
 
         Args:
@@ -175,7 +175,7 @@ class TableLoader:
         else:
             raise NotImplementedError("This heavy element is not available")
 
-        src = os.path.join(self.table_path, fname)
+        src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logP", "logRho", "logU", "logS", "grad_ad"]
