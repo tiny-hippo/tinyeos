@@ -9,7 +9,7 @@ from tinyeos.definitions import *
 
 class TinyPT(InterpolantsBuilder):
     """Temperature-pressure equation of state for a mixture of hydrogen,
-    helium and a heavy element.
+    helium and a heavy element. Units are cgs everywhere.
 
     Equations of state implemented:
         Hydrogen-Helium:

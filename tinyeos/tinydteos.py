@@ -11,7 +11,7 @@ from tinyeos.definitions import *
 
 class TinyDT(InterpolantsBuilder):
     """Temperature-density equation of state for a mixture of hydrogen,
-    helium and a heavy element.
+    helium and a heavy element. Units are cgs everywhere.
 
     Equations of state implemented:
         Hydrogen-Helium:
