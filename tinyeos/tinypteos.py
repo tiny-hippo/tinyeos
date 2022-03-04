@@ -22,11 +22,6 @@ class TinyPT(InterpolantsBuilder):
             SiO2 (QEoS, More et al. 1988),
             Mixture of water and rock (QEoS),
             Iron (QEoS, more et al. 1998).
-
-    To-do: Allow input to be array_like for faster calculation.
-
-    Attributes:
-        # to-do: list attributes
     """
 
     def __init__(
@@ -155,7 +150,7 @@ class TinyPT(InterpolantsBuilder):
         Returns:
             NDArray: Equation of state output. The index of the individual
             quantities is defined in the __init__ method.
-        """   
+        """
         return self.evaluate(logT, logP, X, Z)
 
     def __load_interp(self, filename: str) -> object:

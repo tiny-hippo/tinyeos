@@ -24,9 +24,6 @@ class TinyDT(InterpolantsBuilder):
             SiO2 (QEoS, More et al. 1988),
             Mixture of water and rock (QEoS),
             Iron (QEoS, more et al. 1998).
-
-    Attributes:
-        # to-do: list attributes
     """
 
     def __init__(
