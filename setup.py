@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="tinyeos",
-    version="2.0",
+    version="1.1",
     description="equations of state and opacities for planets",
     url="",
     author="Simon Müller",
