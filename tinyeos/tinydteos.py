@@ -39,16 +39,16 @@ class TinyDT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
-            which_heavy (str, optional): Which heavy-element equation of state
+            which_heavy (str, optional): which heavy-element equation of state
             to use. Defaults to "water". Options are "water", "rock",
             "mixture", "aqua" or "iron".
-            which_hhe (str, optional): Which hydrogen-helium equation of state
+            which_hhe (str, optional): which hydrogen-helium equation of state
             to use. Defaults to "cms". Options are "cms" or "scvh".
-            build_interpolants (bool, optional): Whether to build interpolants.
+            build_interpolants (bool, optional): whether to build interpolants.
             Defaults to False.
 
         Raises:
-            NotImplementedError: Raised if which_heavy or which_hhe choices
+            NotImplementedError: raised if which_heavy or which_hhe choices
             are unavailable.
         """
 
@@ -151,19 +151,33 @@ class TinyDT(InterpolantsBuilder):
         self.interpPT_logU_z = self.interpPT_z[2]
 
     def __call__(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
+        """__call__ method acting as convenience wrapper for the evaluate method.
+        Calculates the equation of state output for the mixture.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+
+        Returns:
+            NDArray: Equation of state output. The index of the individual
+            quantities is defined in the __init__ method. If the root finding
+            algorithm failed, the output will be filled with negative ones.
+        """
         return self.evaluate(logT, logRho, X, Z)
 
     def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
 
         Args:
-            filename (str): Name of the interpolant cache file.
+            filename (str): name of the interpolant cache file.
 
         Raises:
-            FileNotFoundError: Raised if the interpolant was not found.
+            FileNotFoundError: raised if the interpolant was not found.
 
         Returns:
-            object: Bivariate spline loaded from the cache file.
+            object: bivariate spline loaded from the cache file.
         """
 
         src = os.path.join(self.cache_path, filename)
@@ -176,8 +190,8 @@ class TinyDT(InterpolantsBuilder):
         are within equation of state limits.
 
         Args:
-            logT (float or ndarray): Log10 of the temperature.
-            logRho (float or ndarray): Log10 of the density.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
         """
 
         assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
@@ -195,16 +209,16 @@ class TinyDT(InterpolantsBuilder):
         """Calculates the individual densities of the elements in the mixture.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
-            X (float): Hydrogen mass-fraction
-            Y (float): Helium mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            debug (bool, optional): Enables additional output.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            debug (bool, optional): enables additional output.
             Defaults to False.
 
         Returns:
-            tuple: Tuple consisting of convergence information, individual
+            tuple: tuple consisting of convergence information, individual
             densities and gas pressure.
         """
 
@@ -337,16 +351,16 @@ class TinyDT(InterpolantsBuilder):
         hydrogen density.
 
         Args:
-            xhat (float): Log10 of either the heavy-element
+            xhat (float): log10 of either the heavy-element
             or hydrogen density.
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
-            X (float): Hydrogen mass-fraction.
-            Y (float): Helium mass-fraction.
-            Z (float): Heavy-element mass-fraction.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction.
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
 
         Returns:
-            float: Residual for the root finding algorithm.
+            float: residual for the root finding algorithm.
         """
 
         rho = 10**logRho
@@ -378,14 +392,14 @@ class TinyDT(InterpolantsBuilder):
         """Finds the bracket in the heavy-element density.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
-            X (float): Hydrogen mass-fraction.
-            Y (float): Helium mass-fraction.
-            Z (float): Heavy-element mass-fraction.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction.
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
 
         Returns:
-            tuple: Tuple consisting of convergence information and the bracket.
+            tuple: tuple consisting of convergence information and the bracket.
         """
 
         rho0 = 10**logRho
@@ -446,13 +460,13 @@ class TinyDT(InterpolantsBuilder):
         """Finds the bracket in the hydrogen density.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
-            X (float): Hydrogen mass-fraction.
-            Y (float): Helium mass-fraction.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction.
+            Y (float): helium mass-fraction.
 
         Returns:
-            tuple: Tuple consisting of convergence information and the bracket.
+            tuple: tuple consisting of convergence information and the bracket.
         """
 
         rho0 = 10**logRho
@@ -510,11 +524,11 @@ class TinyDT(InterpolantsBuilder):
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logP = self.interpDT_logP_x(logT, logRho, **self.kwargs)
@@ -548,11 +562,11 @@ class TinyDT(InterpolantsBuilder):
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logP = self.interpDT_logP_y(logT, logRho, **self.kwargs)
@@ -586,11 +600,11 @@ class TinyDT(InterpolantsBuilder):
         """Calculates equation of state output for the heavy element.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
@@ -635,13 +649,13 @@ class TinyDT(InterpolantsBuilder):
         """Calculates the equation of state output for the mixture.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logRho (float): Log10 of the density.
-            X (float): Hydrogen mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            fix_phase_transition (bool, optional): Whether to attempt to fix
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            fix_phase_transition (bool, optional): whether to attempt to fix
             phase transitions. Defaults to False.
-            debug (bool, optional): Whether to enable additional output.
+            debug (bool, optional): whether to enable additional output.
             Defaults to False.
 
         Returns:

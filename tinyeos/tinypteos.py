@@ -39,16 +39,16 @@ class TinyPT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
-            which_heavy (str, optional): Which heavy-element equation of state
+            which_heavy (str, optional): which heavy-element equation of state
             to use. Defaults to "water". Options are "water", "rock",
             "mixture", "aqua" or "iron".
-            which_hhe (str, optional): Which hydrogen-helium equation of state
+            which_hhe (str, optional): which hydrogen-helium equation of state
             to use. Defaults to "cms". Options are "cms" or "scvh".
-            build_interpolants (bool, optional): Whether to build interpolants.
+            build_interpolants (bool, optional): whether to build interpolants.
             Defaults to False.
 
         Raises:
-            NotImplementedError: Raised if which_heavy or which_hhe choices
+            NotImplementedError: raised if which_heavy or which_hhe choices
             are unavailable.
         """
 
@@ -143,19 +143,32 @@ class TinyPT(InterpolantsBuilder):
         self.interpDT_logS_z = self.interpDT_z[1]
 
     def __call__(self, logT: float, logP: float, X: float, Z: float) -> NDArray:
+        """__call__ method acting as convenience wrapper for the evaluate method.
+        Calculates the equation of state output for the mixture.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+
+        Returns:
+            NDArray: Equation of state output. The index of the individual
+            quantities is defined in the __init__ method.
+        """   
         return self.evaluate(logT, logP, X, Z)
 
     def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
 
         Args:
-            filename (str): Name of the interpolant cache file.
+            filename (str): name of the interpolant cache file.
 
         Raises:
-            FileNotFoundError: Raised if the interpolant was not found.
+            FileNotFoundError: raised if the interpolant was not found.
 
         Returns:
-            object: Bivariate spline loaded from the cache file.
+            object: bivariate spline loaded from the cache file.
         """
         src = os.path.join(self.cache_path, filename)
         if not os.path.isfile(src):
@@ -167,8 +180,8 @@ class TinyPT(InterpolantsBuilder):
         are within equation of state limits.
 
         Args:
-            logT (float or ndarray): Log10 of the temperature.
-            logP (float or ndarray): Log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
         """
         assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
         assert np.all(logP >= self.logP_min) and np.all(logP <= self.logP_max)
@@ -180,16 +193,16 @@ class TinyPT(InterpolantsBuilder):
         mixing law.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
-            X (float): Hydrogen mass-fraction
-            Y (float): Helium mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            debug (bool, optional): Enables additional output.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            debug (bool, optional): enables additional output.
             Defaults to False.
 
         Returns:
-            float: Total density of the mixure.
+            float: total density of the mixure.
         """
 
         self.__check_PT(logT, logP)
@@ -235,11 +248,11 @@ class TinyPT(InterpolantsBuilder):
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logRho = self.interpPT_logRho_x(logT, logP, **self.kwargs)
@@ -273,11 +286,11 @@ class TinyPT(InterpolantsBuilder):
         """Calculates equation of state output for helium.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
 
         logRho = self.interpPT_logRho_y(logT, logP, **self.kwargs)
@@ -311,11 +324,11 @@ class TinyPT(InterpolantsBuilder):
         """Calculates equation of state output for the heavy element..
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
 
         Returns:
-            NDArray: Equation of state output.
+            NDArray: equation of state output.
         """
         logRho = self.interpPT_logRho_z(logT, logP, **self.kwargs)
         logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
@@ -352,15 +365,15 @@ class TinyPT(InterpolantsBuilder):
         """Calculates the equation of state output for the mixture.
 
         Args:
-            logT (float): Log10 of the temperature.
-            logP (float): Log10 of the pressure.
-            X (float): Hydrogen mass-fraction.
-            Z (float): Heavy-element mass-fraction.
-            debug (bool, optional): Whether to enable additional output.
+            logT (float): log10 of the temperature.
+            logP (float): log10 of the pressure.
+            X (float): hydrogen mass-fraction.
+            Z (float): heavy-element mass-fraction.
+            debug (bool, optional): whether to enable additional output.
             Defaults to False.
 
         Returns:
-            NDArray: Equation of state output. The index of the individual
+            NDArray: equation of state output. The index of the individual
             quantities is defined in the __init__ method.
         """
 
