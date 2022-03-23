@@ -37,8 +37,8 @@ class TinyFreedmanKap:
             self.rgis.append(rgi)
 
     def __call__(self, logT: float, logP: float, Z: float) -> float:
-        """__call__ method acting as convenience wrapper for the evaluate method.
-        Calculates the Freedman opacity the gaseous mixture.
+        """__call__ method acting as convenience wrapper for the evaluate
+        method. Calculates the Freedman opacity the gaseous mixture.
 
         Args:
             logT (float): log10 of the temperature.
@@ -256,14 +256,14 @@ class TinyFreedmanKap:
         fname = fname.replace("txt", "pkl")
         src = os.path.join(self.cache_path, fname)
         if not os.path.isfile(src):
-            msg = f"missing interpolant cache {src} - try to re-build-"
+            msg = f"missing interpolant cache {src} - try to re-build"
             raise FileNotFoundError(msg)
         with open(src, "rb") as file:
             rgi = pickle.load(file)
         return rgi
 
     def evaluate(self, logT: float, logP: float, Z: float) -> float:
-        """Calculates the Freedman opacity the gaseous mixture.
+        """Calculates the Freedman opacity of the gaseous mixture.
 
         Args:
             logT (float): log10 of the temperature.
