@@ -940,14 +940,17 @@ class TinyPT(InterpolantsBuilder):
         cp = S * dlS_dlT_P
 
         if input_ndim > 0:
-            cv = cp * chiRho / gamma1
-            if np.any(chiRho == 0):
-                i = chiRho == 0
+            cv = np.zeros_like(logT)
+            i = chiRho == 0
+            if np.any(i):
                 cv[i] = cp[i]
+                i = ~i
+                cv[i] = cp[i] * chiRho[i] / gamma1[i]
+            else:
+                cv = cp * chiRho / gamma1
             # c_sound = np.zeros_like(logT)
             # i = gamma1 >= 0
             # c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
-            # c_sound[~i] = 0
         else:
             if chiRho == 0:
                 cv = cp
@@ -965,6 +968,12 @@ class TinyPT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
+        if np.any(np.isinf(lfe)):
+            if input_ndim > 0:
+                i = np.isinf(lfe)
+                lfe[i] = -99
+            else:
+                lfe = -99
         eta = get_eta(logT, logRho, lfe)
 
         res = self.__get_zeros(logT, logP, X, Z)
