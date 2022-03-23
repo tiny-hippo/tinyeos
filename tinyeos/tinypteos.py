@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
 from pathlib import Path
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
@@ -137,15 +138,17 @@ class TinyPT(InterpolantsBuilder):
         self.interpDT_logP_z = self.interpDT_z[0]
         self.interpDT_logS_z = self.interpDT_z[1]
 
-    def __call__(self, logT: float, logP: float, X: float, Z: float) -> NDArray:
+    def __call__(
+        self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
         """__call__ method acting as convenience wrapper for the evaluate method.
         Calculates the equation of state output for the mixture.
 
         Args:
-            logT (float): log10 of the temperature.
-            logP (float): log10 of the pressure.
-            X (float): hydrogen mass-fraction.
-            Z (float): heavy-element mass-fraction.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+            Z (ArrayLike): heavy-element mass-fraction.
 
         Returns:
             NDArray: Equation of state output. The index of the individual
@@ -170,81 +173,113 @@ class TinyPT(InterpolantsBuilder):
             raise FileNotFoundError("Missing interpolant cache" + src)
         return np.load(src, allow_pickle=True)
 
-    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> None:
+    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
         Args:
             logT (ArrayLike): log10 of the temperature.
             logP (ArrayLike): log10 of the pressure.
+
+        Raises:
+            ValueError: logT and logP must have equal shape
+            and all values must be within the equation of
+            state limits.
+
+        Returns:
+            Tuple[NDArray, NDArray]: (logT, logP) as arrays.
         """
-        assert np.all(logT >= self.logT_min) and np.all(logT <= self.logT_max)
-        assert np.all(logP >= self.logP_min) and np.all(logP <= self.logP_max)
+
+        if not isinstance(logT, np.ndarray):
+            logT = np.array(logT)
+        if not isinstance(logP, np.ndarray):
+            logP = np.array(logP)
+
+        if not logT.shape == logP.shape:
+            msg = "logT and logP must have equal shape"
+            raise ValueError(msg)
+        if np.any(logT < self.logT_min) or np.any(logT > self.logT_max):
+            msg = "logT out of bounds"
+            raise ValueError(msg)
+        elif np.any(logP < self.logP_min) or np.any(logP > self.logP_max):
+            msg = "logP out of bounds"
+            raise ValueError(msg)
+        else:
+            return (logT, logP)
+
+    def __get_zeros(
+        self,
+        logT: NDArray,
+        logP: NDArray,
+        X: NDArray = np.array(0),
+        Z: NDArray = np.array(0),
+    ) -> NDArray:
+        """Helper function to return a result array of the appropriate shape
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+            Z (ArrayLike): heavy-element mass fraction.
+
+        Raises:
+            ValueError: input can at most be two-dimensional.
+
+        Returns:
+            NDArray
+        """
+        max_ndim = np.max([logT.ndim, logP.ndim, X.ndim, Z.ndim])
+        if max_ndim == 2:
+            return np.zeros((self.num_vals, logT.shape[0], logT.shape[1]))
+        elif max_ndim == 1:
+            return np.zeros((self.num_vals, logT.size))
+        elif max_ndim == 0:
+            return np.zeros(self.num_vals)
+        else:
+            msg = "unsupported input shape"
+            raise ValueError(msg)
 
     def __ideal_mixture(
-        self, logT: float, logP: float, X: float, Z: float, debug: bool = False
-    ) -> float:
+        self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Y: ArrayLike, Z: ArrayLike
+    ) -> ArrayLike:
         """Calculates the total density of the gas using the ideal
         mixing law.
 
         Args:
-            logT (float): log10 of the temperature.
-            logP (float): log10 of the pressure.
-            X (float): hydrogen mass-fraction
-            Y (float): helium mass-fraction.
-            Z (float): heavy-element mass-fraction.
-            debug (bool, optional): enables additional output.
-            Defaults to False.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction
+            Y (ArrayLike): helium mass-fraction.
+            Z (ArrayLike): heavy-element mass-fraction.
 
         Returns:
-            float: total density of the mixure.
+            ArrayLike: total density of the mixure.
         """
 
-        self.__check_PT(logT, logP)
-        X, Y, Z = check_composition(X, Z)
-
-        if Z == 1:
-            logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
-            return logRho_z
-
-        elif X == 1:
-            logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
-            return logRho_x
-
-        elif Y == 1:
-            logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
-            return logRho_y
-
-        elif Z > 0:
-            logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
-            if X > 0:
-                logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
-            else:
-                logRho_x = self.logRho_min
-            if Y > 0:
-                logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
-            else:
-                logRho_y = self.logRho_min
-
-        elif X > 0:
+        if np.all(X == 1):
+            logRho = self.interpPT_logRho_x(logT, logP, grid=False)
+        elif np.all(Y == 1):
+            logRho = self.interpPT_logRho_y(logT, logP, grid=False)
+        elif np.all(Z == 1):
+            logRho = self.interpPT_logRho_z(logT, logP, grid=False)
+        else:
             logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
             logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
-            logRho_z = self.logRho_min
+            logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
 
-        rho_x = 10**logRho_x
-        rho_y = 10**logRho_y
-        rho_z = 10**logRho_z
-        rho = 1 / ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z)
-        logRho = np.log10(rho)
+            iml = ideal_mixing_law(
+                10**logRho_x, 10**logRho_y, 10**logRho_z, X, Y, Z
+            )
+            logRho = np.log10(1 / iml)
 
         return logRho
 
-    def __evaluate_x(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): log10 of the temperature.
-            logP (float): log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
 
         Returns:
             NDArray: equation of state output.
@@ -263,7 +298,7 @@ class TinyPT(InterpolantsBuilder):
         lfe = self.interpPT_lfe_x(logT, logP, **self.kwargs)
         mu = self.interpPT_mu_x(logT, logP, **self.kwargs)
 
-        res_x = np.zeros(self.num_vals)
+        res_x = self.__get_zeros(logT, logP)
         res_x[self.i_logT] = logT
         res_x[self.i_logRho] = logRho
         res_x[self.i_logP] = logP
@@ -277,12 +312,12 @@ class TinyPT(InterpolantsBuilder):
 
         return res_x
 
-    def __evaluate_y(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_y(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for helium.
 
         Args:
-            logT (float): log10 of the temperature.
-            logP (float): log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
 
         Returns:
             NDArray: equation of state output.
@@ -301,7 +336,7 @@ class TinyPT(InterpolantsBuilder):
         lfe = self.interpPT_lfe_y(logT, logP, **self.kwargs)
         mu = self.interpPT_mu_y(logT, logP, **self.kwargs)
 
-        res_y = np.zeros(self.num_vals)
+        res_y = self.__get_zeros(logT, logP)
         res_y[self.i_logT] = logT
         res_y[self.i_logRho] = logRho
         res_y[self.i_logP] = logP
@@ -315,12 +350,12 @@ class TinyPT(InterpolantsBuilder):
 
         return res_y
 
-    def __evaluate_z(self, logT: float, logP: float) -> NDArray:
+    def __evaluate_z(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for the heavy element..
 
         Args:
-            logT (float): log10 of the temperature.
-            logP (float): log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
 
         Returns:
             NDArray: equation of state output.
@@ -339,7 +374,7 @@ class TinyPT(InterpolantsBuilder):
         else:
             grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
 
-        res_z = np.zeros(self.num_vals)
+        res_z = self.__get_zeros(logT, logP)
         res_z[self.i_logT] = logT
         res_z[self.i_logRho] = logRho
         res_z[self.i_logP] = logP
@@ -354,9 +389,7 @@ class TinyPT(InterpolantsBuilder):
 
         return res_z
 
-    def evaluate(
-        self, logT: float, logP: float, X: float, Z: float, debug: bool = False
-    ) -> NDArray:
+    def evaluate_legacy(self, logT: float, logP: float, X: float, Z: float) -> NDArray:
         """Calculates the equation of state output for the mixture.
 
         Args:
@@ -364,15 +397,13 @@ class TinyPT(InterpolantsBuilder):
             logP (float): log10 of the pressure.
             X (float): hydrogen mass-fraction.
             Z (float): heavy-element mass-fraction.
-            debug (bool, optional): whether to enable additional output.
-            Defaults to False.
 
         Returns:
             NDArray: equation of state output. The index of the individual
             quantities is defined in the __init__ method.
         """
 
-        self.__check_PT(logT, logP)
+        logT, logP = self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
 
         if X > 0:
@@ -388,7 +419,7 @@ class TinyPT(InterpolantsBuilder):
         else:
             res_z = np.zeros(self.num_vals)
 
-        logRho = self.__ideal_mixture(logT, logP, X, Z)
+        logRho = self.__ideal_mixture(logT, logP, X, Y, Z)
         logRho_x = res_x[self.i_logRho]
         logRho_y = res_y[self.i_logRho]
         logRho_z = res_z[self.i_logRho]
@@ -751,4 +782,208 @@ class TinyPT(InterpolantsBuilder):
         res[self.i_eta] = eta
         res[self.i_lfe] = lfe
 
+        return res
+
+    def evaluate(
+        self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
+        """Calculates the equation of state output for the mixture.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+            Z (ArrayLike): heavy-element mass-fraction.
+
+        Raises:
+            ValueError: input can at most be two-dimensional.
+
+        Returns:
+            NDArray: reduced equation of state output. The index of the
+            individual quantities is defined in the __init__ method.
+        """
+
+        logT, logP = self.__check_PT(logT, logP)
+        X, Y, Z = check_composition(X, Z)
+        if logT.ndim > X.ndim:
+            X = X * np.ones_like(logT)
+            Y = Y * np.ones_like(logT)
+            Z = Z * np.ones_like(logT)
+        input_ndim = np.max([logT.ndim, X.ndim])
+
+        if input_ndim > 2:
+            msg = "input can be at most two-dimensional"
+            raise ValueError(msg)
+
+        if np.any(X > 0):
+            res_x = self.__evaluate_x(logT, logP)
+        else:
+            res_x = self.__get_zeros(logT, logP, X, Z)
+        if np.any(Y > 0):
+            res_y = self.__evaluate_y(logT, logP)
+        else:
+            res_y = self.__get_zeros(logT, logP, X, Z)
+        if np.any(Z > 0):
+            res_z = self.__evaluate_z(logT, logP)
+        else:
+            res_z = self.__get_zeros(logT, logP, X, Z)
+
+        logRho = self.__ideal_mixture(logT, logP, X, Y, Z)
+        logRho_x = res_x[self.i_logRho]
+        logRho_y = res_y[self.i_logRho]
+        logRho_z = res_z[self.i_logRho]
+
+        T = 10**logT
+        P = 10**logP
+        rho = 10**logRho
+        rho_x = 10**logRho_x
+        rho_y = 10**logRho_y
+        rho_z = 10**logRho_z
+
+        logS_x = res_x[self.i_logS]
+        logS_y = res_y[self.i_logS]
+        logS_z = res_z[self.i_logS]
+        S_x = 10**logS_x
+        S_y = 10**logS_y
+        S_z = 10**logS_z
+        S = X * S_x + Y * S_y + Z * S_z
+        logS = np.log10(S)
+
+        logU_x = res_x[self.i_logU]
+        logU_y = res_y[self.i_logU]
+        logU_z = res_z[self.i_logU]
+        U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
+        logU = np.log10(U)
+
+        dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
+        dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
+        dlS_dlP_T_y = self.interpPT_dlS_dlP_T_y(logT, logP, **self.kwargs)
+        dlS_dlT_P_y = self.interpPT_dlS_dlT_P_y(logT, logP, **self.kwargs)
+        dlS_dlP_T_z = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P_z = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+
+        dlS_dlP_T = (
+            X * S_x * dlS_dlP_T_x + Y * S_y * dlS_dlP_T_y + Z * S_z * dlS_dlP_T_z
+        ) / S
+        dlS_dlT_P = (
+            X * S_x * dlS_dlT_P_x + Y * S_y * dlS_dlT_P_y + Z * S_z * dlS_dlT_P_z
+        ) / S
+
+        eps = 1e-4
+        if input_ndim > 0:
+            iX = np.isclose(X, 0, atol=eps)
+            iY = np.isclose(Y, 0, atol=eps)
+            iZ = np.isclose(Z, 0, atol=eps)
+            if np.any(iX) or np.any(iY) or np.any(iZ):
+                if input_ndim == 2:
+                    fac = np.zeros((3, 3, logT.shape[0], logT.shape[1]))
+                else:
+                    fac = np.zeros((3, 3, logT.size))
+
+                i = X > eps
+                fac[0, 0, i] = X[i] / rho_x[i] / res_x[self.i_chiRho, i]
+                fac[0, 1, i] = -fac[0, 0, i] * res_x[self.i_chiT, i]
+                fac[0, 2, i] = X[i] / res_x[self.i_mu, i]
+
+                i = Y > eps
+                fac[1, 0, i] = Y[i] / rho_y[i] / res_y[self.i_chiRho, i]
+                fac[1, 1, i] = -fac[1, 0, i] * res_y[self.i_chiT, i]
+                fac[1, 2, i] = Y[i] / res_y[self.i_mu, i]
+
+                i = Z > eps
+                fac[2, 0, i] = Z[i] / rho_z[i] / res_z[self.i_chiRho, i]
+                fac[2, 1, i] = -fac[2, 0, i] * res_z[self.i_chiT, i]
+                fac[2, 2, i] = Z[i] / res_z[self.i_mu, i]
+            else:
+                fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
+                fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
+                fac[0, 2] = X / res_x[self.i_mu]
+                fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
+                fac[1, 1] = -fac[1, 0] * res_x[self.i_chiT]
+                fac[1, 2] = Y / res_y[self.i_mu]
+                fac[2, 0] = Z / rho_z / res_z[self.i_chiRho]
+                fac[2, 1] = -fac[2, 0] * res_z[self.i_chiT]
+                fac[2, 2] = Z / res_z[self.i_mu]
+        else:
+            fac = np.zeros((3, 3))
+            if X > eps:
+                fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
+                fac[0, 1] = -fac[0, 1] * res_x[self.i_chiT]
+                fac[0, 2] = X / res_x[self.i_mu]
+            if Y > eps:
+                fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
+                fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
+                fac[1, 2] = Y / res_y[self.i_mu]
+            if Z > eps:
+                fac[2, 0] = Z / rho_z / res_z[self.i_chiRho]
+                fac[2, 1] = -fac[2, 0] * res_z[self.i_chiT]
+                fac[2, 2] = Z / res_z[self.i_mu]
+        dlRho_dlP_T = rho * (fac[0, 0] + fac[1, 0] + fac[2, 0])
+        dlRho_dlT_P = rho * (fac[0, 1] + fac[1, 1] + fac[2, 1])
+        mu = 1 / (fac[0, 2] + fac[1, 2] + fac[2, 2])
+
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
+        if input_ndim > 0:
+            grad_ad[grad_ad < 0] = 0
+            chiRho[chiRho < 0] = 0
+            chiT[chiT < 0] = 0
+        else:
+            grad_ad = np.max(grad_ad, 0)
+            chiRho = np.max(chiRho, 0)
+            chiT = np.max(chiT, 0)
+
+        gamma1 = chiRho / (1 - chiT * grad_ad)
+        gamma3 = 1 + gamma1 * grad_ad
+        # c_sound = np.sqrt(P / rho * gamma1)
+        cp = S * dlS_dlT_P
+
+        if input_ndim > 0:
+            cv = cp * chiRho / gamma1
+            if np.any(chiRho == 0):
+                i = chiRho == 0
+                cv[i] = cp[i]
+            # c_sound = np.zeros_like(logT)
+            # i = gamma1 >= 0
+            # c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
+            # c_sound[~i] = 0
+        else:
+            if chiRho == 0:
+                cv = cp
+            else:
+                cv = cp * chiRho / gamma1
+            # if gamma1 >= 0:
+            #     c_sound = np.sqrt(P / rho * gamma1)
+            # else:
+            #     c_sound = 0
+
+        # these are at constant density or temperature
+        dS_dT = cv / T  # definition of specific heat
+        dS_dRho = -(P / T / rho**2) * chiT  # maxwell relation
+        dE_dRho = (P / rho**2) * (1 - chiT)
+
+        # only hydrogen and helium contribute to free electrons
+        lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
+        eta = get_eta(logT, logRho, lfe)
+
+        res = self.__get_zeros(logT, logP, X, Z)
+        res[self.i_logT] = logT
+        res[self.i_logRho] = logRho
+        res[self.i_logP] = logP
+        res[self.i_logS] = logS
+        res[self.i_logU] = logU
+        res[self.i_chiRho] = chiRho
+        res[self.i_chiT] = chiT
+        res[self.i_grad_ad] = grad_ad
+        res[self.i_cp] = cp
+        res[self.i_cv] = cv
+        res[self.i_gamma1] = gamma1
+        res[self.i_gamma3] = gamma3
+        res[self.i_dS_dT] = dS_dT
+        res[self.i_dS_dRho] = dS_dRho
+        res[self.i_dE_dRho] = dE_dRho
+        res[self.i_mu] = mu
+        res[self.i_eta] = eta
+        res[self.i_lfe] = lfe
         return res
