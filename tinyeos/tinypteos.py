@@ -873,15 +873,15 @@ class TinyPT(InterpolantsBuilder):
 
         eps = 1e-4
         if input_ndim > 0:
+            if input_ndim == 2:
+                fac = np.zeros((3, 3, logT.shape[0], logT.shape[1]))
+            else:
+                fac = np.zeros((3, 3, logT.size))
             iX = np.isclose(X, 0, atol=eps)
             iY = np.isclose(Y, 0, atol=eps)
             iZ = np.isclose(Z, 0, atol=eps)
-            if np.any(iX) or np.any(iY) or np.any(iZ):
-                if input_ndim == 2:
-                    fac = np.zeros((3, 3, logT.shape[0], logT.shape[1]))
-                else:
-                    fac = np.zeros((3, 3, logT.size))
 
+            if np.any(iX) or np.any(iY) or np.any(iZ):
                 i = X > eps
                 fac[0, 0, i] = X[i] / rho_x[i] / res_x[self.i_chiRho, i]
                 fac[0, 1, i] = -fac[0, 0, i] * res_x[self.i_chiT, i]
