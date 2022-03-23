@@ -9,7 +9,7 @@ logP_min = 1.00
 logRho_max = 2.00
 logRho_min = -8.00
 
-num_vals = 18
+num_vals = 19
 i_logT = 0
 i_logRho = 1
 i_logP = 2
@@ -28,6 +28,7 @@ i_dE_dRho = 14
 i_mu = 15
 i_eta = 16
 i_lfe = 17
+i_csound = 18
 
 # num_derivs = 3
 # i_dl_dlT = 0

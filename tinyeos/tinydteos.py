@@ -81,6 +81,7 @@ class TinyDT(InterpolantsBuilder):
         self.i_mu = i_mu
         self.i_eta = i_eta
         self.i_lfe = i_lfe
+        self.i_csound = i_csound
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
@@ -761,6 +762,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             if chiT == 0 or gamma3 == 1:
                 dlS_dlT_P = self.interpDT_dlS_dlT_P_x(logT, logRho, **self.kwargs)
                 cp = 10**logS * dlS_dlT_P
@@ -792,6 +797,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             if chiT == 0 or gamma3 == 1:
                 dlS_dlT_P = self.interpDT_dlS_dlT_P_y(logT, logRho, **self.kwargs)
                 cp = 10**logS * dlS_dlT_P
@@ -823,6 +832,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             if chiT == 0 or gamma3 == 1:
                 dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
                 cp = 10**logS * dlS_dlT_P
@@ -879,6 +892,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             cp = S * dlS_dlT_P
             if chiRho == 0:
                 cv = cp
@@ -932,6 +949,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             cp = S * dlS_dlT_P
             if chiRho == 0:
                 cv = cp
@@ -985,6 +1006,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             cp = S * dlS_dlT_P
             if chiRho == 0:
                 cv = cp
@@ -1052,7 +1077,10 @@ class TinyDT(InterpolantsBuilder):
                 chiT = 0
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
-            # c_sound = np.sqrt(P / rho * gamma1)
+            if gamma1 > 0:
+                c_sound = np.sqrt(P / rho * gamma1)
+            else:
+                c_sound = 0
             cp = S * dlS_dlT_P
             if chiRho == 0:
                 cv = cp
@@ -1096,5 +1124,6 @@ class TinyDT(InterpolantsBuilder):
         res[self.i_mu] = mu
         res[self.i_eta] = eta
         res[self.i_lfe] = lfe
+        res[self.i_csound] = c_sound
 
         return res
