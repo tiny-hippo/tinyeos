@@ -130,20 +130,39 @@ def get_1d_spline(
     return spl
 
 
-def check_composition(X: float, Z: float) -> Tuple:
+def check_composition(
+    X: ArrayLike, Z: ArrayLike
+) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Checks whether input composition adds up to less than 1,
     and formats the mass fractions.
 
 
     Args:
-        X (float): Hydrogen mass fraction.
-        Z (float): Heavy-element mass fraction.
+        X (ArrayLike): Hydrogen mass fraction.
+        Z (ArrayLike): Heavy-element mass fraction.
+
+    Raises:
+            ValueError: X and Z must have equal shape
+            and their sum must be smaller or equal 1.
 
     Returns:
-        tuple: Tuple of hydrogen, helium and heavy-element mass fractions.
+        Tuple[ArrayLike, ArrayLike, ArrayLike]: Tuple of hydrogen,
+        helium and heavy-element mass fractions.
     """
 
-    assert np.all(X + Z <= 1), "X + Z must be smaller than 1"
+    if not isinstance(X, np.ndarray):
+        X = np.array(X)
+    if not isinstance(Z, np.ndarray):
+        Z = np.array(Z)
+
+    if not X.shape == Z.shape:
+        msg = "X and Z must have equal shape"
+        raise ValueError(msg)
+
+    if not np.all(X + Z <= 1):
+        msg = "X + Z must be smaller than 1"
+        raise ValueError(msg)
+
     eps = 1e-3
     Y = 1 - X - Z
     composition = np.array([X, Y, Z])
@@ -158,37 +177,54 @@ def check_composition(X: float, Z: float) -> Tuple:
 
 
 def ideal_mixing_law(
-    rho_x: float, rho_y: float, rho_z: float, X: float, Y: float, Z: float
-) -> float:
+    rho_x: ArrayLike,
+    rho_y: ArrayLike,
+    rho_z: ArrayLike,
+    X: ArrayLike,
+    Y: ArrayLike,
+    Z: ArrayLike,
+) -> ArrayLike:
     """Implementation of the ideal mixing law:
     1 / rho = X / rho_x + Y / rho_y + Z / rho_y
 
     Args:
-        rho_x (float): Density of hydrogen.
-        rho_y (float): Density of helium.
-        rho_z (float): Density of the heavy element.
-        X (float): Hydrogen mass fraction.
-        Y (float): Helium mass fraction.
-        Z (float): Heavy-element mass fraction.
+        rho_x (ArrayLike): Density of hydrogen.
+        rho_y (ArrayLike): Density of helium.
+        rho_z (ArrayLike): Density of the heavy element.
+        X (ArrayLike): Hydrogen mass fraction.
+        Y (ArrayLike): Helium mass fraction.
+        Z (ArrayLike): Heavy-element mass fraction.
 
     Returns:
-        float: Inverse total density.
+        ArrayLike: Inverse total density.
     """
-
     eps = 1e-15
-    if X == 0 or np.isclose(rho_x, 0, atol=eps):
-        x_rho_x = 0
-    else:
-        x_rho_x = X / rho_x
-    if Y == 0 or np.isclose(rho_y, 0, atol=eps):
-        y_rho_y = 0
-    else:
-        y_rho_y = Y / rho_y
-    if Z == 0 or np.isclose(rho_z, 0, atol=eps):
-        z_rho_z = 0
-    else:
-        z_rho_z = Z / rho_z
+    max_ndim = np.max([rho_x.ndim, X.ndim, Y.ndim, Z.ndim])
+    if max_ndim > 0:
+        x_rho_x = np.zeros_like(rho_x)
+        i = np.logical_and(X > eps, rho_x > eps)
+        x_rho_x[i] = X[i] / rho_x[i]
 
+        y_rho_y = np.zeros_like(rho_y)
+        i = np.logical_and(Y > eps, rho_y > eps)
+        y_rho_y[i] = Y[i] / rho_y[i]
+
+        z_rho_z = np.zeros_like(rho_z)
+        i = np.logical_and(Z > eps, rho_z > eps)
+        z_rho_z[i] = Z[i] / rho_z[i]
+    else:
+        if X == 0 or np.isclose(rho_x, 0, atol=eps):
+            x_rho_x = 0
+        else:
+            x_rho_x = X / rho_x
+        if Y == 0 or np.isclose(rho_y, 0, atol=eps):
+            y_rho_y = 0
+        else:
+            y_rho_y = Y / rho_y
+        if Z == 0 or np.isclose(rho_z, 0, atol=eps):
+            z_rho_z = 0
+        else:
+            z_rho_z = Z / rho_z
     return x_rho_x + y_rho_y + z_rho_z
 
 
@@ -204,9 +240,28 @@ def get_eta(logT: float, logRho: float, log_free_e: float) -> float:
         log_free_e ([type]): Log10 of mean number of free electrons
         per nucleon (inverse electron mean molecular weight).
 
+    Raises:
+        ValueError: logT, logRho and log_free_e must
+        have equal shape.
+
     Returns:
         float: Inverse electron chemical potential
     """
+
+    if not isinstance(logT, np.ndarray):
+        logT = np.array(logT)
+    if not isinstance(logRho, np.ndarray):
+        logRho = np.array(logRho)
+    if not isinstance(log_free_e, np.ndarray):
+        log_free_e = np.array(log_free_e)
+
+    if (
+        logT.shape != logRho.shape
+        or logT.shape != log_free_e.shape
+        or logRho.shape != log_free_e.shape
+    ):
+        msg = "input must have the same shape"
+        raise ValueError(msg)
 
     T = 10**logT
     fac = (4 * np.pi / pow(h, 3)) * pow((2 * m_e * k_b * T), 1.5)
@@ -221,26 +276,45 @@ def get_eta(logT: float, logRho: float, log_free_e: float) -> float:
     a2 = np.array([3.4873722e1, -2.6922515e1, 1.0])
     b2 = np.array([2.6612832e1, -2.0452930e1, 1.1808945e1])
 
-    if f < 4:
-        rn = f + a1[m1]
-        rn = rn * f + a1[m1 - 1]
+    if logT.ndim > 0:
+        eta = np.zeros_like(f)
+        i = f < 4
+        rn = f[i] + a1[m1]
+        rn = rn * f[i] + a1[m1 - 1]
         den = b1[k1 + 1]
-        for i in range(k1, -1, -1):
-            den = den * f + b1[i]
-        eta = np.log(f * rn / den)
+        den = den * f[i] + b1[k1]
+        den = den * f[i] + b1[k1 - 1]
+        eta[i] = np.log(f[i] * rn / den)
 
-    else:
-        ff = 1.0 / f ** (1.0 / (1 + an))
+        i = ~i
+        ff = 1.0 / f[i] ** (1.0 / (1 + an))
         rn = ff + a2[m2]
         rn = rn * ff + a2[m2 - 1]
         den = b2[k2 + 1]
-        for i in range(k2, -1, -1):
-            den = den * ff + b2[i]
-        eta = rn / (den * ff)
-
-    if eta > 999:
-        eta = 999
-    elif eta < -999:
-        eta = -999
+        den = den * ff + b2[k2]
+        den = den * ff + b2[k2 - 1]
+        eta[i] = rn / (den * ff)
+        eta[eta > 999] = 999
+        eta[eta < -999] = -999
+    else:
+        if f < 4:
+            rn = f + a1[m1]
+            rn = rn * f + a1[m1 - 1]
+            den = b1[k1 + 1]
+            for i in range(k1, -1, -1):
+                den = den * f + b1[i]
+            eta = np.log(f * rn / den)
+        else:
+            ff = 1.0 / f ** (1.0 / (1 + an))
+            rn = ff + a2[m2]
+            rn = rn * ff + a2[m2 - 1]
+            den = b2[k2 + 1]
+            for i in range(k2, -1, -1):
+                den = den * ff + b2[i]
+            eta = rn / (den * ff)
+        if eta > 999:
+            eta = 999
+        elif eta < -999:
+            eta = -999
 
     return eta
