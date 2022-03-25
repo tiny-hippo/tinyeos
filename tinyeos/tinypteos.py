@@ -230,10 +230,9 @@ class TinyPT(InterpolantsBuilder):
             NDArray
         """
         max_ndim = np.max([logT.ndim, logP.ndim, X.ndim, Z.ndim])
-        if max_ndim == 2:
-            return np.zeros((self.num_vals, logT.shape[0], logT.shape[1]))
-        elif max_ndim == 1:
-            return np.zeros((self.num_vals, logT.size))
+        if max_ndim > 0:
+            shape = (self.num_vals,) + logT.shape
+            return np.zeros(shape)
         elif max_ndim == 0:
             return np.zeros(self.num_vals)
         else:
@@ -813,10 +812,6 @@ class TinyPT(InterpolantsBuilder):
             Z = Z * np.ones_like(logT)
         input_ndim = np.max([logT.ndim, X.ndim])
 
-        if input_ndim > 2:
-            msg = "input can be at most two-dimensional"
-            raise ValueError(msg)
-
         if np.any(X > 0):
             res_x = self.__evaluate_x(logT, logP)
         else:
@@ -873,10 +868,8 @@ class TinyPT(InterpolantsBuilder):
 
         eps = 1e-4
         if input_ndim > 0:
-            if input_ndim == 2:
-                fac = np.zeros((3, 3, logT.shape[0], logT.shape[1]))
-            else:
-                fac = np.zeros((3, 3, logT.size))
+            shape = (3, 3) + logT.shape
+            fac = np.zeros(shape)
             iX = np.isclose(X, 0, atol=eps)
             iY = np.isclose(Y, 0, atol=eps)
             iZ = np.isclose(Z, 0, atol=eps)

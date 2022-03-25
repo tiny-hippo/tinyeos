@@ -165,7 +165,7 @@ def check_composition(
 
     eps = 1e-3
     Y = 1 - X - Z
-    composition = np.array([X, Y, Z])
+    composition = np.asarray([X, Y, Z])
     check_zero = np.isclose(composition, 0, atol=eps)
     composition[check_zero] = 0
     check_one = np.isclose(composition, 1, atol=eps)
