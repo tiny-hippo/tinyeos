@@ -180,7 +180,7 @@ class TinyDT(InterpolantsBuilder):
 
         src = os.path.join(self.cache_path, filename)
         if not os.path.isfile(src):
-            raise FileNotFoundError("Missing interpolant cache" + src)
+            raise FileNotFoundError("Missing interpolant cache " + src)
         return np.load(src, allow_pickle=True)
 
     def __check_DT(self, logT: ArrayLike, logRho: ArrayLike) -> None:
