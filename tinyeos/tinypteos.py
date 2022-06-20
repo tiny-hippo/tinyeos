@@ -903,7 +903,7 @@ class TinyPT(InterpolantsBuilder):
             fac = np.zeros((3, 3))
             if X > eps:
                 fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
-                fac[0, 1] = -fac[0, 1] * res_x[self.i_chiT]
+                fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
                 fac[0, 2] = X / res_x[self.i_mu]
             if Y > eps:
                 fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
