@@ -812,6 +812,7 @@ class TinyPT(InterpolantsBuilder):
             Z = Z * np.ones_like(logT)
         input_ndim = np.max([logT.ndim, X.ndim])
 
+        res = self.__get_zeros(logT, logP, X, Z)
         if np.any(X > 0):
             res_x = self.__evaluate_x(logT, logP)
         else:
@@ -970,7 +971,6 @@ class TinyPT(InterpolantsBuilder):
                 lfe = -99
         eta = get_eta(logT, logRho, lfe)
 
-        res = self.__get_zeros(logT, logP, X, Z)
         res[self.i_logT] = logT
         res[self.i_logRho] = logRho
         res[self.i_logP] = logP
