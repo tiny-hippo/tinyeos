@@ -2,8 +2,10 @@
 array indices for the output.
 """
 
+# min/max temperatures are limited by SCvH and CMS
 logT_max = 6.00
 logT_min = 2.00
+# min/max pressures and densities are limited by QEoS
 logP_max = 15.00
 logP_min = 1.00
 logRho_max = 2.00
