@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 class TableLoader:
-    """ Loads the equation of state tables for hydrogen, helium
+    """Loads the equation of state tables for hydrogen, helium
     and a heavy element.
 
     Equations of state implemented:
@@ -28,13 +28,15 @@ class TableLoader:
         logT_min (float): min. temperature
         x_DT_table (ndarray): hydrogen (logRho, logT) table
         x_PT_table (ndarray): hydrogen (logP, logT) table
+        x_eff_PT_table (ndarray): (logP, logT) table
         y_DT_table (ndarray): helium (logRho, logT) table
         y_PT_table (ndarray): helium (logP, logT) table
         z_DT_table (ndarray): heavy-element (logRho, logT) table
         z_PT_table (ndarray): heavy-element (logP, logT) table
     """
+
     def __init__(self, which_heavy: str = "water", which_hhe: str = "cms") -> None:
-        """ _init__ method. Sets the equation of state
+        """_init__ method. Sets the equation of state
         boundaries and loads the tables.
 
         Args:
@@ -56,7 +58,7 @@ class TableLoader:
         self.__load_z_PT_table(which_heavy)
 
     def __load_xy_DT_tables(self, which_hhe: str = "cms") -> None:
-        """ Loads the hydrogen and helium (logRho, logT) tables.
+        """Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
             which_hhe (str, optional): Which hydrogen-helium equation of state
@@ -70,8 +72,7 @@ class TableLoader:
             src = os.path.join(self.tables_path, "hydrogen_DT_table.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.tables_path,
-                               "hydrogen_scvh_extended_DT_table.pkl")
+            src = os.path.join(self.tables_path, "hydrogen_scvh_extended_DT_table.pkl")
         else:
             raise NotImplementedError("This table is not available.")
         with open(src, "rb") as file:
@@ -85,14 +86,13 @@ class TableLoader:
             src = os.path.join(self.tables_path, "helium_DT_table.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.tables_path,
-                               "helium_scvh_extended_DT_table.pkl")
+            src = os.path.join(self.tables_path, "helium_scvh_extended_DT_table.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_DT_table = data
 
     def __load_xy_PT_tables(self, which_hhe: str = "cms") -> None:
-        """ Loads the hydrogen and helium (logP, logT) tables.
+        """Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
             which_hhe (str, optional):  Which hydrogen-helium equation of state
@@ -115,6 +115,14 @@ class TableLoader:
         #          "log_free_e", mu]
         self.x_PT_table = data
 
+        # load the "effective" hydrogen table from Chabrier et al. 2021
+        # that can be used to account for hydrogen-helium interactions
+        if which_hhe == "cms":
+            src = os.path.join(self.tables_path, "hydrogen_eff_PT_table.pkl")
+            with open(src, "rb") as file:
+                data = pickle.load(file)
+            self.x_eff_PT_table = data
+
         if which_hhe == "cms":
             src = os.path.join(self.tables_path, "helium_PT_table.pkl")
         elif which_hhe == "scvh":
@@ -124,7 +132,7 @@ class TableLoader:
         self.y_PT_table = data
 
     def __load_z_DT_table(self, which_heavy: str) -> None:
-        """ Loads the heavy-element (logRho, logT) tables.
+        """Loads the heavy-element (logRho, logT) tables.
 
         Args:
             which_heavy (str): Which heavy-element equation of state to use.
@@ -154,7 +162,7 @@ class TableLoader:
         self.z_DT_table = data
 
     def __load_z_PT_table(self, which_heavy: str):
-        """ Loads the heavy-element (logP, logT) tables.
+        """Loads the heavy-element (logP, logT) tables.
 
         Args:
             which_heavy (str): Which heavy-element equation of state to use.
@@ -183,7 +191,7 @@ class TableLoader:
 
     @staticmethod
     def make_monotonic(data: ArrayLike, element: str, DT: bool) -> NDArray:
-        """ Makes the data monotonic with respect to logT.
+        """Makes the data monotonic with respect to logT.
 
         Args:
             data (ArrayLike): The input data.

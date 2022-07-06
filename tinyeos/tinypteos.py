@@ -29,6 +29,7 @@ class TinyPT(InterpolantsBuilder):
         self,
         which_heavy: str = "water",
         which_hhe: str = "cms",
+        include_hhe_interactions: bool = False,
         build_interpolants: bool = False,
     ) -> None:
         """__init__ method. Defines parameters and either loads or
@@ -36,12 +37,14 @@ class TinyPT(InterpolantsBuilder):
 
         Args:
             which_heavy (str, optional): which heavy-element equation of state
-            to use. Defaults to "water". Options are "water", "rock",
+                to use. Defaults to "water". Options are "water", "rock",
             "mixture", "aqua" or "iron".
             which_hhe (str, optional): which hydrogen-helium equation of state
-            to use. Defaults to "cms". Options are "cms" or "scvh".
+                to use. Defaults to "cms". Options are "cms" or "scvh".
+            include_hhe_interactions (bool, optional): wether to include
+                hydrogen-helium interactions.
             build_interpolants (bool, optional): whether to build interpolants.
-            Defaults to False.
+                Defaults to False.
 
         Raises:
             NotImplementedError: raised if which_heavy or which_hhe choices
@@ -86,6 +89,9 @@ class TinyPT(InterpolantsBuilder):
             raise NotImplementedError("Invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("Invalid option for which_hhe")
+        self.include_hhe_interactions = include_hhe_interactions
+        if include_hhe_interactions and which_hhe == "scvh":
+            raise NotImplementedError("Can't include H-He interactions with scvh")
 
         # Heavy element: Charge, Atomic Mass
         # h2o: 10, 18.015
@@ -104,6 +110,10 @@ class TinyPT(InterpolantsBuilder):
             raise NotImplementedError("Invalid option for which_heavy.")
 
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
+        if self.include_hhe_interactions:
+            self.interpPT_x_eff = self.__load_interp(
+                "interpPT_x_eff_" + which_hhe + ".npy"
+            )
         self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
         self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
         self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
@@ -118,6 +128,18 @@ class TinyPT(InterpolantsBuilder):
         self.interpPT_grad_ad_x = self.interpPT_x[7]
         self.interpPT_lfe_x = self.interpPT_x[8]
         self.interpPT_mu_x = self.interpPT_x[9]
+
+        if self.include_hhe_interactions:
+            self.interpPT_logRho_x_eff = self.interpPT_x_eff[0]
+            self.interpPT_logS_x_eff = self.interpPT_x_eff[1]
+            self.interpPT_logU_x_eff = self.interpPT_x_eff[2]
+            self.interpPT_dlRho_dlT_P_x_eff = self.interpPT_x_eff[3]
+            self.interpPT_dlRho_dlP_T_x_eff = self.interpPT_x_eff[4]
+            self.interpPT_dlS_dlT_P_x_eff = self.interpPT_x_eff[5]
+            self.interpPT_dlS_dlP_T_x_eff = self.interpPT_x_eff[6]
+            self.interpPT_grad_ad_x_eff = self.interpPT_x_eff[7]
+            self.interpPT_lfe_x_eff = self.interpPT_x_eff[8]
+            self.interpPT_mu_x_eff = self.interpPT_x_eff[9]
 
         self.interpPT_logRho_y = self.interpPT_y[0]
         self.interpPT_logS_y = self.interpPT_y[1]
@@ -142,8 +164,8 @@ class TinyPT(InterpolantsBuilder):
     def __call__(
         self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
     ) -> NDArray:
-        """__call__ method acting as convenience wrapper for the evaluate method.
-        Calculates the equation of state output for the mixture.
+        """__call__ method acting as convenience wrapper for the evaluate
+        method. Calculates the equation of state output for the mixture.
 
         Args:
             logT (ArrayLike): log10 of the temperature.
@@ -263,7 +285,17 @@ class TinyPT(InterpolantsBuilder):
         elif np.all(Z == 1):
             logRho = self.interpPT_logRho_z(logT, logP, grid=False)
         else:
-            logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
+            if np.any(X == 1) and self.include_hhe_interactions:
+                logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
+                logRho_x_eff = self.interpPT_logRho_x_eff(logT, logP, grid=False)
+                i = X < 1
+                logRho_x[i] = logRho_x_eff[i]
+                logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
+                logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
+            elif self.include_hhe_interactions:
+                logRho_x = self.interpPT_logRho_x_eff(logT, logP, grid=False)
+            else:
+                logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
             logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
             logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
 
@@ -311,6 +343,44 @@ class TinyPT(InterpolantsBuilder):
         res_x[self.i_lfe] = lfe
 
         return res_x
+
+    def __evaluate_x_eff(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
+        """Calculates equation of state output for hydrogen.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+
+        Returns:
+            NDArray: equation of state output.
+        """
+
+        logRho = self.interpPT_logRho_x_eff(logT, logP, **self.kwargs)
+        logS = self.interpPT_logS_x_eff(logT, logP, **self.kwargs)
+        logU = self.interpPT_logU_x_eff(logT, logP, **self.kwargs)
+
+        dlRho_dlP_T = self.interpPT_dlRho_dlP_T_x_eff(logT, logP, **self.kwargs)
+        dlRho_dlT_P = self.interpPT_dlRho_dlT_P_x_eff(logT, logP, **self.kwargs)
+
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
+        grad_ad = self.interpPT_grad_ad_x_eff(logT, logP, **self.kwargs)
+        lfe = self.interpPT_lfe_x_eff(logT, logP, **self.kwargs)
+        mu = self.interpPT_mu_x_eff(logT, logP, **self.kwargs)
+
+        res_x_eff = self.__get_zeros(logT, logP)
+        res_x_eff[self.i_logT] = logT
+        res_x_eff[self.i_logRho] = logRho
+        res_x_eff[self.i_logP] = logP
+        res_x_eff[self.i_logS] = logS
+        res_x_eff[self.i_logU] = logU
+        res_x_eff[self.i_chiRho] = chiRho
+        res_x_eff[self.i_chiT] = chiT
+        res_x_eff[self.i_grad_ad] = grad_ad
+        res_x_eff[self.i_mu] = mu
+        res_x_eff[self.i_lfe] = lfe
+
+        return res_x_eff
 
     def __evaluate_y(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for helium.
@@ -814,7 +884,20 @@ class TinyPT(InterpolantsBuilder):
 
         res = self.__get_zeros(logT, logP, X, Z)
         if np.any(X > 0):
-            res_x = self.__evaluate_x(logT, logP)
+            if np.all(X == 1) or not self.include_hhe_interactions:
+                res_x = self.__evaluate_x(logT, logP)
+            elif np.any(X == 1) and self.include_hhe_interactions:
+                i_xeff = X < 1
+                i_x = ~i_xeff
+                logT_x = logT[i_x]
+                logP_x = logP[i_x]
+                logT_xeff = logT[i_xeff]
+                logP_xeff = logP[i_xeff]
+                res_x = self.__get_zeros(logT, logP, X, Z)
+                res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
+                res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
+            else:
+                res_x = self.__evaluate_x_eff(logT, logP)
         else:
             res_x = self.__get_zeros(logT, logP, X, Z)
         if np.any(Y > 0):
@@ -853,8 +936,25 @@ class TinyPT(InterpolantsBuilder):
         U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
         logU = np.log10(U)
 
-        dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
-        dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
+        if np.all(X == 1) or not self.include_hhe_interactions:
+            dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
+            dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
+        elif np.any(X == 1) and self.include_hhe_interactions:
+            dlS_dlP_T_x = np.zeros_like(logS)
+            dlS_dlP_T_x[i_x] = self.interpPT_dlS_dlP_T_x(logT_x, logP_x, **self.kwargs)
+            dlS_dlP_T_x[i_xeff] = self.interpPT_dlS_dlP_T_x(
+                logT_xeff, logP_xeff, **self.kwargs
+            )
+
+            dlS_dlT_P_x = np.zeros_like(logS)
+            dlS_dlT_P_x[i_x] = self.interpPT_dlS_dlT_P_x(logT_x, logP_x, **self.kwargs)
+            dlS_dlT_P_x[i_xeff] = self.interpPT_dlS_dlT_P_x(
+                logT_xeff, logP_xeff, **self.kwargs
+            )
+        else:
+            dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x_eff(logT, logP, **self.kwargs)
+            dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x_eff(logT, logP, **self.kwargs)
+
         dlS_dlP_T_y = self.interpPT_dlS_dlP_T_y(logT, logP, **self.kwargs)
         dlS_dlT_P_y = self.interpPT_dlS_dlT_P_y(logT, logP, **self.kwargs)
         dlS_dlP_T_z = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
