@@ -1041,8 +1041,11 @@ class TinyPT(InterpolantsBuilder):
                 cv[i] = cp[i]
                 i = ~i
                 cv[i] = cp[i] * chiRho[i] / gamma1[i]
+                # Chabrier et al. (2019) eq. 5:
+                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho) 
             else:
                 cv = cp * chiRho / gamma1
+                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
             c_sound = np.zeros_like(logT)
             i = gamma1 >= 0
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
@@ -1051,6 +1054,7 @@ class TinyPT(InterpolantsBuilder):
                 cv = cp
             else:
                 cv = cp * chiRho / gamma1
+                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
             if gamma1 >= 0:
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
