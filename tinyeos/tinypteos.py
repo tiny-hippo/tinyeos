@@ -968,6 +968,7 @@ class TinyPT(InterpolantsBuilder):
         ) / S
 
         eps = 1e-4
+        small_val = 1e-3
         if input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
@@ -1022,11 +1023,16 @@ class TinyPT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if input_ndim > 0:
-            grad_ad[grad_ad < 0] = 0
+            grad_ad[np.isnan(grad_ad)] = small_val
+            grad_ad[grad_ad < 0] = small_val
+            grad_ad[grad_ad > 1] = 1
             chiRho[chiRho < 0] = 0
             chiT[chiT < 0] = 0
         else:
-            grad_ad = np.max(grad_ad, 0)
+            if np.isnan(grad_ad):
+                grad_ad = eps
+            grad_ad = np.max(grad_ad, small_val)
+            grad_ad = np.min(grad_ad, 1)
             chiRho = np.max(chiRho, 0)
             chiT = np.max(chiT, 0)
 
@@ -1058,7 +1064,7 @@ class TinyPT(InterpolantsBuilder):
             if gamma1 >= 0:
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
-                c_sound = 0
+                c_sound = small_val
 
         # these are at constant density or temperature
         dS_dT = cv / T  # definition of specific heat
