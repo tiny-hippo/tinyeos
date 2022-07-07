@@ -21,8 +21,8 @@ class InterpolantsBuilder(TableLoader):
     Attributes:
         cache_path (str): interpolant cache path
         interpDT_var_x(y, z) (spline): (logT, logRho) interpolant of
-                                       varialble var for hydrogen (x),
-                                       helium (y) or the heavy element (z).
+            varialble var for hydrogen (x),
+            helium (y) or the heavy element (z).
         interpPT_var_x(y, z) (spline): (logT, logP) interpolant
     """
 
@@ -83,7 +83,13 @@ class InterpolantsBuilder(TableLoader):
         # self.cache_z_interpolants("iron")
 
     def __build_interpolant(
-        self, X: ArrayLike, Y: ArrayLike, Z: ArrayLike, which_interpolant: bool = "rect"
+        self,
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+        which_interpolant: bool = "rect",
+        kx: int = 3,
+        ky: int = 3,
     ):
         """Builds the interoplants with either RectBivariateSpline or
         SmoothBivariateSpline.
@@ -91,24 +97,23 @@ class InterpolantsBuilder(TableLoader):
         Args:
             X, Y (ArrayLike): 1-D arrays of coordinates.
             Z (ArrayLike): 2-D array of data with shape (x.size, y.size)
-            which_interpolant (str, optional): Valid options are "rect"
-            and "smooth". Defaults to "rect".
+            which_interpolant (str, optional): valid options are "rect"
+                and "smooth". Defaults to "rect".
+            kx, ky (ints, optional): degrees of the bivariate spline.
 
         Raises:
-            NotImplementedError: Raised if spline choice is not available.
+            NotImplementedError: raised if spline choice is not available.
 
         Returns:
-            spline: Fitted biviarate spline approximation.
+            spline: fitted biviarate spline approximation.
         """
 
         # to-do: fix call for smooth interpolant
-        KX = 3
-        KY = 3
         if which_interpolant == "rect":
             Z = np.reshape(Z, (X.size, Y.size))
-            spl = self.__build_rect_interpolant(X, Y, Z, KX, KY)
+            spl = self.__build_rect_interpolant(X, Y, Z, kx, ky)
         elif which_interpolant == "smooth":
-            spl = self.__build_smooth_interpolant(X, Y, Z, KX, KY)
+            spl = self.__build_smooth_interpolant(X, Y, Z, kx, ky)
         else:
             raise NotImplementedError("Spline choice not implemented.")
         return spl
@@ -122,11 +127,11 @@ class InterpolantsBuilder(TableLoader):
         Args:
             X, Y (ArrayLike): 1-D arrays of coordinates.
             Z (ArrayLike): 2-D array of data with shape (x.size, y.size)
-            kx, ky (ints, optional): Degrees of the bivariate spline.
-            Defaults to 3.
+            kx, ky (ints, optional): degrees of the bivariate spline.
+                Defaults to 3.
 
         Returns:
-            RectBivariateSpline: Fitted RectBivariateSpline.
+            RectBivariateSpline: fitted RectBivariateSpline.
         """
         return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
@@ -138,12 +143,12 @@ class InterpolantsBuilder(TableLoader):
 
         Args:
             X, Y, Z (ArrayLike): 1-D sequences of data points
-            (order is not important).
-            kx, ky (ints, optional): Degrees of the bivariate spline.
-            Defaults to 3.
+                (order is not important).
+            kx, ky (ints, optional): degrees of the bivariate spline.
+                defaults to 3.
 
         Returns:
-            SmoothBivariateSpline: Fitted SmoothBivariateSpline.
+            SmoothBivariateSpline: fitted SmoothBivariateSpline.
         """
         return SmoothBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
@@ -161,7 +166,7 @@ class InterpolantsBuilder(TableLoader):
             method (str, optional): Interpolation method. Defaults to "linear".
 
         Returns:
-            RegularGridInterpolator: Fitted RegularGridInterpolor.
+            RegularGridInterpolator: fitted RegularGridInterpolor.
         """
         # to-do: reshape points and values
         # points = (logTs, logRhos)
@@ -176,8 +181,8 @@ class InterpolantsBuilder(TableLoader):
         """Caches interpolant to the disk.
 
         Args:
-            filename (str): Name of the cache file.
-            obj (spline): Spline object.
+            filename (str): name of the cache file.
+            obj (spline): spline object.
         """
 
         filename = filename + ".npy"
@@ -189,8 +194,8 @@ class InterpolantsBuilder(TableLoader):
         to the disk.
 
         Args:
-            which_hhe (str, optional): Which hydrogen-helium equation of state
-            to use. Defaults to "cms".
+            which_hhe (str, optional): which hydrogen-helium equation of state
+                to use. Defaults to "cms".
         """
 
         filename = "interpDT_x_" + which_hhe
@@ -284,8 +289,8 @@ class InterpolantsBuilder(TableLoader):
         to the disk.
 
         Args:
-            which_heavy (str): Which equation of state to use
-            for the heavy element.
+            which_heavy (str): which equation of state to use
+                for the heavy element.
         """
         filename = "interpDT_z_" + which_heavy
         interp_array = np.array(
