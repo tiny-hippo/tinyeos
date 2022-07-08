@@ -5,7 +5,16 @@ from typing import Tuple
 from pathlib import Path
 from scipy.optimize import root_scalar
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
-from tinyeos.support import get_eta, ideal_mixing_law, check_composition
+from tinyeos.support import (
+    A_H,
+    A_He,
+    m_u,
+    k_b,
+    get_eta,
+    ideal_mixing_law,
+    check_composition,
+    get_h_he_number_fractions,
+)
 from tinyeos.definitions import *
 
 
@@ -37,16 +46,16 @@ class TinyDT(InterpolantsBuilder):
 
         Args:
             which_heavy (str, optional): which heavy-element equation of state
-            to use. Defaults to "water". Options are "water", "rock",
-            "mixture", "aqua" or "iron".
+                to use. Defaults to "water". Options are "water", "rock",
+             "mixture", "aqua" or "iron".
             which_hhe (str, optional): which hydrogen-helium equation of state
-            to use. Defaults to "cms". Options are "cms" or "scvh".
+                to use. Defaults to "cms". Options are "cms" or "scvh".
             build_interpolants (bool, optional): whether to build interpolants.
             Defaults to False.
 
         Raises:
             NotImplementedError: raised if which_heavy or which_hhe choices
-            are unavailable.
+                are unavailable.
         """
 
         if build_interpolants:
@@ -86,9 +95,9 @@ class TinyDT(InterpolantsBuilder):
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["water", "rock", "aqua", "mixture"]:
-            raise NotImplementedError("Invalid option for which_heavy")
+            raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
-            raise NotImplementedError("Invalid option for which_hhe")
+            raise NotImplementedError("invalid option for which_hhe")
 
         # Heavy element: Charge, Atomic Mass
         # h2o: 10, 18.015
@@ -104,7 +113,7 @@ class TinyDT(InterpolantsBuilder):
         elif which_heavy == "mixture":
             self.A = 0.5 * (18.015 + 60.080)
         else:
-            raise NotImplementedError("Invalid option for which_heavy.")
+            raise NotImplementedError("invalid option for which_heavy.")
 
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
         self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
@@ -149,8 +158,8 @@ class TinyDT(InterpolantsBuilder):
         self.interpPT_logU_z = self.interpPT_z[2]
 
     def __call__(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
-        """__call__ method acting as convenience wrapper for the evaluate method.
-        Calculates the equation of state output for the mixture.
+        """__call__ method acting as convenience wrapper for the evaluate
+        method. Calculates the equation of state output for the mixture.
 
         Args:
             logT (float): log10 of the temperature.
@@ -160,8 +169,8 @@ class TinyDT(InterpolantsBuilder):
 
         Returns:
             NDArray: Equation of state output. The index of the individual
-            quantities is defined in the __init__ method. If the root finding
-            algorithm failed, the output will be filled with negative ones.
+                quantities is defined in the __init__ method. If the root finding
+                algorithm failed, the output will be filled with negative ones.
         """
         return self.evaluate(logT, logRho, X, Z)
 
@@ -180,7 +189,7 @@ class TinyDT(InterpolantsBuilder):
 
         src = os.path.join(self.cache_path, filename)
         if not os.path.isfile(src):
-            raise FileNotFoundError("Missing interpolant cache " + src)
+            raise FileNotFoundError("missing interpolant cache " + src)
         return np.load(src, allow_pickle=True)
 
     def __check_DT(self, logT: ArrayLike, logRho: ArrayLike) -> None:
@@ -193,8 +202,8 @@ class TinyDT(InterpolantsBuilder):
 
         Raises:
             ValueError: logT and logRho must have equal shape
-            and all values must be within the equation of
-            state limits.
+                and all values must be within the equation of
+                state limits.
 
         Returns:
             Tuple[NDArray, NDArray]: (logT, logRho) as arrays.
@@ -266,11 +275,11 @@ class TinyDT(InterpolantsBuilder):
             Y (float): helium mass-fraction.
             Z (float): heavy-element mass-fraction.
             debug (bool, optional): enables additional output.
-            Defaults to False.
+                Defaults to False.
 
         Returns:
-            tuple: tuple consisting of convergence information, individual
-            densities and gas pressure.
+            Tuple: tuple consisting of convergence information, individual
+                densities and gas pressure.
         """
 
         self.__check_DT(logT, logRho)
@@ -403,7 +412,7 @@ class TinyDT(InterpolantsBuilder):
 
         Args:
             xhat (float): log10 of either the heavy-element
-            or hydrogen density.
+                or hydrogen density.
             logT (float): log10 of the temperature.
             logRho (float): log10 of the density.
             X (float): hydrogen mass-fraction.
@@ -450,7 +459,7 @@ class TinyDT(InterpolantsBuilder):
             Z (float): heavy-element mass-fraction.
 
         Returns:
-            tuple: tuple consisting of convergence information and the bracket.
+            Tuple: tuple consisting of convergence information and the bracket.
         """
 
         rho0 = 10**logRho
@@ -517,7 +526,7 @@ class TinyDT(InterpolantsBuilder):
             Y (float): helium mass-fraction.
 
         Returns:
-            tuple: tuple consisting of convergence information and the bracket.
+            Tuple: tuple consisting of convergence information and the bracket.
         """
 
         rho0 = 10**logRho
@@ -705,14 +714,14 @@ class TinyDT(InterpolantsBuilder):
             X (float): hydrogen mass-fraction.
             Z (float): heavy-element mass-fraction.
             fix_phase_transition (bool, optional): whether to attempt to fix
-            phase transitions. Defaults to False.
+                phase transitions. Defaults to False.
             debug (bool, optional): whether to enable additional output.
-            Defaults to False.
+                Defaults to False.
 
         Returns:
-            NDArray: Equation of state output. The index of the individual
-            quantities is defined in the __init__ method. If the root finding
-            algorithm failed, the output will be filled with negative ones.
+            NDArray: equation of state output. The index of the individual
+                quantities is defined in the __init__ method. If the root finding
+                algorithm failed, the output will be filled with negative ones.
         """
 
         self.__check_DT(logT, logRho)
@@ -1202,8 +1211,8 @@ class TinyDT(InterpolantsBuilder):
             ValueError: input can at most be two-dimensional.
 
         Returns:
-            NDArray: reduced equation of state output. The index of the
-            individual quantities is defined in the __init__ method.
+            NDArray: reduced equation of state output. The indices of the
+                individual quantities are defined in the __init__ method.
         """
 
         logT, logRho = self.__check_DT(logT, logRho)
@@ -1254,6 +1263,13 @@ class TinyDT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
+        # ideal mixing entropy of the H-He partial mixture
+        # with free-electron entropy neglected;
+        # see eq. 11 of Chabrier et al. (2019)
+        x_H, x_He = get_h_he_number_fractions(Y)
+        mean_A = x_H * A_H + x_He * A_He
+        S_mix = -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
+        S = S + S_mix
         logS = np.log10(S)
 
         logU_x = res_x[self.i_logU]
@@ -1277,6 +1293,7 @@ class TinyDT(InterpolantsBuilder):
         ) / S
 
         eps = 1e-4
+        small_val = 1e-3
         if input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
@@ -1331,13 +1348,18 @@ class TinyDT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if input_ndim > 0:
-            grad_ad[grad_ad < 0] = 0
+            grad_ad[np.isnan(grad_ad)] = small_val
+            grad_ad[grad_ad < 0] = small_val
+            grad_ad[grad_ad > 1] = 1
             chiRho[chiRho < 0] = 0
             chiT[chiT < 0] = 0
         else:
-            grad_ad = np.max(grad_ad, 0)
-            chiRho = np.max(chiRho, 0)
-            chiT = np.max(chiT, 0)
+            if np.isnan(grad_ad):
+                grad_ad = small_val
+            grad_ad = np.max([grad_ad, small_val])
+            grad_ad = np.min([grad_ad, 1])
+            chiRho = np.max([chiRho, 0])
+            chiT = np.max([chiT, 0])
 
         gamma1 = chiRho / (1 - chiT * grad_ad)
         gamma3 = 1 + gamma1 * grad_ad
@@ -1350,8 +1372,11 @@ class TinyDT(InterpolantsBuilder):
                 cv[i] = cp[i]
                 i = ~i
                 cv[i] = cp[i] * chiRho[i] / gamma1[i]
+                # Chabrier et al. (2019) eq. 5:
+                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho)
             else:
                 cv = cp * chiRho / gamma1
+                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
             c_sound = np.zeros_like(logT)
             i = gamma1 >= 0
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
@@ -1360,10 +1385,11 @@ class TinyDT(InterpolantsBuilder):
                 cv = cp
             else:
                 cv = cp * chiRho / gamma1
+                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
             if gamma1 >= 0:
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
-                c_sound = 0
+                c_sound = small_val
 
         # these are at constant density or temperature
         dS_dT = cv / T  # definition of specific heat
