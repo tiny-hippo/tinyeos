@@ -1,3 +1,4 @@
+from multiprocessing.dummy import Array
 import numpy as np
 from typing import Tuple
 from numpy.typing import ArrayLike
@@ -5,9 +6,13 @@ from scipy.spatial import cKDTree
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from sklearn.neighbors._base import _get_weights
+from sklearn.utils import resample
 
 # constants
 m_e = 9.10938e-28  # electron mass in g
+m_a = 1.66e-24  # atomic mass unit
+m_H = 1  # hydrogen atomic mass in m_a units
+m_He = 4  # helium atomic mass in m_a units
 k_b = 1.3806503e-16  # boltzmann constant in erg/K
 h = 6.260755e-27  # planck constant in erg s
 Na = 6.02214199e23  # avogadro's constant
@@ -73,10 +78,10 @@ def get_X(Z: ArrayLike) -> ArrayLike:
     composition.
 
     Args:
-        Z (float): Heavy-element mass fraction
+        Z (float): heavy-element mass fraction
 
     Returns:
-        X (float): Hydrogen mass fraction
+        X (float): hydrogen mass fraction
     """
     X = (1 - Z) / (1 + proto_ratio)
     return X
@@ -87,24 +92,24 @@ def get_Z_from_FeH(FeH: ArrayLike) -> ArrayLike:
     given a metallicity.
 
     Args:
-        FeH (ArrayLike): Metallicity
+        FeH (ArrayLike): metallicity
 
     Returns:
-        ArrayLike: Heavy-element mass fraction
+        ArrayLike: heavy-element mass fraction
     """
     Z = Zsun * 10**FeH
     return Z
 
 
-def get_FeH_from_Z(Z: float) -> float:
+def get_FeH_from_Z(Z: ArrayLike) -> ArrayLike:
     """Calculates the metallicity given a heavy-
     element mass fraction.
 
     Args:
-        Z (float): Heavy-element mass fraction
+        Z (ArrayLike): heavy-element mass fraction
 
     Returns:
-        float: Metallicity
+        ArrayLike: metallicity
     """
     Z = max(Z, Zsun)
     FeH = np.log10(Z / Zsun)
@@ -117,13 +122,13 @@ def get_1d_spline(
     """Wrapper for UniviarateSpline.
 
     Args:
-        x ((N,) array_like): 1-D array of independent input data.
-        y ((N,) array_like): 1-D array of dependent input data.
-        K (int, optional): Degree of the smoothing spline. Defaults to 1.
-        S (int, optional): Positive smoothing factor. Defaults to 0.
+        x ((N,) ArrayLike): 1-D array of independent input data.
+        y ((N,) ArrayLike): 1-D array of dependent input data.
+        K (int, optional): degree of the smoothing spline. Defaults to 1.
+        S (int, optional): positive smoothing factor. Defaults to 0.
 
     Returns:
-        UnivariateSpline: Fitted 1-D smoothing spline.
+        UnivariateSpline: fitted 1-D smoothing spline.
     """
 
     spl = UnivariateSpline(x, y, s=S, k=K, ext=0)
@@ -136,18 +141,17 @@ def check_composition(
     """Checks whether input composition adds up to less than 1,
     and formats the mass fractions.
 
-
     Args:
-        X (ArrayLike): Hydrogen mass fraction.
-        Z (ArrayLike): Heavy-element mass fraction.
+        X (ArrayLike): hydrogen mass fraction.
+        Z (ArrayLike): heavy-element mass fraction.
 
     Raises:
-            ValueError: X and Z must have equal shape
+        ValueError: X and Z must have equal shape
             and their sum must be smaller or equal 1.
 
     Returns:
-        Tuple[ArrayLike, ArrayLike, ArrayLike]: Tuple of hydrogen,
-        helium and heavy-element mass fractions.
+        Tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of hydrogen,
+            helium and heavy-element mass fractions.
     """
 
     if not isinstance(X, np.ndarray):
@@ -188,15 +192,15 @@ def ideal_mixing_law(
     1 / rho = X / rho_x + Y / rho_y + Z / rho_y
 
     Args:
-        rho_x (ArrayLike): Density of hydrogen.
-        rho_y (ArrayLike): Density of helium.
-        rho_z (ArrayLike): Density of the heavy element.
-        X (ArrayLike): Hydrogen mass fraction.
-        Y (ArrayLike): Helium mass fraction.
-        Z (ArrayLike): Heavy-element mass fraction.
+        rho_x (ArrayLike): density of hydrogen.
+        rho_y (ArrayLike): density of helium.
+        rho_z (ArrayLike): density of the heavy element.
+        X (ArrayLike): hydrogen mass fraction.
+        Y (ArrayLike): helium mass fraction.
+        Z (ArrayLike): heavy-element mass fraction.
 
     Returns:
-        ArrayLike: Inverse total density.
+        ArrayLike: inverse total density.
     """
     eps = 1e-15
     max_ndim = np.max([rho_x.ndim, X.ndim, Y.ndim, Z.ndim])
@@ -228,24 +232,54 @@ def ideal_mixing_law(
     return x_rho_x + y_rho_y + z_rho_z
 
 
-def get_eta(logT: float, logRho: float, log_free_e: float) -> float:
+def get_h_he_number_fractions(
+    Y: ArrayLike, ionized: bool = False
+) -> Tuple[ArrayLike, ArrayLike]:
+    """Calculates the hydrogen and helium number fractions
+    of a hydrogen-helium mixture.
+
+    Args:
+        Y (ArrayLike): helium mass fraction
+        ionized (bool, optional): whether the mixture is fully 
+            ionized or not. Defaults to False.
+
+    Returns:
+        Tuple[ArrayLike, ArrayLike]: tuple of hydrogen and helium
+            number fractions.
+    """
+    if not isinstance(Y, np.ndarray):
+        Y = np.array(Y)
+    X = 1 - Y
+    x_H2 = 0  # no molecular hydrogen
+    if ionized:
+        mu = 2 * X + 3 / 4 * Y
+    else:
+        mu = X / (1 + x_H2) + Y / 4
+    mu = 1 / mu
+
+    x_He = Y * mu / m_He
+    x_H = 1 - x_He
+    return (x_H, x_He)
+
+
+def get_eta(logT: ArrayLike, logRho: ArrayLike, log_free_e: ArrayLike) -> ArrayLike:
     """Calculates the inverse electron chemical potential
     by inverting the fermi integral using the
     rational function approximation for Fermi-Dirac
     integrals (Antia, 1993)
 
     Args:
-        logT (float): Log10 of temperature.
-        logRho (float): Log10 of density.
-        log_free_e ([type]): Log10 of mean number of free electrons
-        per nucleon (inverse electron mean molecular weight).
+        logT (ArrayLike): log10 of temperature.
+        logRho (ArrayLike): log10 of density.
+        log_free_e (ArrayLike): log10 of mean number of free electrons
+            per nucleon (inverse electron mean molecular weight).
 
     Raises:
         ValueError: logT, logRho and log_free_e must
-        have equal shape.
+            have equal shape.
 
     Returns:
-        float: Inverse electron chemical potential
+        ArrayLike: inverse electron chemical potential
     """
 
     if not isinstance(logT, np.ndarray):
