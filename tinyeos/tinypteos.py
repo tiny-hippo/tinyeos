@@ -4,7 +4,16 @@ from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
 from pathlib import Path
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
-from tinyeos.support import get_eta, ideal_mixing_law, check_composition
+from tinyeos.support import (
+    A_H,
+    A_He,
+    m_u,
+    k_b,
+    get_eta,
+    ideal_mixing_law,
+    check_composition,
+    get_h_he_number_fractions,
+)
 from tinyeos.definitions import *
 
 
@@ -532,6 +541,13 @@ class TinyPT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
+        # ideal mixing entropy of the H-He partial mixture
+        # with free-electron entropy neglected;
+        # see eq. 11 of Chabrier et al. (2019)
+        x_H, x_He = get_h_he_number_fractions(Y)
+        mean_A = x_H * A_H + x_He * A_He
+        S_mix = -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
+        S = S + S_mix
         logS = np.log10(S)
 
         logU_x = res_x[self.i_logU]
@@ -634,11 +650,11 @@ class TinyPT(InterpolantsBuilder):
             chiT[chiT < 0] = 0
         else:
             if np.isnan(grad_ad):
-                grad_ad = eps
-            grad_ad = np.max(grad_ad, small_val)
-            grad_ad = np.min(grad_ad, 1)
-            chiRho = np.max(chiRho, 0)
-            chiT = np.max(chiT, 0)
+                grad_ad = small_val
+            grad_ad = np.max([grad_ad, small_val])
+            grad_ad = np.min([grad_ad, 1])
+            chiRho = np.max([chiRho, 0])
+            chiT = np.max([chiT, 0])
 
         gamma1 = chiRho / (1 - chiT * grad_ad)
         gamma3 = 1 + gamma1 * grad_ad
@@ -652,7 +668,7 @@ class TinyPT(InterpolantsBuilder):
                 i = ~i
                 cv[i] = cp[i] * chiRho[i] / gamma1[i]
                 # Chabrier et al. (2019) eq. 5:
-                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho) 
+                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho)
             else:
                 cv = cp * chiRho / gamma1
                 # cv = cp - (P * chiT**2) / (rho * T * chiRho)
