@@ -47,7 +47,7 @@ class TinyPT(InterpolantsBuilder):
         Args:
             which_heavy (str, optional): which heavy-element equation of state
                 to use. Defaults to "water". Options are "water", "rock",
-            "mixture", "aqua" or "iron".
+                "mixture", "aqua" or "iron".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
@@ -57,7 +57,7 @@ class TinyPT(InterpolantsBuilder):
 
         Raises:
             NotImplementedError: raised if which_heavy or which_hhe choices
-            are unavailable.
+                are unavailable.
         """
 
         if build_interpolants:
@@ -95,12 +95,12 @@ class TinyPT(InterpolantsBuilder):
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["water", "rock", "aqua", "mixture"]:
-            raise NotImplementedError("Invalid option for which_heavy")
+            raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
-            raise NotImplementedError("Invalid option for which_hhe")
+            raise NotImplementedError("invalid option for which_hhe")
         self.include_hhe_interactions = include_hhe_interactions
         if include_hhe_interactions and which_hhe == "scvh":
-            raise NotImplementedError("Can't include H-He interactions with scvh")
+            raise NotImplementedError("can't include H-He interactions with scvh")
 
         # Heavy element: Charge, Atomic Mass
         # h2o: 10, 18.015
@@ -116,7 +116,7 @@ class TinyPT(InterpolantsBuilder):
         elif which_heavy == "mixture":
             self.A = 0.5 * (18.015 + 60.080)
         else:
-            raise NotImplementedError("Invalid option for which_heavy.")
+            raise NotImplementedError("invalid option for which_heavy.")
 
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
         if self.include_hhe_interactions:
@@ -184,7 +184,7 @@ class TinyPT(InterpolantsBuilder):
 
         Returns:
             NDArray: Equation of state output. The index of the individual
-            quantities is defined in the __init__ method.
+                quantities is defined in the __init__ method.
         """
         return self.evaluate(logT, logP, X, Z)
 
@@ -202,7 +202,7 @@ class TinyPT(InterpolantsBuilder):
         """
         src = os.path.join(self.cache_path, filename)
         if not os.path.isfile(src):
-            raise FileNotFoundError("Missing interpolant cache " + src)
+            raise FileNotFoundError("missing interpolant cache " + src)
         return np.load(src, allow_pickle=True)
 
     def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
@@ -215,8 +215,8 @@ class TinyPT(InterpolantsBuilder):
 
         Raises:
             ValueError: logT and logP must have equal shape
-            and all values must be within the equation of
-            state limits.
+                and all values must be within the equation of
+                state limits.
 
         Returns:
             Tuple[NDArray, NDArray]: (logT, logP) as arrays.
@@ -430,7 +430,7 @@ class TinyPT(InterpolantsBuilder):
         return res_y
 
     def __evaluate_z(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
-        """Calculates equation of state output for the heavy element..
+        """Calculates equation of state output for the heavy element.
 
         Args:
             logT (ArrayLike): log10 of the temperature.
@@ -483,8 +483,8 @@ class TinyPT(InterpolantsBuilder):
             ValueError: input can at most be two-dimensional.
 
         Returns:
-            NDArray: reduced equation of state output. The index of the
-            individual quantities is defined in the __init__ method.
+            NDArray: reduced equation of state output. The indices of the
+                individual quantities are defined in the __init__ method.
         """
 
         logT, logP = self.__check_PT(logT, logP)
