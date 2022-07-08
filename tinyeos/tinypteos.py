@@ -51,7 +51,7 @@ class TinyPT(InterpolantsBuilder):
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
-                hydrogen-helium interactions.
+                hydrogen-helium interactions. Defaults to False.
             build_interpolants (bool, optional): whether to build interpolants.
                 Defaults to False.
 
