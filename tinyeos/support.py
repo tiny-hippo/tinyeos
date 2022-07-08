@@ -9,10 +9,12 @@ from sklearn.neighbors._base import _get_weights
 from sklearn.utils import resample
 
 # constants
+A_H = 1.0078  # atomic mass of hydrogen
+A_He = 4.0026  # atomic mass of helium
 m_e = 9.10938e-28  # electron mass in g
-m_a = 1.66e-24  # atomic mass unit
-m_H = 1  # hydrogen atomic mass in m_a units
-m_He = 4  # helium atomic mass in m_a units
+m_u = 1.66e-24  # atomic mass unit in g
+m_H = A_H * m_u  # hydrogen atomic mass in g
+m_He = A_He * m_u  # helium atomic mass in g
 k_b = 1.3806503e-16  # boltzmann constant in erg/K
 h = 6.260755e-27  # planck constant in erg s
 Na = 6.02214199e23  # avogadro's constant
@@ -257,7 +259,7 @@ def get_h_he_number_fractions(
         mu = X / (1 + x_H2) + Y / 4
     mu = 1 / mu
 
-    x_He = Y * mu / m_He
+    x_He = Y * mu * m_u / m_He
     x_H = 1 - x_He
     return (x_H, x_He)
 
