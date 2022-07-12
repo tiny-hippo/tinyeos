@@ -14,18 +14,20 @@ class TableLoader:
             CMS (Chabrier et al. 2019),
             SCvH (Saumon et al. 1995).
 
-        Heavy-Element:
-            Water (QEoS from More et al. 1988),
-            Water (AQUA from Haldemann et al. 2020),
+        Heavy element:
+            H2O (QEoS from More et al. 1988),
             SiO2 (QEoS, More et al. 1988),
-            Mixture of water and rock (QEoS),
-            Iron (QEoS, more et al. 1998).
+            Fe (QEoS, More et al. 1998),
+            ideal mixture of water and rock (QEoS, More et al. 1988),
+            H2O (AQUA from Haldemann et al. 2020).
+
+
 
     Attributes:
-        logRho_max (float): max. density
-        logRho_min (float): min. density
-        logT_max (float): max. temperature
-        logT_min (float): min. temperature
+        logRho_max (float): maximum density
+        logRho_min (float): minimum density
+        logT_max (float): maximum temperature
+        logT_min (float): minimum temperature
         x_DT_table (ndarray): hydrogen (logRho, logT) table
         x_PT_table (ndarray): hydrogen (logP, logT) table
         x_eff_PT_table (ndarray): (logP, logT) table
@@ -40,10 +42,10 @@ class TableLoader:
         boundaries and loads the tables.
 
         Args:
-            which_heavy (str, optional): Which heavy-element equation of state
-            to use. Defaults to "water".
-            which_hhe (str, optional): Which hydrogen-helium equation of state
-            to use. Defaults to "cms".
+            which_heavy (str, optional): which heavy-element equation of state
+                to use. Defaults to "water".
+            which_hhe (str, optional): which hydrogen-helium equation of state
+                to use. Defaults to "cms".
         """
 
         self.tables_path = Path(__file__).parent / "data/eos/tables"
@@ -61,11 +63,11 @@ class TableLoader:
         """Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
-            which_hhe (str, optional): Which hydrogen-helium equation of state
-            to use. Defaults to "cms".
+            which_hhe (str, optional): which hydrogen-helium equation of state
+                to use. Defaults to "cms".
 
         Raises:
-            NotImplementedError: Raised if which_hhe option is unavailable.
+            NotImplementedError: raised if which_hhe option is unavailable.
         """
 
         if which_hhe == "cms":
@@ -74,7 +76,7 @@ class TableLoader:
             # to-do: test extended scvh dt tables
             src = os.path.join(self.tables_path, "hydrogen_scvh_extended_DT_table.pkl")
         else:
-            raise NotImplementedError("This table is not available.")
+            raise NotImplementedError("this table is not available.")
         with open(src, "rb") as file:
             data = pickle.load(file)
         # columns = ["logT", "logP", "logRho", "logU", "logS", "dlnRho/dlnT",
@@ -96,10 +98,10 @@ class TableLoader:
 
         Args:
             which_hhe (str, optional):  Which hydrogen-helium equation of state
-            to use. Defaults to "cms".
+                to use. Defaults to "cms".
 
         Raises:
-            NotImplementedError: Raised if which_hhe option is unvailable.
+            NotImplementedError: raised if which_hhe option is unvailable.
         """
 
         if which_hhe == "cms":
@@ -107,7 +109,7 @@ class TableLoader:
         elif which_hhe == "scvh":
             src = os.path.join(self.tables_path, "hydrogen_scvh_PT_table.pkl")
         else:
-            raise NotImplementedError("This table is not available.")
+            raise NotImplementedError("this table is not available.")
         with open(src, "rb") as file:
             data = pickle.load(file)
         # columns = ["logT", "logP", "logRho", "logU", "logS", "dlnRho/dlnT",
@@ -135,10 +137,10 @@ class TableLoader:
         """Loads the heavy-element (logRho, logT) tables.
 
         Args:
-            which_heavy (str): Which heavy-element equation of state to use.
+            which_heavy (str): which heavy-element equation of state to use.
 
         Raises:
-            NotImplementedError: Raised if which_heavy option is unavailable.
+            NotImplementedError: raised if which_heavy option is unavailable.
         """
         if which_heavy == "water":
             # fname = "qeos_h2o_dt_cgs.data"
@@ -152,7 +154,7 @@ class TableLoader:
         elif which_heavy == "mixture":
             fname = "qeos_mix_dt_cgs.data"
         else:
-            raise NotImplementedError("This heavy element is not available")
+            raise NotImplementedError("this heavy element is not available")
 
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
@@ -165,10 +167,10 @@ class TableLoader:
         """Loads the heavy-element (logP, logT) tables.
 
         Args:
-            which_heavy (str): Which heavy-element equation of state to use.
+            which_heavy (str): which heavy-element equation of state to use.
 
         Raises:
-            NotImplementedError: Raised if which_heavy option is unavailable.
+            NotImplementedError: raised if which_heavy option is unavailable.
         """
         if which_heavy == "water":
             fname = "qeos_h2o_pt_cgs.data"
@@ -181,7 +183,7 @@ class TableLoader:
         # elif (which_heavy == "iron"):
         #     fname = "fe_PT_table.data"
         else:
-            raise NotImplementedError("This heavy element is not available")
+            raise NotImplementedError("this heavy element is not available")
 
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
@@ -195,7 +197,7 @@ class TableLoader:
 
         Args:
             data (ArrayLike): The input data.
-            element (str): Which table to load.
+                element (str): Which table to load.
             DT (bool): whether to do (logRho, logT) or (logP, logT)
 
         Returns:

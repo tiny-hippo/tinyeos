@@ -18,7 +18,7 @@ class TinyFreedmanKap:
 
         Args:
             build_interpolants (bool, optional): whether to build interpolants
-            from the tables. Defaults to False.
+                from the tables. Defaults to False.
         """
         self.FeHs = np.array([0, 0.5, 0.7, 1.0, 1.5, 1.7])
         self.num_FeHs = self.FeHs.size
@@ -108,7 +108,7 @@ class TinyFreedmanKap:
             P (float): pressure
             Z (float): heavy-element mass fraction
             num_Ts (int, optional): number of temperature points for the
-            interpolation.Defaults to 4.
+                interpolation. Defaults to 4.
             kind (str, optional): interpolation method. Defaults to "linear".
 
         Raises:
@@ -184,11 +184,11 @@ class TinyFreedmanKap:
 
         Raises:
             ValueError: raised if the interpolation returns
-            any nans.
+                any nans.
 
         Returns:
             RegularGridInterpolator: temperature-pressure interpolation
-            for the Freedman opacity.
+                for the Freedman opacity.
         """
         Ts, Ps, _ = self.__get_freedman_kap_tables(Z)
         unique_Ts = np.unique(Ts)
@@ -241,7 +241,7 @@ class TinyFreedmanKap:
 
     def __load_freedman_kap_interp(self, Z: float) -> RegularGridInterpolator:
         """Loads the RegularGridInterpolator object of the
-        Freedman opacitz for a given heavz/element mass fraction.
+        Freedman opacity for a given heavz/element mass fraction.
 
         Args:
             Z (float): heavy-element mass fraction.

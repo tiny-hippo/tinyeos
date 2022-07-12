@@ -27,12 +27,12 @@ class TinyDT(InterpolantsBuilder):
             CMS (Chabrier et al. 2019),
             SCvH (Saumon et al. 1995).
 
-        Heavy-Element:
-            Water (QEoS from More et al. 1988),
-            Water (AQUA from Haldemann et al. 2020),
+        Heavy element:
+            H2O (QEoS from More et al. 1988),
             SiO2 (QEoS, More et al. 1988),
-            Mixture of water and rock (QEoS),
-            Iron (QEoS, more et al. 1998).
+            Fe (QEoS, More et al. 1998),
+            ideal mixture of water and rock (QEoS, More et al. 1988),
+            H2O (AQUA from Haldemann et al. 2020).
     """
 
     def __init__(
@@ -47,11 +47,11 @@ class TinyDT(InterpolantsBuilder):
         Args:
             which_heavy (str, optional): which heavy-element equation of state
                 to use. Defaults to "water". Options are "water", "rock",
-             "mixture", "aqua" or "iron".
+                "mixture", "aqua" or "iron".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             build_interpolants (bool, optional): whether to build interpolants.
-            Defaults to False.
+                Defaults to False.
 
         Raises:
             NotImplementedError: raised if which_heavy or which_hhe choices

@@ -26,12 +26,12 @@ class TinyPT(InterpolantsBuilder):
             CMS (Chabrier et al. 2019),
             SCvH (Saumon et al. 1995).
 
-        Heavy-Element:
-            Water (QEoS from More et al. 1988),
-            Water (AQUA from Haldemann et al. 2020),
+        Heavy element:
+            H2O (QEoS from More et al. 1988),
             SiO2 (QEoS, More et al. 1988),
-            Mixture of water and rock (QEoS),
-            Iron (QEoS, more et al. 1998).
+            Fe (QEoS, More et al. 1998),
+            ideal mixture of water and rock (QEoS, More et al. 1988),
+            H2O (AQUA from Haldemann et al. 2020).
     """
 
     def __init__(
