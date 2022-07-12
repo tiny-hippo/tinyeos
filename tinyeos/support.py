@@ -18,10 +18,10 @@ m_He = A_He * m_u  # helium atomic mass in g
 k_b = 1.3806503e-16  # boltzmann constant in erg/K
 h = 6.260755e-27  # planck constant in erg s
 Na = 6.02214199e23  # avogadro's constant
-Zsun = 0.014  # solar heavy-element mass fraction
-Xproto = 0.705  # protosolar helium abundance
-Yproto = 0.275  # protosolar hydrogen abundance
-proto_ratio = Yproto / Xproto
+Z_sun = 0.014  # solar heavy-element mass fraction
+X_proto = 0.705  # protosolar helium abundance
+Y_proto = 0.275  # protosolar hydrogen abundance
+proto_ratio = Y_proto / X_proto
 
 
 class NearestND(NDInterpolatorBase):
@@ -99,7 +99,7 @@ def get_Z_from_FeH(FeH: ArrayLike) -> ArrayLike:
     Returns:
         ArrayLike: heavy-element mass fraction
     """
-    Z = Zsun * 10**FeH
+    Z = Z_sun * 10**FeH
     return Z
 
 
@@ -113,8 +113,8 @@ def get_FeH_from_Z(Z: ArrayLike) -> ArrayLike:
     Returns:
         ArrayLike: metallicity
     """
-    Z = max(Z, Zsun)
-    FeH = np.log10(Z / Zsun)
+    Z = max(Z, Z_sun)
+    FeH = np.log10(Z / Z_sun)
     return FeH
 
 
