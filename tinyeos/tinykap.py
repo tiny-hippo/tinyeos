@@ -3,8 +3,9 @@ import pickle
 import numpy as np
 from typing import Tuple
 from pathlib import Path
+from numpy.typing import ArrayLike
 from scipy.interpolate import interp1d, RegularGridInterpolator
-from tinyeos.support import get_FeH_from_Z, get_Z_from_FeH
+from tinyeos.support import Z_sun, get_FeH_from_Z, get_Z_from_FeH
 
 
 class TinyFreedmanKap:
@@ -12,11 +13,15 @@ class TinyFreedmanKap:
     Freedman et al. (2014). Units are cgs everywhere.
     """
 
-    def __init__(self, build_interpolants: bool = False) -> None:
+    def __init__(
+        self, use_fit: bool = False, build_interpolants: bool = False
+    ) -> None:
         """__init__ method. Loads the interpolant files from the disk.
         Optionally, it re-builds the interpolants from tables.
 
         Args:
+            use_analytical_fit (bool, optional): whether to use the analytical
+                fit for the opacity calculation. Defaults to False.
             build_interpolants (bool, optional): whether to build interpolants
                 from the tables. Defaults to False.
         """
@@ -24,6 +29,11 @@ class TinyFreedmanKap:
         self.num_FeHs = self.FeHs.size
         self.tables_path = Path(__file__).parent / "data/kap/tables"
         self.cache_path = Path(__file__).parent / "data/kap/interpolants"
+
+        if use_fit:
+            self.func = self.evaluate_fit
+        else:
+            self.func = self.evaluate
 
         if build_interpolants:
             for FeH in self.FeHs:
@@ -43,12 +53,12 @@ class TinyFreedmanKap:
         Args:
             logT (float): log10 of the temperature.
             logP (float): log10 of the pressure.
-            Z (float): heavy-element mass-fraction.
+            Z (float): heavy-element mass fraction.
 
         Returns:
             float: opacity
         """
-        return self.evaluate(logT, logP, Z)
+        return self.func(logT, logP, Z)
 
     @staticmethod
     def __get_freedman_kap_fname(Z: float) -> str:
@@ -268,7 +278,7 @@ class TinyFreedmanKap:
         Args:
             logT (float): log10 of the temperature.
             logP (float): log10 of the pressure.
-            Z (float): heavy-element mass-fraction.
+            Z (float): heavy-element mass fraction.
 
         Returns:
             float: opacity
@@ -290,3 +300,107 @@ class TinyFreedmanKap:
         kap1 = rgi1((T, P))
         kap = kap0 + (Z - Z0) * (kap1 - kap0) / (Z1 - Z0)
         return kap
+
+    def evaluate_fit(self, logT: ArrayLike, logP: ArrayLike, Z: ArrayLike) -> ArrayLike:
+        """Calculates the Freedman opacity of a gaseous mixture with
+        the analytic fit (see eqs. 3-5).
+
+        Args:
+            logT (ArrayLike): log10 of the temperature
+            logP (ArrayLike): log10 of the pressure
+            Z (ArrayLike): heavy-element mass fract
+
+        Returns:
+            ArrayLike: opacity
+        """
+
+        if not isinstance(logT, np.ndarray):
+            logT = np.array(logT)
+        if not isinstance(logP, np.ndarray):
+            logP = np.array(logP)
+
+        if not logT.shape == logP.shape:
+            msg = "logT and logP must have equal shape"
+            raise ValueError(msg)
+
+        T = np.power(10, logT)
+        P = np.power(10, logP)
+        met = np.log10(Z / Z_sun)
+
+        input_ndim = logT.ndim
+        # coefficients used for opacity fit (table 2)
+        if input_ndim > 0:
+            eyes = np.ones_like(T)
+            c1 = 10.602 * eyes
+            c2 = 2.882 * eyes
+            c3 = 6.09e-15 * eyes
+            c4 = 2.954 * eyes
+            c5 = -2.256 * eyes
+            c6 = 0.843 * eyes
+            c7 = -5.490 * eyes
+
+            c8 = np.zeros_like(T)
+            c9 = np.zeros_like(T)
+            c10 = np.zeros_like(T)
+            c11 = np.zeros_like(T)
+            c12 = np.zeros_like(T)
+            c13 = np.zeros_like(T)
+
+            i = T < 800
+            c8[i] = -14.051
+            c9[i] = 3.055
+            c10[i] = 0.024
+            c11[i] = 1.877
+            c12[i] = -0.445
+            c13[i] = 0.8321
+
+            i = ~i
+            c8[i] = 82.241
+            c9[i] = -55.456
+            c10[i] = 8.754
+            c11[i] = 0.7048
+            c12[i] = -0.0414
+            c13[i] = 0.8321
+
+        else:
+            c1 = 10.602
+            c2 = 2.882
+            c3 = 6.09e-15
+            c4 = 2.954
+            c5 = -2.256
+            c6 = 0.843
+            c7 = -5.490
+            if T < 800:
+                c8 = -14.051
+                c9 = 3.055
+                c10 = 0.024
+                c11 = 1.877
+                c12 = -0.445
+                c13 = 0.8321
+            else:
+                c8 = 82.241
+                c9 = -55.456
+                c10 = 8.754
+                c11 = 0.7048
+                c12 = -0.0414
+                c13 = 0.8321
+
+        # eq. 4
+        log10_kap_lowP = (
+            c1 * np.arctan(logT - c2)
+            - c3 / (logP + c4) * np.exp(np.power(logT - c5, 2))
+            + c6 * met
+            + c7
+        )
+
+        # eq. 5
+        log10_kap_highP = (
+            c8
+            + c9 * logT
+            + c10 * np.power(logT, 2)
+            + logP * (c11 + c12 * logT)
+            + c13 * met * (0.5 + 1 / np.pi * np.arctan((logT - 2.5) / 0.2))
+        )
+
+        kap_gas = np.power(10, log10_kap_lowP) + np.power(10, log10_kap_highP)
+        return kap_gas
