@@ -5,7 +5,7 @@ from typing import Tuple
 from pathlib import Path
 from numpy.typing import ArrayLike
 from scipy.interpolate import interp1d, RegularGridInterpolator, RectBivariateSpline
-from tinyeos.support import Z_sun, get_FeH_from_Z, get_Z_from_FeH
+from tinyeos.support import Z_sun, sigma_b, get_FeH_from_Z, get_Z_from_FeH
 
 
 class TinyFreedmanKap:
@@ -413,8 +413,8 @@ class TinyElectronConduction:
         self.num_logzs = 15
         self.i_logT = 0
         self.i_logRho = 1
-        self.i_logz = 2
-        self.i_cond = 3
+        self.i_logz = 2  # ion charge number
+        self.i_logK = 3  # thermal conductivity
 
         self.table_path = Path(__file__).parent / "data/kap/tables"
         self.table_path = os.path.join(self.table_path, "condtabl.data")
@@ -456,6 +456,23 @@ class TinyElectronConduction:
             with open(self.rgi_path, "rb") as file:
                 self.rgi = pickle.load(file)
 
+    def __call__(
+        self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
+    ) -> ArrayLike:
+        """__call__ method acting as convenience wrapper for the evaluate
+        method. Calculates the (electron) conductrive opacity
+        of the gaseous mixture.
+
+        Args:
+            logP (ArrayLike): log10 of the density.
+            logz (ArrayLike): log10 of the ion charge number.
+            logT (ArrayLike): log10 of the temperature.
+
+        Returns:
+            ArrayLike: (electron) conductive opacity
+        """
+        return self.evaluate(logT, logRho, logz)
+
     def __get_potekhin_table(self) -> ArrayLike:
         num_entries = self.num_logTs * self.num_logRhos
         num_vals = 4
@@ -476,7 +493,7 @@ class TinyElectronConduction:
                 cond_data[i, j_start:j_end, self.i_logT] = logTs[j]
                 cond_data[i, j_start:j_end, self.i_logRho] = logRhos
                 cond_data[i, j_start:j_end, self.i_logz] = np.log10(logzs[i])
-                cond_data[i, j_start:j_end, self.i_cond] = isotherm
+                cond_data[i, j_start:j_end, self.i_logK] = isotherm
             i_start = i_end
         return cond_data
 
@@ -485,7 +502,7 @@ class TinyElectronConduction:
         logRho = self.table[iz, :, self.i_logRho]
         X = np.unique(logT)
         Y = np.unique(logRho)
-        Z = self.table[iz, :, self.i_cond]
+        Z = self.table[iz, :, self.i_logK]
         Z = np.reshape(Z, (X.size, Y.size))
         return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
@@ -510,22 +527,32 @@ class TinyElectronConduction:
 
         rbs0 = self.rbs[i]
         rbs1 = self.rbs[j]
-        cond0 = rbs0(logT, logRho)
-        cond1 = rbs1(logT, logRho)
-        cond = cond0 + (logz - logz0) * (cond1 - cond0) / (logz1 - logz0)
-        return cond
+        logK0 = rbs0(logT, logRho)
+        logK1 = rbs1(logT, logRho)
+        logK = logK0 + (logz - logz0) * (logK1 - logK0) / (logz1 - logz0)
+        # logK: log10 of the thermal conductivity
+        # K: 10**logK (cgs units)
+        # conductive opacity: kappa = 16 * sigma_b * T^3 / (3 * rho * K)
+        logkap = 3 * logT - logRho - logK + np.log10(16 * sigma_b / 3)
+        kap = np.power(10, logkap)
+        return kap
 
     def evaluate(
         self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
     ) -> ArrayLike:
         pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
-        return self.rgi(pts)
+
+        logK = self.rgi(pts)
+        logkap = 3 * logT - logRho - logK + np.log10(16 * sigma_b / 3)
+        kap = np.power(10, logkap)
+        return kap
 
 
 if __name__ == "__main__":
     tec = TinyElectronConduction()
-    num = 10_000
+    num = 1
     logT = 3 * np.ones(num)
     logRho = -6 * np.ones(num)
     logz = np.zeros(num)
     res = tec.evaluate(logT, logRho, logz)
+    print(res)
