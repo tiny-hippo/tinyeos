@@ -8,16 +8,17 @@ from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arr
 from sklearn.neighbors._base import _get_weights
 from sklearn.utils import resample
 
-# constants
+# constants (in cgs units)
 A_H = 1.0078  # atomic mass of hydrogen
 A_He = 4.0026  # atomic mass of helium
-m_e = 9.10938e-28  # electron mass in g
-m_u = 1.66e-24  # atomic mass unit in g
-m_H = A_H * m_u  # hydrogen atomic mass in g
-m_He = A_He * m_u  # helium atomic mass in g
-k_b = 1.3806503e-16  # boltzmann constant in erg/K
-h = 6.260755e-27  # planck constant in erg s
-Na = 6.02214199e23  # avogadro's constant
+m_e = 9.10938e-28  # electron mass
+m_u = 1.66e-24  # atomic mass unit
+m_H = A_H * m_u  # hydrogen (atom) mass
+m_He = A_He * m_u  # helium  (atom) mass
+k_b = 1.3806503e-16  # boltzmann constant
+h = 6.260755e-27  # planck constant
+sigma_b = 5.6704e-5  # stefan-boltzmann constant
+Na = 6.02214199e23  # avogadro constant
 Z_sun = 0.014  # solar heavy-element mass fraction
 X_proto = 0.705  # protosolar helium abundance
 Y_proto = 0.275  # protosolar hydrogen abundance
@@ -242,7 +243,7 @@ def get_h_he_number_fractions(
 
     Args:
         Y (ArrayLike): helium mass fraction
-        ionized (bool, optional): whether the mixture is fully 
+        ionized (bool, optional): whether the mixture is fully
             ionized or not. Defaults to False.
 
     Returns:
