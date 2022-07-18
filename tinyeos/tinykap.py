@@ -1,3 +1,4 @@
+from distutils.command import build
 import os
 import pickle
 import numpy as np
@@ -6,6 +7,59 @@ from pathlib import Path
 from numpy.typing import ArrayLike
 from scipy.interpolate import interp1d, RegularGridInterpolator, RectBivariateSpline
 from tinyeos.support import Z_sun, sigma_b, get_FeH_from_Z, get_Z_from_FeH
+
+
+class TinyKap:
+    def __init__(
+        self,
+        build_interpolants: bool = False,
+        use_kap_rad_fit: bool = False,
+        reload_kap_ec_tables: bool = False,
+    ) -> None:
+        self.tfk = TinyFreedmanKap(
+            use_fit=use_kap_rad_fit, build_interpolants=build_interpolants
+        )
+        self.tec = TinyElectronConduction(
+            build_interpolants=build, reload_table=reload_kap_ec_tables
+        )
+
+        self.use_kap_rad_fit = use_kap_rad_fit
+
+    def __call__(
+        self,
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        logP: ArrayLike,
+        Z: ArrayLike,
+        logz: ArrayLike,
+    ) -> ArrayLike:
+        return self.evaluate(logT, logRho, logP, Z, logz)
+
+    def evaluate_kap_rad(self, logT: float, logP: float, Z: float) -> float:
+        return self.tfk(logT, logP, Z)
+
+    def evaluate_kap_ec(
+        self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
+    ) -> ArrayLike:
+        return self.tec(logT, logRho, logz)
+
+    def evaluate(
+        self,
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        logP: ArrayLike,
+        Z: ArrayLike,
+        logz: ArrayLike,
+    ) -> ArrayLike:
+        if not self.use_kap_rad_fit:
+            kap_rad_func = np.vectorize(self.evaluate_kap_rad)
+            kap_rad = kap_rad_func(logT, logP, Z)
+        else:
+            kap_rad = self.evaluate_kap_rad(logT, logP, Z)
+        kap_ec = self.evaluate_kap_ec(logT, logRho, logz)
+        # combine radiative and conductive opacities
+        kap = 1 / (1 / kap_rad + 1 / kap_ec)
+        return kap
 
 
 class TinyFreedmanKap:
@@ -406,7 +460,7 @@ class TinyFreedmanKap:
 
 class TinyElectronConduction:
     def __init__(
-        self, reload_table: bool = True, build_interpolant: bool = True
+        self, reload_table: bool = False, build_interpolants: bool = False
     ) -> None:
         self.num_logTs = 29
         self.num_logRhos = 71
@@ -437,7 +491,7 @@ class TinyElectronConduction:
         self.logRhos = np.unique(self.table[0, :, self.i_logRho])
         self.logzs = self.table[:, 0, self.i_logz]
 
-        if not os.path.exists(self.rbs_path) or build_interpolant:
+        if not os.path.exists(self.rbs_path) or build_interpolants:
             self.num_logzs = 15
             self.rbs = []
             for i in range(self.num_logzs):
@@ -448,7 +502,7 @@ class TinyElectronConduction:
             with open(self.rbs_path, "rb") as file:
                 self.rbs = pickle.load(file)
 
-        if not os.path.exists(self.rgi_path) or build_interpolant:
+        if not os.path.exists(self.rgi_path) or build_interpolants:
             self.rgi = self.__get_rgi()
             with open(self.rgi_path, "wb") as file:
                 pickle.dump(self.rgi, file)
@@ -549,10 +603,20 @@ class TinyElectronConduction:
 
 
 if __name__ == "__main__":
-    tec = TinyElectronConduction()
-    num = 1
-    logT = 3 * np.ones(num)
-    logRho = -6 * np.ones(num)
+    from tinydteos import TinyDT
+
+    num = 2
+    logT = 5 * np.ones(num)
+    logRho = 1 * np.ones(num)
+    Z = Z_sun * np.ones(num)
+    X = 1 - 0.275 - Z
     logz = np.zeros(num)
-    res = tec.evaluate(logT, logRho, logz)
+
+    tdt = TinyDT()
+    logP = np.zeros_like(logT)
+    for i in range(logP.size):
+        logP[i] = tdt.evaluate(logT[i], logRho[i], X[i], Z[i])[tdt.i_logP]
+
+    tkap = TinyKap(use_kap_rad_fit=True)
+    res = tkap.evaluate(logT, logRho, logP, Z, logz)
     print(res)
