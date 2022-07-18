@@ -4,7 +4,7 @@ import numpy as np
 from typing import Tuple
 from pathlib import Path
 from numpy.typing import ArrayLike
-from scipy.interpolate import interp1d, RegularGridInterpolator
+from scipy.interpolate import interp1d, RegularGridInterpolator, RectBivariateSpline
 from tinyeos.support import Z_sun, get_FeH_from_Z, get_Z_from_FeH
 
 
@@ -13,9 +13,7 @@ class TinyFreedmanKap:
     Freedman et al. (2014). Units are cgs everywhere.
     """
 
-    def __init__(
-        self, use_fit: bool = False, build_interpolants: bool = False
-    ) -> None:
+    def __init__(self, use_fit: bool = False, build_interpolants: bool = False) -> None:
         """__init__ method. Loads the interpolant files from the disk.
         Optionally, it re-builds the interpolants from tables.
 
@@ -404,3 +402,130 @@ class TinyFreedmanKap:
 
         kap_gas = np.power(10, log10_kap_lowP) + np.power(10, log10_kap_highP)
         return kap_gas
+
+
+class TinyElectronConduction:
+    def __init__(
+        self, reload_table: bool = True, build_interpolant: bool = True
+    ) -> None:
+        self.num_logTs = 29
+        self.num_logRhos = 71
+        self.num_logzs = 15
+        self.i_logT = 0
+        self.i_logRho = 1
+        self.i_logz = 2
+        self.i_cond = 3
+
+        self.table_path = Path(__file__).parent / "data/kap/tables"
+        self.table_path = os.path.join(self.table_path, "condtabl.data")
+        self.cache_path = Path(__file__).parent / "data/kap/tables"
+        self.cache_path = os.path.join(self.cache_path, "cond_data.pkl")
+        self.rbs_path = Path(__file__).parent / "data/kap/interpolants"
+        self.rbs_path = os.path.join(self.rbs_path, "cond_rbs.pkl")
+        self.rgi_path = Path(__file__).parent / "data/kap/interpolants"
+        self.rgi_path = os.path.join(self.rgi_path, "cond_rgi.pkl")
+
+        if not os.path.exists(self.cache_path) or reload_table:
+            self.table = self.__get_potekhin_table()
+            with open(self.cache_path, "wb") as file:
+                pickle.dump(self.table, file)
+        else:
+            with open(self.cache_path, "rb") as file:
+                self.table = pickle.load(file)
+
+        self.logTs = np.unique(self.table[0, :, self.i_logT])
+        self.logRhos = np.unique(self.table[0, :, self.i_logRho])
+        self.logzs = self.table[:, 0, self.i_logz]
+
+        if not os.path.exists(self.rbs_path) or build_interpolant:
+            self.num_logzs = 15
+            self.rbs = []
+            for i in range(self.num_logzs):
+                self.rbs.append(self.__get_rbs(i))
+            with open(self.rbs_path, "wb") as file:
+                pickle.dump(self.rbs, file)
+        else:
+            with open(self.rbs_path, "rb") as file:
+                self.rbs = pickle.load(file)
+
+        if not os.path.exists(self.rgi_path) or build_interpolant:
+            self.rgi = self.__get_rgi()
+            with open(self.rgi_path, "wb") as file:
+                pickle.dump(self.rgi, file)
+        else:
+            with open(self.rgi_path, "rb") as file:
+                self.rgi = pickle.load(file)
+
+    def __get_potekhin_table(self) -> ArrayLike:
+        num_entries = self.num_logTs * self.num_logRhos
+        num_vals = 4
+        table = np.loadtxt(self.table_path, skiprows=1)
+        logTs = table[0, 1:]
+        logRhos = table[1 : self.num_logRhos + 1, 0]
+        logzs = table[0 :: self.num_logRhos + 1, 0]
+        cond_data = np.zeros((self.num_logzs, num_entries, num_vals))
+        i_start = 0
+        for i in range(self.num_logzs):
+            i_end = i_start + self.num_logRhos + 1
+            part = table[i_start:i_end]
+            part = part[1:]
+            for j in range(self.num_logTs):
+                isotherm = part[:, j + 1]
+                j_start = j * self.num_logRhos
+                j_end = j_start + self.num_logRhos
+                cond_data[i, j_start:j_end, self.i_logT] = logTs[j]
+                cond_data[i, j_start:j_end, self.i_logRho] = logRhos
+                cond_data[i, j_start:j_end, self.i_logz] = np.log10(logzs[i])
+                cond_data[i, j_start:j_end, self.i_cond] = isotherm
+            i_start = i_end
+        return cond_data
+
+    def __get_rbs(self, iz: int, kx: int = 3, ky: int = 3):
+        logT = self.table[iz, :, self.i_logT]
+        logRho = self.table[iz, :, self.i_logRho]
+        X = np.unique(logT)
+        Y = np.unique(logRho)
+        Z = self.table[iz, :, self.i_cond]
+        Z = np.reshape(Z, (X.size, Y.size))
+        return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
+
+    def __get_rgi(self):
+        x = self.logTs
+        y = self.logRhos
+        z = self.logzs
+        data = np.zeros((self.num_logTs, self.num_logRhos, self.num_logzs))
+        for i in range(self.num_logzs):
+            data[:, :, i] = self.rbs[i](x, y, grid=True)
+        rgi = RegularGridInterpolator((x, y, z), data, method="linear")
+        return rgi
+
+    def evaluate_rbs(self, logT: float, logRho: float, logz: float) -> float:
+        if logz > np.max(self.logzs):
+            i = self.num_logzs - 2
+        else:
+            i = (np.abs(self.logzs - logz)).argmin()
+        j = i + 1
+        logz0 = self.logzs[i]
+        logz1 = self.logzs[j]
+
+        rbs0 = self.rbs[i]
+        rbs1 = self.rbs[j]
+        cond0 = rbs0(logT, logRho)
+        cond1 = rbs1(logT, logRho)
+        cond = cond0 + (logz - logz0) * (cond1 - cond0) / (logz1 - logz0)
+        return cond
+
+    def evaluate(
+        self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
+    ) -> ArrayLike:
+        pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
+        return self.rgi(pts)
+
+
+if __name__ == "__main__":
+    tec = TinyElectronConduction()
+    num = 10_000
+    logT = 3 * np.ones(num)
+    logRho = -6 * np.ones(num)
+    logz = np.zeros(num)
+    res = tec.evaluate(logT, logRho, logz)
