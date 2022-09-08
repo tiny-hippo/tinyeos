@@ -1,6 +1,6 @@
-from distutils.command import build
 import os
 import pickle
+import requests
 import numpy as np
 from typing import Tuple
 from pathlib import Path
@@ -20,7 +20,7 @@ class TinyKap:
             use_fit=use_kap_rad_fit, build_interpolants=build_interpolants
         )
         self.tec = TinyElectronConduction(
-            build_interpolants=build, reload_table=reload_kap_ec_tables
+            build_interpolants=build_interpolants, reload_table=reload_kap_ec_tables
         )
 
         self.use_kap_rad_fit = use_kap_rad_fit
@@ -111,6 +111,24 @@ class TinyFreedmanKap:
             float: opacity
         """
         return self.func(logT, logP, Z)
+
+    # def __get_rgi(self):
+    #     num_logTs = 128
+    #     num_logPs = 20
+    #     min_logT = np.log10(75)
+    #     max_logT = np.log10(4000)
+    #     min_logP = 0  # 1 barye or 1e-6 bar
+    #     max_logP = 8
+
+    #     x = np.linspace(min_logT, max_logT, num_logTs)
+    #     y = np.linspace(min_logP, max_logP, num_logPs)
+    #     z = np.array([0, 0.5, 0.7, 1, 1.5, 1.7])
+    #     z = get_Z_from_FeH(z)
+    #     data = np.zeros((num_logTs, num_logPs, z.size))
+    #     for i in range(self.num_logzs):
+    #         data[:, :, i] = self.rbs[i](x, y, grid=True)
+    #     rgi = RegularGridInterpolator((x, y, z), data, method="linear")
+    #     return rgi
 
     @staticmethod
     def __get_freedman_kap_fname(Z: float) -> str:
@@ -285,6 +303,7 @@ class TinyFreedmanKap:
             (unique_Ts, unique_Ps), kap_fixed, method="linear"
         )
         # rbs = RectBivariateSpline(unique_Ts, unique_Ps, kap_fixed, kx=1, ky=1)
+        # rgi = rbs
         return rgi
 
     def __cache_freedman_kap_interp(self, Z: float) -> None:
@@ -350,6 +369,8 @@ class TinyFreedmanKap:
         Z1 = get_Z_from_FeH(self.FeHs[j])
         kap0 = rgi0((T, P))
         kap1 = rgi1((T, P))
+        # kap0 = rgi0(T, P, grid=False)
+        # kap1 = rgi1(T, P, grid=False)
         kap = kap0 + (Z - Z0) * (kap1 - kap0) / (Z1 - Z0)
         return kap
 
@@ -360,7 +381,7 @@ class TinyFreedmanKap:
         Args:
             logT (ArrayLike): log10 of the temperature
             logP (ArrayLike): log10 of the pressure
-            Z (ArrayLike): heavy-element mass fract
+            Z (ArrayLike): heavy-element mass fraction
 
         Returns:
             ArrayLike: opacity
@@ -459,9 +480,28 @@ class TinyFreedmanKap:
 
 
 class TinyElectronConduction:
+    """Temperature-density (electron) conductive opacity for stellar plasmas
+    from Potekhin (http://www.ioffe.ru/astro/conduct/condint.html).
+    Units are cgs everywhere.
+    """
+
     def __init__(
-        self, reload_table: bool = False, build_interpolants: bool = False
+        self,
+        reload_table: bool = False,
+        build_interpolants: bool = False,
+        download_tables: bool = False,
     ) -> None:
+        """
+
+        Args:
+            reload_table (bool, optional): whether to reload the conductivity
+                tables instead of using the cache. Defaults to False.
+            build_interpolants (bool, optional): whether to build the
+                interpolants instead of using the cache.
+                Defaults to False.
+            download_tables (bool, optional): whether to download the
+                Potekhin (2021) tables from the web. Defaults to False.
+        """
         self.num_logTs = 29
         self.num_logRhos = 71
         self.num_logzs = 15
@@ -470,14 +510,25 @@ class TinyElectronConduction:
         self.i_logz = 2  # ion charge number
         self.i_logK = 3  # thermal conductivity
 
-        self.table_path = Path(__file__).parent / "data/kap/tables"
-        self.table_path = os.path.join(self.table_path, "condtabl.data")
-        self.cache_path = Path(__file__).parent / "data/kap/tables"
-        self.cache_path = os.path.join(self.cache_path, "cond_data.pkl")
-        self.rbs_path = Path(__file__).parent / "data/kap/interpolants"
-        self.rbs_path = os.path.join(self.rbs_path, "cond_rbs.pkl")
-        self.rgi_path = Path(__file__).parent / "data/kap/interpolants"
-        self.rgi_path = os.path.join(self.rgi_path, "cond_rgi.pkl")
+        self.table_data_path = Path(__file__).parent / "data/kap/tables"
+        self.table_cache_path = Path(__file__).parent / "data/kap/tables/cache"
+        self.interp_cache_path = Path(__file__).parent / "data/kap/interpolants"
+        self.table_path = os.path.join(self.table_data_path, "condtabl.data")
+        self.cache_path = os.path.join(self.table_cache_path, "cond_data.pkl")
+        self.rbs_path = os.path.join(self.interp_cache_path, "cond_rbs.pkl")
+        self.rgi_path = os.path.join(self.interp_cache_path, "cond_rgi.pkl")
+
+        if download_tables:
+            page_url = "http://www.ioffe.ru/astro/conduct/"
+            table_name = "condtabXXX.dat"
+            names = ["21wd", "21_I", "21nd", "21sd"]
+            for name in names:
+                current_table = table_name.replace("XXX", name)
+                file_url = page_url + current_table
+                response = requests.get(file_url)
+                dst = os.path.join(self.table_data_path, current_table)
+                with open(dst, "wb") as file:
+                    file.write(response.content)
 
         if not os.path.exists(self.cache_path) or reload_table:
             self.table = self.__get_potekhin_table()
@@ -514,13 +565,13 @@ class TinyElectronConduction:
         self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
     ) -> ArrayLike:
         """__call__ method acting as convenience wrapper for the evaluate
-        method. Calculates the (electron) conductrive opacity
+        method. Calculates the (electron) conductive opacity
         of the gaseous mixture.
 
         Args:
-            logP (ArrayLike): log10 of the density.
-            logz (ArrayLike): log10 of the ion charge number.
             logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            logz (ArrayLike): log10 of the ion charge number.
 
         Returns:
             ArrayLike: (electron) conductive opacity
@@ -528,6 +579,12 @@ class TinyElectronConduction:
         return self.evaluate(logT, logRho, logz)
 
     def __get_potekhin_table(self) -> ArrayLike:
+        """Loads the Potekhin conductivity tables and returns
+        the data as 3-dimensional array.
+
+        Returns:
+            ArrayLike: conductivity tables
+        """
         num_entries = self.num_logTs * self.num_logRhos
         num_vals = 4
         table = np.loadtxt(self.table_path, skiprows=1)
@@ -551,7 +608,21 @@ class TinyElectronConduction:
             i_start = i_end
         return cond_data
 
-    def __get_rbs(self, iz: int, kx: int = 3, ky: int = 3):
+    def __get_rbs(self, iz: int, kx: int = 3, ky: int = 3) -> RectBivariateSpline:
+        """Builds the RectBivariateSpline object for a
+        given ion charge number.
+
+        Args:
+            iz (int): index of the ion charge number.
+            kx (int, optional): degrees of the bivariate spline in logT.
+                Defaults to 3.
+            ky (int, optional): degrees of the bivariate spline in logRho.
+                Defaults to 3.
+
+        Returns:
+            RectBivariateSpline: fitted RectBivariateSpline
+
+        """
         logT = self.table[iz, :, self.i_logT]
         logRho = self.table[iz, :, self.i_logRho]
         X = np.unique(logT)
@@ -561,6 +632,12 @@ class TinyElectronConduction:
         return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
     def __get_rgi(self):
+        """Builds the RegularGridInterpolator object for the
+        conductivity in terms of (x, y, z) = (logT, logRho, logz).
+
+        Returns:
+            RegularGridInterpolator: fitted RegularGridInterpolator
+        """
         x = self.logTs
         y = self.logRhos
         z = self.logzs
@@ -571,6 +648,18 @@ class TinyElectronConduction:
         return rgi
 
     def evaluate_rbs(self, logT: float, logRho: float, logz: float) -> float:
+        """Evaluates the RectBivariateSpline object for a given
+        (logT, logRho, logz) and returns the (electron) conductive opacity.
+        This only works with float inputs.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            logz (float): log10 of the ion charge number.
+
+        Returns:
+            float: conductive opacity.
+        """
         if logz > np.max(self.logzs):
             i = self.num_logzs - 2
         else:
@@ -594,6 +683,19 @@ class TinyElectronConduction:
     def evaluate(
         self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
     ) -> ArrayLike:
+        """Evaluates the RegularGridInterpolator object for a given
+        (logT, logRho, logz) and returns the (electron) conductive opacity.
+        This works with ArrayLike inputs.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            logz (ArrayLike):             logz (float): log10 of the ion charge number.
+
+
+        Returns:
+            ArrayLike: conductive opacity.
+        """
         pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
 
         logK = self.rgi(pts)
@@ -602,21 +704,22 @@ class TinyElectronConduction:
         return kap
 
 
-if __name__ == "__main__":
-    from tinydteos import TinyDT
+# if __name__ == "__main__":
+    # from tinydteos import TinyDT
+    # tec = TinyElectronConduction(download_tables=False)
 
-    num = 2
-    logT = 5 * np.ones(num)
-    logRho = 1 * np.ones(num)
-    Z = Z_sun * np.ones(num)
-    X = 1 - 0.275 - Z
-    logz = np.zeros(num)
+    # num = 2
+    # logT = 3 * np.ones(num)
+    # logRho = -6 * np.ones(num)
+    # Z = Z_sun * np.ones(num)
+    # X = 1 - 0.275 - Z
+    # logz = np.zeros(num)
 
-    tdt = TinyDT()
-    logP = np.zeros_like(logT)
-    for i in range(logP.size):
-        logP[i] = tdt.evaluate(logT[i], logRho[i], X[i], Z[i])[tdt.i_logP]
+    # tdt = TinyDT()
+    # logP = np.zeros_like(logT)
+    # for i in range(logP.size):
+    #     logP[i] = tdt.evaluate(logT[i], logRho[i], X[i], Z[i])[tdt.i_logP]
 
-    tkap = TinyKap(use_kap_rad_fit=True)
-    res = tkap.evaluate(logT, logRho, logP, Z, logz)
-    print(res)
+    # tkap = TinyKap(use_kap_rad_fit=False, build_interpolants=True)
+    # res = tkap.evaluate(logT, logRho, logP, Z, logz)
+    # print(res)
