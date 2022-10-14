@@ -210,9 +210,9 @@ class TinyDT(InterpolantsBuilder):
         """
 
         if not isinstance(logT, np.ndarray):
-            logT = np.array(logT)
+            logT = np.array(logT, dtype=np.float64)
         if not isinstance(logRho_max, np.ndarray):
-            logRho = np.array(logRho)
+            logRho = np.array(logRho, dtype=np.float64)
 
         if not logT.shape == logRho.shape:
             msg = "logT and logRho must have equal shape"
@@ -1214,6 +1214,8 @@ class TinyDT(InterpolantsBuilder):
             NDArray: reduced equation of state output. The indices of the
                 individual quantities are defined in the __init__ method.
         """
+        eps = 1e-4
+        small_val = 1e-3
 
         logT, logRho = self.__check_DT(logT, logRho)
         X, Y, Z = check_composition(X, Z)
@@ -1263,12 +1265,30 @@ class TinyDT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
+
         # ideal mixing entropy of the H-He partial mixture
         # with free-electron entropy neglected;
         # see eq. 11 of Chabrier et al. (2019)
         x_H, x_He = get_h_he_number_fractions(Y)
         mean_A = x_H * A_H + x_He * A_He
-        S_mix = -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
+        S_mix = np.zeros_like(S)
+        if input_ndim > 0:
+            S_mix = np.zeros_like(S)
+            if not np.all(Z == 1):
+                iZ = np.isclose(Z, 1, atol=eps)
+                iZ = ~iZ
+                x_H = x_H[iZ]
+                x_Y = x_Y[iZ]
+                S_mix[iZ] = (
+                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
+                )
+        else:
+            if np.isclose(Z, 1, atol=eps):
+                S_mix = 0
+            else:
+                S_mix = (
+                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
+                )
         S = S + S_mix
         logS = np.log10(S)
 
@@ -1292,8 +1312,6 @@ class TinyDT(InterpolantsBuilder):
             X * S_x * dlS_dlT_P_x + Y * S_y * dlS_dlT_P_y + Z * S_z * dlS_dlT_P_z
         ) / S
 
-        eps = 1e-4
-        small_val = 1e-3
         if input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
