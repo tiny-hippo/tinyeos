@@ -496,6 +496,9 @@ class TinyPT(InterpolantsBuilder):
             X = X * np.ones_like(logT)
             Y = Y * np.ones_like(logT)
             Z = Z * np.ones_like(logT)
+        elif logT.ndim < X.ndim:
+            logT = logT * np.ones_like(X)
+            logP = logP * np.ones_like(X)
         input_ndim = np.max([logT.ndim, X.ndim])
 
         res = self.__get_zeros(logT, logP, X, Z)
@@ -549,15 +552,14 @@ class TinyPT(InterpolantsBuilder):
         # with free-electron entropy neglected;
         # see eq. 11 of Chabrier et al. (2019)
         x_H, x_He = get_h_he_number_fractions(Y)
-        mean_A = x_H * A_H + x_He * A_He
         S_mix = np.zeros_like(S)
         if input_ndim > 0:
             S_mix = np.zeros_like(S)
             if not np.all(Z == 1):
-                iZ = np.isclose(Z, 1, atol=eps)
-                iZ = ~iZ
+                iZ = ~np.isclose(Z, 1, atol=eps)
                 x_H = x_H[iZ]
                 x_He = x_He[iZ]
+                mean_A = x_H * A_H + x_He * A_He
                 S_mix[iZ] = (
                     -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
                 )
@@ -565,6 +567,7 @@ class TinyPT(InterpolantsBuilder):
             if np.isclose(Z, 1, atol=eps):
                 S_mix = 0
             else:
+                mean_A = x_H * A_H + x_He * A_He
                 S_mix = (
                     -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
                 )
@@ -712,9 +715,9 @@ class TinyPT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
-        if np.any(np.isinf(lfe)):
+        if not np.all(np.isfinite(lfe)):
             if input_ndim > 0:
-                i = np.isinf(lfe)
+                i = ~np.isfinite(lfe)
                 lfe[i] = -99
             else:
                 lfe = -99
