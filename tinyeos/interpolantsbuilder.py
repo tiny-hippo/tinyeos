@@ -77,10 +77,10 @@ class InterpolantsBuilder(TableLoader):
         self.__cache_z_interpolants("mixture")
 
         # # cache interpolants for iron
-        # super().__init__(which_heavy="iron")
-        # self.build_DT_z_interpolants()
-        # self.build_PT_z_interpolants()
-        # self.cache_z_interpolants("iron")
+        super().__init__(which_heavy="iron", which_hhe="cms")
+        self.__build_DT_z_interpolants()
+        self.__build_PT_z_interpolants()
+        self.__cache_z_interpolants("iron")
 
     def __build_interpolant(
         self,

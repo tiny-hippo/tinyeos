@@ -180,8 +180,8 @@ class TableLoader:
             fname = "qeos_sio2_pt_cgs.data"
         elif which_heavy == "mixture":
             fname = "qeos_mix_pt_cgs.data"
-        # elif (which_heavy == "iron"):
-        #     fname = "fe_PT_table.data"
+        elif (which_heavy == "iron"):
+            fname = "qeos_fe_pt_cgs.data"
         else:
             raise NotImplementedError("this heavy element is not available")
 

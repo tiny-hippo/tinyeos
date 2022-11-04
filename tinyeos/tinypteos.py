@@ -94,7 +94,7 @@ class TinyPT(InterpolantsBuilder):
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
-        if which_heavy not in ["water", "rock", "aqua", "mixture"]:
+        if which_heavy not in ["water", "rock", "aqua", "mixture", "iron"]:
             raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
@@ -452,6 +452,17 @@ class TinyPT(InterpolantsBuilder):
             grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
         else:
             grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
+
+        # change to use PT only?
+        # dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
+        # dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
+        
+        # chiRho = 1 / dlRho_dlP_T
+        # chiT = -dlRho_dlT_P / dlRho_dlP_T
+
+        # dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+        # dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+        # grad_ad = -dlS_dlP_T / dlS_dlT_P
 
         res_z = self.__get_zeros(logT, logP)
         res_z[self.i_logT] = logT

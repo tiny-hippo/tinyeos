@@ -93,7 +93,7 @@ class TinyDT(InterpolantsBuilder):
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
-        if which_heavy not in ["water", "rock", "aqua", "mixture"]:
+        if which_heavy not in ["water", "rock", "aqua", "mixture", "iron"]:
             raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
