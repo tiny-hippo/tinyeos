@@ -70,7 +70,6 @@ class TinyPT(InterpolantsBuilder):
         self.logT_min = logT_min
         self.logRho_max = logRho_max
         self.logRho_min = logRho_min
-        self.eps = 1e-3
 
         self.num_vals = num_vals
         self.i_logT = i_logT
@@ -288,14 +287,14 @@ class TinyPT(InterpolantsBuilder):
             ArrayLike: total density of the mixure.
         """
 
-        if np.all(X == 1):
+        if np.all(self.X_close):
             logRho = self.interpPT_logRho_x(logT, logP, grid=False)
-        elif np.all(Y == 1):
+        elif np.all(self.Y_close):
             logRho = self.interpPT_logRho_y(logT, logP, grid=False)
-        elif np.all(Z == 1):
+        elif np.all(self.Z_close):
             logRho = self.interpPT_logRho_z(logT, logP, grid=False)
         else:
-            if np.any(X == 1) and self.include_hhe_interactions:
+            if np.any(self.X_close) and self.include_hhe_interactions:
                 logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
                 logRho_x_eff = self.interpPT_logRho_x_eff(logT, logP, grid=False)
                 i = X < 1
@@ -487,8 +486,6 @@ class TinyPT(InterpolantsBuilder):
             NDArray: reduced equation of state output. The indices of the
                 individual quantities are defined in the __init__ method.
         """
-        eps = 1e-4
-        small_val = 1e-3
 
         logT, logP = self.__check_PT(logT, logP)
         X, Y, Z = check_composition(X, Z)
@@ -501,32 +498,27 @@ class TinyPT(InterpolantsBuilder):
             logP = logP * np.ones_like(X)
         input_ndim = np.max([logT.ndim, X.ndim])
 
+        self.X_close = np.isclose(X, 1, atol=eps1)
+        self.Y_close = np.isclose(X, 1, atol=eps1)
+        self.Z_close = np.isclose(Z, 1, atol=eps1)
+
         res = self.__get_zeros(logT, logP, X, Z)
-        if np.any(X > 0):
-            if np.all(X == 1) or not self.include_hhe_interactions:
-                res_x = self.__evaluate_x(logT, logP)
-            elif np.any(X == 1) and self.include_hhe_interactions:
-                i_xeff = X < 1
-                i_x = ~i_xeff
-                logT_x = logT[i_x]
-                logP_x = logP[i_x]
-                logT_xeff = logT[i_xeff]
-                logP_xeff = logP[i_xeff]
-                res_x = self.__get_zeros(logT, logP, X, Z)
-                res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
-                res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
-            else:
-                res_x = self.__evaluate_x_eff(logT, logP)
-        else:
+        if np.all(self.X_close) or not self.include_hhe_interactions:
+            res_x = self.__evaluate_x(logT, logP)
+        elif np.any(self.X_close) and self.include_hhe_interactions:
+            i_xeff = X < 1
+            i_x = ~i_xeff
+            logT_x = logT[i_x]
+            logP_x = logP[i_x]
+            logT_xeff = logT[i_xeff]
+            logP_xeff = logP[i_xeff]
             res_x = self.__get_zeros(logT, logP, X, Z)
-        if np.any(Y > 0):
-            res_y = self.__evaluate_y(logT, logP)
+            res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
+            res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
         else:
-            res_y = self.__get_zeros(logT, logP, X, Z)
-        if np.any(Z > 0):
-            res_z = self.__evaluate_z(logT, logP)
-        else:
-            res_z = self.__get_zeros(logT, logP, X, Z)
+            res_x = self.__evaluate_x_eff(logT, logP)
+        res_y = self.__evaluate_y(logT, logP)
+        res_z = self.__evaluate_z(logT, logP)
 
         logRho = self.__ideal_mixture(logT, logP, X, Y, Z)
         logRho_x = res_x[self.i_logRho]
@@ -554,9 +546,8 @@ class TinyPT(InterpolantsBuilder):
         x_H, x_He = get_h_he_number_fractions(Y)
         S_mix = np.zeros_like(S)
         if input_ndim > 0:
-            S_mix = np.zeros_like(S)
-            if not np.all(Z == 1):
-                iZ = ~np.isclose(Z, 1, atol=eps)
+            if not np.all(self.Z_close):
+                iZ = ~self.Z_close
                 x_H = x_H[iZ]
                 x_He = x_He[iZ]
                 mean_A = x_H * A_H + x_He * A_He
@@ -564,7 +555,7 @@ class TinyPT(InterpolantsBuilder):
                     -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
                 )
         else:
-            if np.isclose(Z, 1, atol=eps):
+            if self.Z_close:
                 S_mix = 0
             else:
                 mean_A = x_H * A_H + x_He * A_He
@@ -580,10 +571,10 @@ class TinyPT(InterpolantsBuilder):
         U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
         logU = np.log10(U)
 
-        if np.all(X == 1) or not self.include_hhe_interactions:
+        if np.all(self.X_close) or not self.include_hhe_interactions:
             dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
             dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
-        elif np.any(X == 1) and self.include_hhe_interactions:
+        elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
             dlS_dlP_T_x[i_x] = self.interpPT_dlS_dlP_T_x(logT_x, logP_x, **self.kwargs)
             dlS_dlP_T_x[i_xeff] = self.interpPT_dlS_dlP_T_x(
@@ -614,22 +605,21 @@ class TinyPT(InterpolantsBuilder):
         if input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
-            iX = np.isclose(X, 0, atol=eps)
-            iY = np.isclose(Y, 0, atol=eps)
-            iZ = np.isclose(Z, 0, atol=eps)
-
+            iX = np.isclose(X, tiny_val, atol=eps1)
+            iY = np.isclose(Y, tiny_val, atol=eps1)
+            iZ = np.isclose(Z, tiny_val, atol=eps1)
             if np.any(iX) or np.any(iY) or np.any(iZ):
-                i = X > eps
+                i = X > tiny_val
                 fac[0, 0, i] = X[i] / rho_x[i] / res_x[self.i_chiRho, i]
                 fac[0, 1, i] = -fac[0, 0, i] * res_x[self.i_chiT, i]
                 fac[0, 2, i] = X[i] / res_x[self.i_mu, i]
 
-                i = Y > eps
+                i = Y > tiny_val
                 fac[1, 0, i] = Y[i] / rho_y[i] / res_y[self.i_chiRho, i]
                 fac[1, 1, i] = -fac[1, 0, i] * res_y[self.i_chiT, i]
                 fac[1, 2, i] = Y[i] / res_y[self.i_mu, i]
 
-                i = Z > eps
+                i = Z > tiny_val
                 fac[2, 0, i] = Z[i] / rho_z[i] / res_z[self.i_chiRho, i]
                 fac[2, 1, i] = -fac[2, 0, i] * res_z[self.i_chiT, i]
                 fac[2, 2, i] = Z[i] / res_z[self.i_mu, i]
@@ -645,15 +635,15 @@ class TinyPT(InterpolantsBuilder):
                 fac[2, 2] = Z / res_z[self.i_mu]
         else:
             fac = np.zeros((3, 3))
-            if X > eps:
+            if X > tiny_val:
                 fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
                 fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
                 fac[0, 2] = X / res_x[self.i_mu]
-            if Y > eps:
+            if Y > tiny_val:
                 fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
                 fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
                 fac[1, 2] = Y / res_y[self.i_mu]
-            if Z > eps:
+            if Z > tiny_val:
                 fac[2, 0] = Z / rho_z / res_z[self.i_chiRho]
                 fac[2, 1] = -fac[2, 0] * res_z[self.i_chiT]
                 fac[2, 2] = Z / res_z[self.i_mu]
@@ -665,26 +655,18 @@ class TinyPT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if input_ndim > 0:
-            grad_ad[np.isnan(grad_ad)] = small_val
-            grad_ad[grad_ad < 0] = small_val
+            grad_ad[np.isnan(grad_ad)] = tiny_val
+            grad_ad[grad_ad <= tiny_val] = tiny_val
             grad_ad[grad_ad > 1] = 1
-            chiRho[chiRho < 0] = 0
-            chiT[chiT < 0] = 0
-        else:
-            if np.isnan(grad_ad):
-                grad_ad = small_val
-            grad_ad = np.max([grad_ad, small_val])
-            grad_ad = np.min([grad_ad, 1])
-            chiRho = np.max([chiRho, 0])
-            chiT = np.max([chiT, 0])
+            chiT[chiT <= tiny_val] = tiny_val
+            i = chiRho <= tiny_val
+            chiRho[i] = tiny_val
 
-        gamma1 = chiRho / (1 - chiT * grad_ad)
-        gamma3 = 1 + gamma1 * grad_ad
-        cp = S * dlS_dlT_P
+            gamma1 = chiRho / (1 - chiT * grad_ad)
+            gamma3 = 1 + gamma1 * grad_ad
+            cp = S * dlS_dlT_P
 
-        if input_ndim > 0:
             cv = np.zeros_like(logT)
-            i = chiRho == 0
             if np.any(i):
                 cv[i] = cp[i]
                 i = ~i
@@ -694,19 +676,30 @@ class TinyPT(InterpolantsBuilder):
             else:
                 cv = cp * chiRho / gamma1
                 # cv = cp - (P * chiT**2) / (rho * T * chiRho)
-            c_sound = np.zeros_like(logT)
-            i = gamma1 >= 0
+
+            c_sound = tiny_val * np.ones_like(logT)
+            i = gamma1 >= tiny_val
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
-            if chiRho == 0:
+            if np.isnan(grad_ad):
+                grad_ad = tiny_val
+            grad_ad = np.max([grad_ad, tiny_val])
+            grad_ad = np.min([grad_ad, 1])
+            chiRho = np.max([chiRho, tiny_val])
+            chiT = np.max([chiT, tiny_val])
+
+            gamma1 = chiRho / (1 - chiT * grad_ad)
+            gamma3 = 1 + gamma1 * grad_ad
+            cp = S * dlS_dlT_P
+
+            if np.isclose(chiRho, tiny_val, atol=eps1):
                 cv = cp
             else:
                 cv = cp * chiRho / gamma1
-                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
-            if gamma1 >= 0:
+            if gamma1 >= tiny_val:
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
-                c_sound = small_val
+                c_sound = tiny_val
 
         # these are at constant density or temperature
         dS_dT = cv / T  # definition of specific heat
@@ -715,12 +708,10 @@ class TinyPT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
-        if not np.all(np.isfinite(lfe)):
-            if input_ndim > 0:
-                i = ~np.isfinite(lfe)
-                lfe[i] = -99
-            else:
-                lfe = -99
+        if input_ndim > 0:
+            lfe[lfe < -99] = -99
+        else:
+            lfe = np.max([lfe, -99])
         eta = get_eta(logT, logRho, lfe)
 
         res[self.i_logT] = logT

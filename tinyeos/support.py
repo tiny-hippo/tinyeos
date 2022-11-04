@@ -1,4 +1,3 @@
-from multiprocessing.dummy import Array
 import numpy as np
 from typing import Tuple
 from numpy.typing import ArrayLike
@@ -6,7 +5,7 @@ from scipy.spatial import cKDTree
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from sklearn.neighbors._base import _get_weights
-from sklearn.utils import resample
+from tinyeos.definitions import eps1, eps2, tiny_val
 
 # constants
 A_H = 1.0078  # atomic mass of hydrogen
@@ -169,12 +168,11 @@ def check_composition(
         msg = "X + Z must be smaller than 1"
         raise ValueError(msg)
 
-    eps = 1e-3
     Y = 1 - X - Z
     composition = np.asarray([X, Y, Z])
-    check_zero = np.isclose(composition, 0, atol=eps)
-    composition[check_zero] = 0
-    check_one = np.isclose(composition, 1, atol=eps)
+    check_zero = np.isclose(composition, 0, atol=eps1)
+    composition[check_zero] = tiny_val
+    check_one = np.isclose(composition, 1, atol=eps1)
     composition[check_one] = 1
     X = composition[0]
     Y = composition[1]
@@ -204,30 +202,29 @@ def ideal_mixing_law(
     Returns:
         ArrayLike: inverse total density.
     """
-    eps = 1e-15
     max_ndim = np.max([rho_x.ndim, X.ndim, Y.ndim, Z.ndim])
     if max_ndim > 0:
         x_rho_x = np.zeros_like(rho_x)
-        i = np.logical_and(X > eps, rho_x > eps)
+        i = np.logical_and(X > eps1, rho_x > eps2)
         x_rho_x[i] = X[i] / rho_x[i]
 
         y_rho_y = np.zeros_like(rho_y)
-        i = np.logical_and(Y > eps, rho_y > eps)
+        i = np.logical_and(Y > eps1, rho_y > eps2)
         y_rho_y[i] = Y[i] / rho_y[i]
 
         z_rho_z = np.zeros_like(rho_z)
-        i = np.logical_and(Z > eps, rho_z > eps)
+        i = np.logical_and(Z > eps1, rho_z > eps2)
         z_rho_z[i] = Z[i] / rho_z[i]
     else:
-        if X == 0 or np.isclose(rho_x, 0, atol=eps):
+        if np.isclose(X, 0, atol=eps1) or np.isclose(rho_x, 0, atol=eps2):
             x_rho_x = 0
         else:
             x_rho_x = X / rho_x
-        if Y == 0 or np.isclose(rho_y, 0, atol=eps):
+        if np.isclose(Y, 0, atol=eps1) or np.isclose(rho_y, 0, atol=eps2):
             y_rho_y = 0
         else:
             y_rho_y = Y / rho_y
-        if Z == 0 or np.isclose(rho_z, 0, atol=eps):
+        if np.isclose(Z, 0, atol=eps1) or np.isclose(rho_z, 0, atol=eps2):
             z_rho_z = 0
         else:
             z_rho_z = Z / rho_z
@@ -242,7 +239,7 @@ def get_h_he_number_fractions(
 
     Args:
         Y (ArrayLike): helium mass fraction
-        ionized (bool, optional): whether the mixture is fully 
+        ionized (bool, optional): whether the mixture is fully
             ionized or not. Defaults to False.
 
     Returns:
@@ -252,15 +249,28 @@ def get_h_he_number_fractions(
     if not isinstance(Y, np.ndarray):
         Y = np.array(Y)
     X = 1 - Y
-    x_H2 = 0  # no molecular hydrogen
-    if ionized:
-        mu = 2 * X + 3 / 4 * Y
+    if np.all(np.isclose(Y, 1, atol=eps1)):
+        x_H = tiny_val * np.ones_like(Y)
+        x_He = np.ones_like(Y)
+    elif np.all(np.isclose(X, 1, atol=eps1)):
+        x_H = np.ones_like(Y)
+        x_He = tiny_val * np.ones_like(Y)
     else:
-        mu = X / (1 + x_H2) + Y / 4
-    mu = 1 / mu
+        x_H2 = 0  # no molecular hydrogen
+        if ionized:
+            mu = 2 * X + 3 / 4 * Y
+        else:
+            mu = X / (1 + x_H2) + Y / 4
+        mu = 1 / mu
 
-    x_He = Y * mu * m_u / m_He
-    x_H = 1 - x_He
+        x_He = Y * mu * m_u / m_He
+        x_H = 1 - x_He
+        if Y.ndim > 0:
+            x_H[np.isclose(x_H, 0, eps1)] = tiny_val
+            x_He[np.isclose(x_He, 0, eps1)] = tiny_val
+        else:
+            x_H = np.max([x_H, tiny_val])
+            x_He = np.max([x_He, tiny_val])
     return (x_H, x_He)
 
 
