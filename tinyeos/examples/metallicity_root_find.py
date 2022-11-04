@@ -1,23 +1,30 @@
 """ Example program that attempts to infer the
 heavy-element profile for a given (logT, logRho, LogP).
 """
-
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.optimize import brentq
 from tinyeos.tinypteos import TinyPT
 from tinyeos.support import get_X
 from tinyeos.definitions import i_logRho
 
+mpl.rcParams["lines.linewidth"] = 2.5
+mpl.rcParams["font.size"] = 12
 
-def get_Z(which_heavy) -> np.ndarray:
+
+def get_Z(which_heavy, logT, logP, logRho) -> np.ndarray:
     """Attempt to find the root in Z with the
-    brentq algorithm in the interval [min_Z, max_Z]. This
-    assumes proto-solar hydrogen-helium ratio.
+    brentq algorithm in the interval [min_Z, max_Z] for a given
+    logT, logP and logRho profile. This assumes 
+    proto-solar hydrogen-helium ratio.
 
     Args:
         which_heavy (str): Which heavy-element equation
             of state to use.
+        logT (ArrayLike): Log10 of the temperature
+        logP (ArrayLike): Log10 of  the pressure
+        logRho (ArrayLike): Log10 of the density
 
     Returns:
         z_root_pt (np.ndarray): Heavy-element profile
@@ -27,7 +34,7 @@ def get_Z(which_heavy) -> np.ndarray:
     max_Z = 1
 
     # initiate the equation of state
-    tpt = TinyPT(which_heavy, which_hhe="cms")
+    tpt = TinyPT(which_heavy, which_hhe="cms", include_hhe_interactions=False)
 
     def func_PT(Z, logT, logP, logRho) -> float:
         """Support function for the heavy-element fraction
@@ -50,12 +57,7 @@ def get_Z(which_heavy) -> np.ndarray:
     z_root_pt = np.zeros_like(logP)
     for i in range(logP.size):
         try:
-            sol = brentq(
-                func_PT,
-                a=min_Z,
-                b=max_Z,
-                args=(logT[i], logP[i], logRho[i])
-            )
+            sol = brentq(func_PT, a=min_Z, b=max_Z, args=(logT[i], logP[i], logRho[i]))
             z_root_pt[i] = sol
         except ValueError:
             # func_PT(min_Z) and func_PT(max_Z) have the same signs
@@ -74,9 +76,9 @@ logT = np.log10(planet_profile[:, 2])
 logRho = np.log10(planet_profile[:, 3])
 
 # get the heavy-element profiles and plot them
-z_water = get_Z("water")
-z_rock = get_Z("rock")
-z_mix = get_Z("mixture")
+z_water = get_Z("water", logT, logP, logRho)
+z_rock = get_Z("rock", logT, logP, logRho)
+z_mix = get_Z("mixture", logT, logP, logRho)
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 ax.plot(R, z_water, color="tab:purple", label=r"$Z_{H_20}$")
@@ -86,6 +88,6 @@ ax.set_xlim(left=0, right=4)
 ax.set_ylim(bottom=0, top=1)
 ax.set_xlabel(r"Radius [R$_\oplus$]")
 ax.set_ylabel(r"Heavy-element fraction")
-fig.legend()
+ax.legend()
 fig.tight_layout()
 plt.show()

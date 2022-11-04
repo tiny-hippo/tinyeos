@@ -1,7 +1,7 @@
 """ Simple example program showing how to call the equation of state. """
 import numpy as np
 from tinyeos.tinypteos import TinyPT
-from tinyeos.definitions import *
+from tinyeos.definitions import i_logRho
 
 # Create the equation of state object.
 Tpt = TinyPT(which_heavy="water", which_hhe="cms")
