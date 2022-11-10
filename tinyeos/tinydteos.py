@@ -596,7 +596,7 @@ class TinyDT(InterpolantsBuilder):
         lfe = self.interpDT_lfe_x(logT, logRho, **self.kwargs)
         mu = self.interpDT_mu_x(logT, logRho, **self.kwargs)
 
-        res_x = np.zeros(self.num_vals)
+        res_x = self.__get_zeros(logT, logRho)
         res_x[self.i_logT] = logT
         res_x[self.i_logRho] = logRho
         res_x[self.i_logP] = logP
@@ -634,7 +634,7 @@ class TinyDT(InterpolantsBuilder):
         lfe = self.interpDT_lfe_y(logT, logRho, **self.kwargs)
         mu = self.interpDT_mu_y(logT, logRho, **self.kwargs)
 
-        res_y = np.zeros(self.num_vals)
+        res_y = self.__get_zeros(logT, logRho)
         res_y[self.i_logT] = logT
         res_y[self.i_logRho] = logRho
         res_y[self.i_logP] = logP
@@ -674,7 +674,7 @@ class TinyDT(InterpolantsBuilder):
         else:
             grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
 
-        res_z = np.zeros(self.num_vals)
+        res_z = self.__get_zeros(logT, logRho)
         res_z[self.i_logT] = logT
         res_z[self.i_logRho] = logRho
         res_z[self.i_logP] = logP
