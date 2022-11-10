@@ -690,14 +690,15 @@ class TinyElectronConduction:
         Args:
             logT (ArrayLike): log10 of the temperature.
             logRho (ArrayLike): log10 of the density.
-            logz (ArrayLike):             logz (float): log10 of the ion charge number.
-
+            logz (ArrayLike): log10 of the ion charge number.
 
         Returns:
             ArrayLike: conductive opacity.
         """
         pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
 
+        # logK: log10 of the thermal conductivity
+        # conductive opacity: 16 * sigma_b * T^3 / (3 * rho * K)
         logK = self.rgi(pts)
         logkap = 3 * logT - logRho - logK + np.log10(16 * sigma_b / 3)
         kap = np.power(10, logkap)
