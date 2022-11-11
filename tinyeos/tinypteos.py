@@ -31,15 +31,16 @@ class TinyPT(InterpolantsBuilder):
             H2O (QEoS from More et al. 1988),
             SiO2 (QEoS, More et al. 1988),
             Fe (QEoS, More et al. 1998),
-            ideal mixture of water and rock (QEoS, More et al. 1988),
-            H2O (AQUA from Haldemann et al. 2020).
+            ideal mixture of water and rock (QEoS, More et al. 1988).
     """
 
     def __init__(
         self,
-        which_heavy: str = "water",
+        which_heavy: str = "h2o",
         which_hhe: str = "cms",
         include_hhe_interactions: bool = False,
+        use_smoothed_xy_tables: bool = False,
+        use_smoothed_z_tables: bool = False,
         build_interpolants: bool = False,
     ) -> None:
         """__init__ method. Defines parameters and either loads or
@@ -47,8 +48,8 @@ class TinyPT(InterpolantsBuilder):
 
         Args:
             which_heavy (str, optional): which heavy-element equation of state
-                to use. Defaults to "water". Options are "water", "rock",
-                "mixture", "aqua" or "iron".
+                to use. Defaults to "h2o". Options are "h2o", "sio2",
+                "mixture", or "fe".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
@@ -94,7 +95,7 @@ class TinyPT(InterpolantsBuilder):
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
-        if which_heavy not in ["water", "rock", "aqua", "mixture", "iron"]:
+        if which_heavy not in ["h2o", "sio2", "mixture", "fe"]:
             raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
@@ -107,23 +108,27 @@ class TinyPT(InterpolantsBuilder):
         # sio2: 30, 60.080
         # fe: 26, 55.845
         self.heavy_element = which_heavy
-        if which_heavy == "water" or which_heavy == "aqua":
+        if which_heavy == "h2o":
             self.A = 18.015
-        elif which_heavy == "rock":
+        elif which_heavy == "sio2":
             self.A = 60.080
-        elif which_heavy == "iron":
+        elif which_heavy == "fe":
             self.A = 55.845
         elif which_heavy == "mixture":
             self.A = 0.5 * (18.015 + 60.080)
         else:
             raise NotImplementedError("invalid option for which_heavy.")
 
+        # if use_smoothed_xy_tables:
+        #     which_hhe = which_hhe + "_smoothed"
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
         if self.include_hhe_interactions:
             self.interpPT_x_eff = self.__load_interp(
                 "interpPT_x_eff_" + which_hhe + ".npy"
             )
         self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
+        if use_smoothed_z_tables:
+            which_heavy = which_heavy + "_smoothed"
         self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
         self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
@@ -164,8 +169,8 @@ class TinyPT(InterpolantsBuilder):
         self.interpPT_logRho_z = self.interpPT_z[0]
         self.interpPT_logS_z = self.interpPT_z[1]
         self.interpPT_logU_z = self.interpPT_z[2]
-        if which_heavy == "aqua":
-            self.interpPT_grad_ad_z = self.interpPT_z[3]
+        # if which_heavy == "aqua":
+        #     self.interpPT_grad_ad_z = self.interpPT_z[3]
 
         self.interpDT_logP_z = self.interpDT_z[0]
         self.interpDT_logS_z = self.interpDT_z[1]
@@ -447,11 +452,12 @@ class TinyPT(InterpolantsBuilder):
         chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
         dlS_dlT = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
         dlS_dlRho = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
+        grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
 
-        if self.heavy_element == "aqua":
-            grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
-        else:
-            grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
+        # if self.heavy_element == "aqua":
+        #     grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
+        # else:
+        #     grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
 
         # change to use PT only?
         # dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)

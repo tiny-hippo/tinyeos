@@ -76,8 +76,8 @@ logT = np.log10(planet_profile[:, 2])
 logRho = np.log10(planet_profile[:, 3])
 
 # get the heavy-element profiles and plot them
-z_water = get_Z("water", logT, logP, logRho)
-z_rock = get_Z("rock", logT, logP, logRho)
+z_water = get_Z("h2o", logT, logP, logRho)
+z_rock = get_Z("sio2", logT, logP, logRho)
 z_mix = get_Z("mixture", logT, logP, logRho)
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 4))

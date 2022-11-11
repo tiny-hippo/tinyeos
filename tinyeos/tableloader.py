@@ -1,8 +1,11 @@
 import os
 import pickle
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 from pathlib import Path
+from typing import Tuple
+from numpy.typing import ArrayLike, NDArray
+from scipy.interpolate import interp1d
+from tinyeos.definitions import logP_min, logP_max
 
 
 class TableLoader:
@@ -18,16 +21,9 @@ class TableLoader:
             H2O (QEoS from More et al. 1988),
             SiO2 (QEoS, More et al. 1988),
             Fe (QEoS, More et al. 1998),
-            ideal mixture of water and rock (QEoS, More et al. 1988),
-            H2O (AQUA from Haldemann et al. 2020).
-
-
+            ideal mixture of water and rock (QEoS, More et al. 1988).
 
     Attributes:
-        logRho_max (float): maximum density
-        logRho_min (float): minimum density
-        logT_max (float): maximum temperature
-        logT_min (float): minimum temperature
         x_DT_table (ndarray): hydrogen (logRho, logT) table
         x_PT_table (ndarray): hydrogen (logP, logT) table
         x_eff_PT_table (ndarray): (logP, logT) table
@@ -37,29 +33,42 @@ class TableLoader:
         z_PT_table (ndarray): heavy-element (logP, logT) table
     """
 
-    def __init__(self, which_heavy: str = "water", which_hhe: str = "cms") -> None:
+    def __init__(
+        self,
+        which_heavy: str = "h2o",
+        which_hhe: str = "cms",
+        use_smoothed_xy_tables: bool = False,
+        use_smoothed_z_tables: bool = False,
+    ) -> None:
         """_init__ method. Sets the equation of state
         boundaries and loads the tables.
 
         Args:
             which_heavy (str, optional): which heavy-element equation of state
-                to use. Defaults to "water".
+                to use. Defaults to "h2o".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms".
+            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+                hydrogen and helium tables. Defaults to False.
+            use_smoothed_z_tables (bool, optional): whether to use smoothed
+                heavy-element tables. Defaults to False.
         """
-
+        self.use_smoothed_xy_tables = use_smoothed_xy_tables
+        self.use_smoothed_z_tables = use_smoothed_z_tables
         self.tables_path = Path(__file__).parent / "data/eos/tables"
-        self.logRho_max = 2.00
-        self.logRho_min = -8.00
-        self.logT_max = 6.00
-        self.logT_min = 2.00
+        self.z_DT_header = (
+            "logT [K] logRho [g/cc] logP [Ba]  logU [erg/g] logS [erg/g/K] grad_ad"
+        )
+        self.z_PT_header = (
+            "logT [K] logP [Ba] logRho [g/cc] logU [erg/g] logS [erg/g/K] grad_ad"
+        )
 
-        self.__load_xy_DT_tables(which_hhe)
-        self.__load_xy_PT_tables(which_hhe)
-        self.__load_z_DT_table(which_heavy)
-        self.__load_z_PT_table(which_heavy)
+        _, _ = self.__load_xy_DT_tables(which_hhe)
+        _, _ = self.__load_xy_PT_tables(which_hhe)
+        _ = self.__load_z_DT_table(which_heavy)
+        _ = self.__load_z_PT_table(which_heavy)
 
-    def __load_xy_DT_tables(self, which_hhe: str = "cms") -> None:
+    def __load_xy_DT_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
@@ -92,8 +101,9 @@ class TableLoader:
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_DT_table = data
+        return (self.x_DT_table, self.y_DT_table)
 
-    def __load_xy_PT_tables(self, which_hhe: str = "cms") -> None:
+    def __load_xy_PT_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
@@ -132,9 +142,12 @@ class TableLoader:
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_PT_table = data
+        return (self.x_PT_table, self.y_PT_table)
 
-    def __load_z_DT_table(self, which_heavy: str) -> None:
+    def __load_z_DT_table(self, which_heavy: str) -> NDArray:
         """Loads the heavy-element (logRho, logT) tables.
+        For the qeos heavy-element tables, the adiabatic gradient
+        column is filled with dummy values that are not used.
 
         Args:
             which_heavy (str): which heavy-element equation of state to use.
@@ -142,17 +155,20 @@ class TableLoader:
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
         """
-        if which_heavy == "water":
-            # fname = "qeos_h2o_dt_cgs.data"
-            fname = "qeos_h2o_dt_cgs_smoothed.data"
-        elif which_heavy == "aqua":
-            fname = "aqua_dt_cgs.data"
-        elif which_heavy == "rock":
-            fname = "qeos_sio2_dt_cgs.data"
-        elif which_heavy == "iron":
-            fname = "qeos_fe_dt_cgs.data"
+        if self.use_smoothed_z_tables:
+            extra = "smoothed_"
+        else:
+            extra = ""
+        if which_heavy == "h2o":
+            fname = f"qeos_{extra}dt_h2o.data"
+        # elif which_heavy == "aqua":
+        #     fname = "aqua_dt.data"
+        elif which_heavy == "sio2":
+            fname = f"qeos_{extra}dt_sio2.data"
         elif which_heavy == "mixture":
-            fname = "qeos_mix_dt_cgs.data"
+            fname = f"qeos_{extra}dt_h2o_50_sio2_50_fe_00.data"
+        elif which_heavy == "fe":
+            fname = f"qeos_{extra}dt_fe.data"
         else:
             raise NotImplementedError("this heavy element is not available")
 
@@ -162,9 +178,12 @@ class TableLoader:
         data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
         self.z_DT_table = data
+        return self.z_DT_table
 
-    def __load_z_PT_table(self, which_heavy: str):
+    def __load_z_PT_table(self, which_heavy: str) -> NDArray:
         """Loads the heavy-element (logP, logT) tables.
+        For the qeos heavy-element tables, the adiabatic gradient
+        column is filled with dummy values that are not used.
 
         Args:
             which_heavy (str): which heavy-element equation of state to use.
@@ -172,24 +191,259 @@ class TableLoader:
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
         """
-        if which_heavy == "water":
-            fname = "qeos_h2o_pt_cgs.data"
-        elif which_heavy == "aqua":
-            fname = "aqua_pt_cgs.data"
-        elif which_heavy == "rock":
-            fname = "qeos_sio2_pt_cgs.data"
+        if self.use_smoothed_z_tables:
+            extra = "smoothed_"
+        else:
+            extra = ""
+        if which_heavy == "h2o":
+            fname = f"qeos_{extra}pt_h2o.data"
+        # elif which_heavy == "aqua":
+        #     fname = "aqua_pt.data"
+        elif which_heavy == "sio2":
+            fname = f"qeos_{extra}pt_sio2.data"
         elif which_heavy == "mixture":
-            fname = "qeos_mix_pt_cgs.data"
-        elif (which_heavy == "iron"):
-            fname = "qeos_fe_pt_cgs.data"
+            fname = f"qeos_{extra}pt_h2o_50_sio2_50_fe_00.data"
+        elif which_heavy == "fe":
+            fname = f"qeos_{extra}pt_fe.data"
         else:
             raise NotImplementedError("this heavy element is not available")
-
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logP", "logRho", "logU", "logS", "grad_ad"]
         self.z_PT_table = data
+        return self.z_PT_table
+
+    def invert_z_DT_table(
+        self,
+        which_heavy: str,
+        smooth_table: bool = False,
+        num_smoothing_rounds: int = 1,
+    ) -> NDArray:
+        """Converts a qeos heavy-element (logT, logRho) table to
+        (logT, logP) and optionally smoothes the results.
+        Assumes that the qeos table is organised along isotherms.
+
+        Args:
+            which_heavy (str): name of the heavy element.
+                Current options are "h2o", "sio2" and "fe".
+            smooth_table (bool, optional): whether to smooth the new table.
+                Defaults to False.
+            num_smoothing_rounds (int, optional): number of times to smooth
+                the new table. Defaults to 1.
+
+        Returns:
+            NDArray: _description_
+        """
+        fname = f"qeos_dt_{which_heavy}.data"
+        z_DT_table = self.__load_z_DT_table(which_heavy)
+        logT = z_DT_table[:, 0]
+        logRho = z_DT_table[:, 1]
+        logP = z_DT_table[:, 2]
+        logU = z_DT_table[:, 3]
+        logS = z_DT_table[:, 4]
+
+        # (logT, logP) grid
+        x = np.unique(logT)
+        dlogP = 0.05
+        y = np.arange(logP_min, logP_max + dlogP, dlogP)
+        num_xs = x.size
+        num_ys = y.size
+
+        # upper and lower bounds for the new tables
+        min_rho = np.min(logRho)
+        max_rho = np.max(logRho)
+        min_logU = np.min(logU)
+        max_logU = np.max(logU)
+        min_logS = np.min(logS)
+        max_logS = np.max(logS)
+
+        z_PT_table = np.zeros((x.size, y.size, z_DT_table.shape[1]))
+        for i, lT in enumerate(x):
+            # find and select the values on the current isotherm
+            k = logT == lT
+            lP = logP[k]
+            lP, n = np.unique(lP, return_index=True)
+            val1 = logRho[k]
+            val1 = val1[n]
+            val2 = logU[k]
+            val2 = val2[n]
+            val3 = logS[k]
+            val3 = val3[n]
+            vals = np.array([val1, val2, val3])
+
+            # interpolate on the logP grid
+            f = interp1d(lP, vals, kind="linear", fill_value="extrapolate")
+            res = f(y)
+
+            # enforce upper and lower bounds
+            check_min = res[0] < min_rho
+            check_max = res[0] > max_rho
+            res[0, check_min] = min_rho
+            res[0, check_max] = max_rho
+
+            check_min = res[1] < min_logU
+            check_max = res[1] > max_logU
+            res[1, check_min] = min_logU
+            res[1, check_max] = max_logU
+
+            check_min = res[2] < min_logS
+            check_max = res[2] > max_logS
+            res[2, check_min] = min_logS
+            res[2, check_max] = max_logS
+
+            # store values
+            z_PT_table[i, :, 0] = lT * np.ones(num_ys)
+            z_PT_table[i, :, 1] = y
+            z_PT_table[i, :, 2:5] = np.transpose(res)
+            z_PT_table[i, :, 5] = 0.3 * np.ones(num_ys)  # dummy values
+
+        if smooth_table:
+            fname = fname.replace("dt", "pt_smoothed")
+            z_PT_table = self.smooth_z_table(z_PT_table, num_smoothing_rounds)
+        else:
+            fname = fname.replace("dt", "pt")
+
+        out_table = z_PT_table.reshape((-1, z_DT_table.shape[1]))
+        dst = os.path.join(self.tables_path, fname)
+        np.savetxt(dst, out_table, fmt="%.8e", header=self.z_PT_header)
+        return z_PT_table
+
+    def mix_heavy_elements(
+        self,
+        which_Z1: str,
+        Z1: float,
+        which_Z2: str,
+        Z2: float,
+        which_Z3: str,
+        Z3: float,
+        save_table: bool = False,
+    ) -> NDArray:
+        """Uses the ideal mixing approximation to
+        calculates the density, energy and entropy for a mixture
+        of three heavy elements.
+
+        Args:
+            which_Z1 (str): name of the first heavy element.
+                Current options are "h2o", "sio2" or "iron.
+            Z1 (float): mass-fraction of the first heavy element.
+            which_Z2 (str): name of the second heavy element.
+                Current options are "h2o", "sio2" or "iron.
+            Z2 (float): mass-fraction of the second heavy element.
+            which_Z3 (str): name of the third heavy element.
+                Current options are "h2o", "sio2" or "iron.
+            Z3 (float): mass-fraction of the third heavy element.
+            save_table (bool, optional): whether to store the table.
+                Defaults to False.
+
+        Raises:
+            ValueError: raised if mass fractions don't sum to one.
+
+        Returns:
+            NDArray: table of the mixture.
+                Columns are: logT, logP, logRho, logU, and logS.
+        """
+        if not np.isclose(Z1 + Z2 + Z3, 1, atol=1e-5):
+            msg = "The sum of themass fractions must equal one."
+            raise ValueError(msg)
+        Z1_table = self.__load_z_PT_table(which_Z1)
+        Z2_table = self.__load_z_PT_table(which_Z2)
+        Z3_table = self.__load_z_PT_table(which_Z3)
+
+        logT = Z1_table[:, 0]
+        logP = Z1_table[:, 1]
+        logRho_Z1 = Z1_table[:, 2]
+        logU_Z1 = Z1_table[:, 3]
+        logS_Z1 = Z1_table[:, 4]
+
+        logRho_Z2 = Z2_table[:, 2]
+        logU_Z2 = Z2_table[:, 3]
+        logS_Z2 = Z2_table[:, 4]
+
+        logRho_Z3 = Z3_table[:, 2]
+        logU_Z3 = Z3_table[:, 3]
+        logS_Z3 = Z3_table[:, 4]
+
+        logRho = -np.log10(
+            Z1 / np.power(10, logRho_Z1)
+            + Z2 / np.power(10, logRho_Z2)
+            + Z3 / np.power(10, logRho_Z3)
+        )
+        logU = np.log10(
+            Z1 * np.power(10, logU_Z1)
+            + Z2 * np.power(10, logU_Z2)
+            + Z3 * np.power(10, logU_Z3)
+        )
+        logS = np.log10(
+            Z1 * np.power(10, logS_Z1)
+            + Z2 * np.power(10, logS_Z2)
+            + Z3 * np.power(10, logS_Z3)
+        )
+        grad_ad = 0.3 * np.ones_like(logRho)  # dummy values
+        Z_table = np.column_stack([logT, logP, logRho, logU, logS, grad_ad])
+
+        if save_table:
+            Z1 = 100 * Z1
+            Z2 = 100 * Z2
+            Z3 = 100 * Z3
+            fname = f"qeos_pt_h2o_{Z1:02.0f}_sio2_{Z2:02.0f}_fe_{Z3:02.0f}.data"
+            dst = os.path.join(self.tables_path, fname)
+            np.savetxt(dst, Z_table, header=self.z_PT_header, fmt="%.8e")
+        return Z_table
+
+    @staticmethod
+    def smooth_z_table(table: NDArray, num_smoothing_rounds: int = 1) -> NDArray:
+        """Smoothes the qeos heavy-element table by taking
+        the average of the original point and the four nearest neighbours
+        on the two-dimensional grid. Works for both (logT, logRho) and
+        (logT, logP) tables.
+
+        Args:
+            table (NDArray): original unsmoothed table
+            num_smoothing_rounds (int, optional): how many times the table is smoothed.
+                Defaults to 1.
+
+        Returns:
+            NDArray: smoothed table
+        """
+        input_ndim = table.ndim
+        if input_ndim == 2:
+            num_xs = np.unique(table[:, 0]).size
+            num_ys = np.unique(table[:, 1]).size
+            table = table.reshape((num_xs, num_ys, table.shape[1]))
+        else:
+            num_xs = table.shape[0]
+            num_ys = table.shape[1]
+
+        def do_smooth_table(in_table, num_xs, num_ys):
+            out_table = np.copy(in_table)
+            for i in range(num_ys):
+                if i < 1:
+                    continue
+                elif i > num_xs - 2:
+                    break
+                for j in range(num_xs):
+                    if j < 1:
+                        continue
+                    elif j > num_ys - 2:
+                        break
+                    out_table[i, j, 2:] = (
+                        in_table[i, j, 2:]
+                        + in_table[i + 1, j, 2:]
+                        + in_table[i - 1, j, 2:]
+                        + in_table[i, j - 1, 2:]
+                        + in_table[i, j + 1, 2:]
+                    ) / 5
+            return out_table
+
+        in_table = np.copy(table)
+        for _ in range(num_smoothing_rounds):
+            out_table = do_smooth_table(in_table, num_xs, num_ys)
+            in_table = out_table
+
+        if input_ndim == 2:
+            out_table = out_table.reshape((-1, table.shape[2]))
+        return out_table
 
     @staticmethod
     def make_monotonic(data: ArrayLike, element: str, DT: bool) -> NDArray:
@@ -233,3 +487,48 @@ class TableLoader:
             data[:, i] = z
 
         return data
+
+
+if __name__ == "__main__":
+    # convert h2o, sio2 and fe tables from
+    # (logT, logRho) to (logT, logP)
+    T = TableLoader()
+    for element in ["h2o", "sio2", "fe"]:
+        T.invert_z_DT_table(element, smooth_table=False)
+
+    # create a 50-50 h2o-sio2 mixture pt table
+    T.mix_heavy_elements(
+        which_Z1="h2o",
+        Z1=0.5,
+        which_Z2="sio2",
+        Z2=0.5,
+        which_Z3="fe",
+        Z3=0,
+        save_table=True,
+    )
+
+    # create smoothed dt tables
+    num_smoothing_rounds = 2
+    for element in ["h2o", "sio2", "fe", "mixture"]:
+        T = TableLoader(which_heavy=element)
+        table = T.z_DT_table
+        smoothed_table = T.smooth_z_table(
+            table, num_smoothing_rounds=num_smoothing_rounds
+        )
+        if element == "mixture":
+            element = "h2o_50_sio2_50_fe_00"
+        fname = f"qeos_smoothed_dt_{element}.data"
+        dst = os.path.join(T.tables_path, fname)
+        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
+    # create smoothed pt tables
+    for element in ["h2o", "sio2", "fe", "mixture"]:
+        T = TableLoader(which_heavy=element)
+        table = T.z_PT_table
+        smoothed_table = T.smooth_z_table(
+            table, num_smoothing_rounds=num_smoothing_rounds
+        )
+        if element == "mixture":
+            element = "h2o_50_sio2_50_fe_00"
+        fname = f"qeos_smoothed_pt_{element}.data"
+        dst = os.path.join(T.tables_path, fname)
+        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
