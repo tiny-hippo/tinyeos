@@ -344,7 +344,7 @@ class TableLoader:
                 Columns are: logT, logP, logRho, logU, and logS.
         """
         if not np.isclose(Z1 + Z2 + Z3, 1, atol=1e-5):
-            msg = "The sum of themass fractions must equal one."
+            msg = "The sum of the mass fractions must equal one."
             raise ValueError(msg)
         Z1_table = self.__load_z_PT_table(which_Z1)
         Z2_table = self.__load_z_PT_table(which_Z2)
