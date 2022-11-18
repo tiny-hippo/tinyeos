@@ -124,7 +124,7 @@ class TableLoader:
             data = pickle.load(file)
         # columns = ["logT", "logP", "logRho", "logU", "logS", "dlnRho/dlnT",
         #          "dlnRho/dlnP", "dlnS/dlnT", "dlnS/dlnP", "grad_ad",
-        #          "log_free_e", mu]
+        #          "log_free_e", "mu"]
         self.x_PT_table = data
 
         # load the "effective" hydrogen table from Chabrier et al. 2021
