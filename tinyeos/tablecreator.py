@@ -15,7 +15,7 @@ class TableCreatorDT(TinyDT):
 
     def __init__(
         self,
-        which_heavy: str = "water",
+        which_heavy: str = "h2o",
         which_hhe: str = "cms",
         do_parallel: bool = True,
         num_cores: int = cpu_count(),
@@ -321,7 +321,7 @@ class TableCreatorPT(TinyPT):
 
     def __init__(
         self,
-        which_heavy: str = "water",
+        which_heavy: str = "h2o",
         which_hhe: str = "cms",
         do_parallel: bool = True,
         num_cores: int = cpu_count(),

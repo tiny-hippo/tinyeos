@@ -11,6 +11,11 @@ logP_min = 1.00
 logRho_max = 2.00
 logRho_min = -8.00
 
+# tolerances and tiny values
+eps1 = 1e-6
+eps2 = 1e-8
+tiny_val = 1e-16
+
 num_vals = 19
 i_logT = 0
 i_logRho = 1
