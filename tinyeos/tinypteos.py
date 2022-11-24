@@ -121,15 +121,16 @@ class TinyPT(InterpolantsBuilder):
 
         # if use_smoothed_xy_tables:
         #     which_hhe = which_hhe + "_smoothed"
+        if use_smoothed_z_tables:
+            which_heavy = which_heavy + "_smoothed"
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
+        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
+        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
         if self.include_hhe_interactions:
             self.interpPT_x_eff = self.__load_interp(
                 "interpPT_x_eff_" + which_hhe + ".npy"
             )
-        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
-        if use_smoothed_z_tables:
-            which_heavy = which_heavy + "_smoothed"
-        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
+
         self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
         self.interpPT_logRho_x = self.interpPT_x[0]
@@ -462,7 +463,7 @@ class TinyPT(InterpolantsBuilder):
         # change to use PT only?
         # dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
         # dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
-        
+
         # chiRho = 1 / dlRho_dlP_T
         # chiT = -dlRho_dlT_P / dlRho_dlP_T
 
