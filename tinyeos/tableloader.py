@@ -714,9 +714,10 @@ if __name__ == "__main__":
         kind="linear",
         extrapolate=True,
         smooth_table=False,
-        num_smoothing_rounds=False,
+        num_smoothing_rounds=2,
         store_table=True,
     )
+    
     # convert h2o, sio2 and fe tables from
     # (logT, logRho) to (logT, logP)
     for element in ["h2o", "sio2", "fe"]:
@@ -725,7 +726,7 @@ if __name__ == "__main__":
             kind="linear",
             extrapolate=True,
             smooth_table=False,
-            num_smoothing_rounds=1,
+            num_smoothing_rounds=2,
             store_table=True,
         )
 
@@ -753,6 +754,7 @@ if __name__ == "__main__":
         fname = f"qeos_smoothed_dt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
         np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
+    
     # create smoothed pt tables
     for element in ["h2o", "sio2", "fe", "mixture"]:
         T = TableLoader(which_heavy=element)
