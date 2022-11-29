@@ -197,15 +197,14 @@ class TableCreatorDT(TinyDT):
                 logRho = np.max([self.logRho_min, logQ + 2 * logT - 12])
                 logRho = np.min([logRho, self.logRho_max])
                 res = self.evaluate(logT, logRho, X, Z)
-
                 if (
-                    np.all(res == -1)
-                    or np.any(np.isnan(res))
+                    np.any(np.isnan(res))
                     or np.any(np.isinf(res))
                     or res[self.i_cp] <= 0
                     or res[self.i_cv] <= 0
                     or res[self.i_dS_dT] <= 0
-                    or res[self.i_logU] > 30
+                    or res[self.i_logU] > 20
+                    or res[self.i_logS] > 15
                     or res[self.i_cp] > 1e30
                     or res[self.i_cv] > 1e30
                     or res[self.i_chiRho] <= 0
@@ -213,7 +212,6 @@ class TableCreatorDT(TinyDT):
                     or res[self.i_gamma1] >= 9.99
                     or res[self.i_gamma3] >= 9.99
                 ):
-
                     res[self.i_logT] = logT
                     res[self.i_logRho] = logRho
                     if self.debug:
@@ -221,13 +219,8 @@ class TableCreatorDT(TinyDT):
                         dbg_arr[i, j, self.i_logT] = logT
                         dbg_arr[i, j, self.i_logP] = res[self.i_logP]
                         dbg_arr[i, j, self.i_logRho] = logRho
-
                     if self.fix_vals:
                         res[self.i_logRho + 1 :] = np.nan
-                    else:
-                        res[np.where(np.isnan(res))] = -1
-                        res[np.where(np.isinf(res))] = -1
-
                 results[i, j, :] = res
 
         if self.fix_vals:
@@ -515,14 +508,14 @@ class TableCreatorPT(TinyPT):
                 logPgas = np.max([self.logP_min, logW + 4 * logT])
                 logPgas = np.min([logPgas, self.logP_max])
                 res = self.evaluate(logT, logPgas, X, Z)
-
                 if (
                     np.any(np.isnan(res))
                     or np.any(np.isinf(res))
                     or res[self.i_cp] <= 0
                     or res[self.i_cv] <= 0
                     or res[self.i_dS_dT] <= 0
-                    or res[self.i_logU] > 30
+                    or res[self.i_logU] > 20
+                    or res[self.i_logS] > 15
                     or res[self.i_cp] > 1e30
                     or res[self.i_cv] > 1e30
                     or res[self.i_chiRho] <= 0
@@ -530,7 +523,6 @@ class TableCreatorPT(TinyPT):
                     or res[self.i_gamma1] >= 9.99
                     or res[self.i_gamma3] >= 9.99
                 ):
-
                     res[self.i_logT] = logT
                     res[self.i_logP] = logPgas
                     if self.debug:
@@ -538,14 +530,9 @@ class TableCreatorPT(TinyPT):
                         dbg_arr[i, j, self.i_logT] = logT
                         dbg_arr[i, j, self.i_logP] = logPgas
                         dbg_arr[i, j, self.i_logRho] = res[self.i_logRho]
-
                     if self.fix_vals:
                         res[self.i_logRho] = np.nan
                         res[self.i_logP + 1 :] = np.nan
-                    else:
-                        res[np.where(np.isnan(res))] = -1
-                        res[np.where(np.isinf(res))] = -1
-
                 results[i, j, :] = res
 
         if self.fix_vals:
