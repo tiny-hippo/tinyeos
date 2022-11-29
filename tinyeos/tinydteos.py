@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike, NDArray
 from typing import Tuple
 from pathlib import Path
 from scipy.optimize import root_scalar
+from tinyeos.tinypteos import TinyPT
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
     A_H,
@@ -62,11 +63,22 @@ class TinyDT(InterpolantsBuilder):
                 are unavailable.
         """
 
+        self.tpt = TinyPT(
+            which_heavy=which_heavy,
+            which_hhe=which_hhe,
+            include_hhe_interactions=include_hhe_interactions,
+            use_smoothed_xy_tables=use_smoothed_xy_tables,
+            use_smoothed_z_tables=use_smoothed_z_tables,
+            build_interpolants=build_interpolants,
+        )
+
         if build_interpolants:
             super().__init__()
 
         self.logRho_max = logRho_max
         self.logRho_min = logRho_min
+        self.logP_min = logP_min
+        self.logP_max = logP_max
         self.logT_max = logT_max
         self.logT_min = logT_min
 
@@ -97,6 +109,10 @@ class TinyDT(InterpolantsBuilder):
             raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
+        # to-do: scvh is currently giving inconsistent results between
+        # TinyPT and TinyDT; needs to be fixed before allowing it again
+        if which_hhe == "scvh":
+            raise NotImplementedError("scvh is currently disabled")
         self.include_hhe_interactions = include_hhe_interactions
         if include_hhe_interactions and which_hhe == "scvh":
             raise NotImplementedError("can't include H-He interactions with scvh")
@@ -285,7 +301,7 @@ class TinyDT(InterpolantsBuilder):
             msg = "unsupported input shape"
             raise ValueError(msg)
 
-    def __ideal_mixture(
+    def __ideal_mixture_legacy(
         self,
         logT: float,
         logRho: float,
@@ -314,31 +330,31 @@ class TinyDT(InterpolantsBuilder):
         if np.isclose(Z, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
-            logRho_x = self.logRho_min
-            logRho_y = self.logRho_min
+            logRho_x = tiny_logRho
+            logRho_y = tiny_logRho
             logRho_z = logRho
         elif np.isclose(X, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_x(logT, logRho, **self.kwargs)
             logRho_x = logRho
-            logRho_y = self.logRho_min
-            logRho_z = self.logRho_min
+            logRho_y = tiny_logRho
+            logRho_z = tiny_logRho
         elif np.isclose(Y, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_y(logT, logRho, **self.kwargs)
-            logRho_x = self.logRho_min
+            logRho_x = tiny_logRho
             logRho_y = logRho
-            logRho_z = self.logRho_min
-        elif Z > 0:
+            logRho_z = tiny_logRho
+        elif Z > tiny_val:
             have_bracket = True
             x0 = self.logRho_max
             x1 = self.logRho_min
-            # have_bracket, x0, x1 = self.get_bracket(logT, logRho, X, Y, Z)
+            # have_bracket, x0, x1 = self.get_bracket_legacy(logT, logRho, X, Y, Z)
             if have_bracket:
                 # found bracket
                 try:
                     sol = root_scalar(
-                        self.__optimize_1d,
+                        self.__optimize_1d_legacy,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -369,15 +385,15 @@ class TinyDT(InterpolantsBuilder):
                 logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
             else:
                 logRho_y = self.logRho_min
-        elif X > 0:
-            # have_bracket, x0, x1 = self.get_xy_bracket(logT, logRho, X, Y)
+        elif X > tiny_val:
+            # have_bracket, x0, x1 = self.get_xy_bracket_legacy(logT, logRho, X, Y)
             have_bracket = True
             x0 = self.logRho_min
             x1 = self.logRho_max
             if have_bracket:
                 try:
                     sol = root_scalar(
-                        self.__optimize_1d,
+                        self.__optimize_1d_legacy,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -404,13 +420,14 @@ class TinyDT(InterpolantsBuilder):
             logRho_z = self.logRho_min
 
         if debug:
-            res = self.__optimize_1d(logRho_z, logRho, logT, X, Y, Z)
-            logP_x = self.interpDT_logP_x(logT, logRho_x, **self.kwargs)
-            logP_y = self.interpDT_logP_y(logT, logRho_y, **self.kwargs)
+            if conv:
+                res = self.__optimize_1d_legacy(logRho_z, logRho, logT, X, Y, Z)
+                logP_x = self.interpDT_logP_x(logT, logRho_x, **self.kwargs)
+                logP_y = self.interpDT_logP_y(logT, logRho_y, **self.kwargs)
 
-            print(sol)
-            print("Residual: {:.2E}".format(res))
-            print("logP: {:.3f} {:.3f} {:.3f}".format(logP, logP_x, logP_y))
+                print(sol)
+                print("Residual: {:.2E}".format(res))
+                print("logP: {:.3f} {:.3f} {:.3f}".format(logP, logP_x, logP_y))
 
         if not conv:
             pass
@@ -423,7 +440,111 @@ class TinyDT(InterpolantsBuilder):
 
         return (conv, logRho_x, logRho_y, logRho_z, logP)
 
-    def __optimize_1d(
+    def __ideal_mixture(
+        self,
+        logT: float,
+        logRho: float,
+        X: float,
+        Y: float,
+        Z: float,
+    ) -> Tuple:
+        """Calculates the individual densities of the elements in the mixture.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
+
+        Returns:
+            Tuple: tuple consisting of convergence information, individual
+                densities and gas pressure.
+        """
+
+        self.__check_DT(logT, logRho)
+        if np.isclose(Z, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
+            logRho_x = tiny_logRho
+            logRho_y = tiny_logRho
+            logRho_z = logRho
+        elif np.isclose(X, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_x(logT, logRho, **self.kwargs)
+            logRho_x = logRho
+            logRho_y = tiny_logRho
+            logRho_z = tiny_logRho
+        elif np.isclose(Y, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_y(logT, logRho, **self.kwargs)
+            logRho_x = tiny_logRho
+            logRho_y = logRho
+            logRho_z = tiny_logRho
+        else:
+            logP0 = self.logP_min
+            logP1 = self.logP_max
+            f1 = self.__ideal_mixing_law_wrapper(logP0, logT, logRho, X, Y, Z)
+            f2 = self.__ideal_mixing_law_wrapper(logP1, logT, logRho, X, Y, Z)
+            if np.sign(f1) == np.sign(f2):
+                conv = False
+                logRho_x = np.nan
+                logRho_y = np.nan
+                logRho_z = np.nan
+                logP = np.nan
+            else:
+                sol = root_scalar(
+                    self.__ideal_mixing_law_wrapper,
+                    args=(logT, logRho, X, Y, Z),
+                    method="brentq",
+                    bracket=[logP0, logP1],
+                )
+                conv = sol.converged
+                logP = sol.root
+                logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
+                logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
+                logRho_z = self.interpPT_logRho_z(logT, logP, **self.kwargs)
+
+            # dlogP = 0.01
+            # logPs = np.arange(self.logP_min, self.logP_max, dlogP)
+            # logTs = logT * np.ones_like(logPs)
+            # logRhos = self.tpt.evaluate(logTs, logPs, X, Z)
+            # i = np.where(np.isclose(logRho, logRhos, rtol=1e-3))
+            # print(i)
+
+            return (conv, logRho_x, logRho_y, logRho_z, logP)
+
+    def __ideal_mixing_law_wrapper(
+        self,
+        logP: float,
+        logT: float,
+        logRho: float,
+        X: float,
+        Y: float,
+        Z: float,
+    ) -> float:
+
+        if X > tiny_val:
+            logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
+        else:
+            logRho_x = tiny_logRho
+        if Y > tiny_val:
+            logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
+        else:
+            logRho_y = tiny_logRho
+        if Z > tiny_val:
+            logRho_z = self.interpPT_logRho_z(logT, logP, **self.kwargs)
+        else:
+            logRho_z = tiny_logRho
+
+        rho_x = 10**logRho_x
+        rho_y = 10**logRho_y
+        rho_z = 10**logRho_z
+        log_iml = np.log10(ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z))
+        val = log_iml + logRho
+        return val
+
+    def __optimize_1d_legacy(
         self, xhat: float, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> float:
         """Defines the root finding problem to find the
@@ -467,7 +588,7 @@ class TinyDT(InterpolantsBuilder):
         f = np.log10(1 / rho) - np.log10(ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z))
         return f
 
-    def __get_bracket(
+    def __get_bracket_legacy(
         self, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> Tuple:
         """Finds the bracket in the heavy-element density.
@@ -537,7 +658,7 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def __get_xy_bracket(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
+    def __get_xy_bracket_legacy(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
         """Finds the bracket in the hydrogen density.
 
         Args:
@@ -1311,12 +1432,13 @@ class TinyDT(InterpolantsBuilder):
         iml = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not iml[0]:
             if verbose:
-                print("evaluate failed in density root find")
-            res.fill(-1)
+                msg = "evaluate failed in density root find"
+                print(msg)
+            res[self.i_logT] = logT
+            res[self.i_logRho] = logRho
+            res[self.i_logP:] = np.nan
             return res
 
-        # to-do: re-work this so that the root finding
-        # uses the TinyPT equation of state and does
         logRho_x = iml[1]
         logRho_y = iml[2]
         logRho_z = iml[3]
