@@ -202,7 +202,11 @@ def ideal_mixing_law(
     Returns:
         ArrayLike: inverse total density.
     """
-    max_ndim = np.max([rho_x.ndim, X.ndim, Y.ndim, Z.ndim])
+    if isinstance(rho_x, float):
+        max_ndim = 0
+    else:
+        max_ndim = np.max([rho_x.ndim, X.ndim, Y.ndim, Z.ndim])
+
     if max_ndim > 0:
         x_rho_x = np.zeros_like(rho_x)
         i = np.logical_and(X > eps1, rho_x > eps2)
