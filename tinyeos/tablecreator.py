@@ -131,7 +131,7 @@ def createTablesDT(
             f"using {num_cores:.0f} cores.",
         )
         inputs = range(num_tables)
-        results = Parallel(n_jobs=num_cores)(
+        results = Parallel(n_jobs=num_cores, verbose=10)(
             delayed(parallelWrapper)(X=Xs[i], Z=Zs[i]) for i in inputs
         )
     else:
