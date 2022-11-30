@@ -38,6 +38,28 @@ i_eta = 16
 i_lfe = 17
 i_csound = 18
 
+eos_dict = {
+    i_logT: "logT",
+    i_logRho: "logRho",
+    i_logP: "logP",
+    i_logS: "logS",
+    i_logU: "logU",
+    i_chiRho: "chiRho",
+    i_chiT: "chiT",
+    i_grad_ad: "grad_ad",
+    i_cp: "cp",
+    i_cv: "cv",
+    i_gamma1: "gamma1",
+    i_gamma3: "gamma3",
+    i_dS_dT: "dS_dT",
+    i_dS_dRho: "dS_dRho",
+    i_dE_dRho: "dE_dRho",
+    i_mu: "mu",
+    i_eta: "eta",
+    i_lfe: "lfe",
+    i_csound: "c_sound"
+}
+
 # num_derivs = 3
 # i_dl_dlT = 0
 # i_dl_dlRho = 1
