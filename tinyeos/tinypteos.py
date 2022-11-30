@@ -54,6 +54,10 @@ class TinyPT(InterpolantsBuilder):
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
                 hydrogen-helium interactions. Defaults to False.
+            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+                hydrogen and helium tables. Defaults to False.
+            use_smoothed_z_tables (bool, optional): whether to use smoothed
+                heavy-element tables. Defaults to False.
             build_interpolants (bool, optional): whether to build interpolants.
                 Defaults to False.
 

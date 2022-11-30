@@ -55,6 +55,10 @@ class TinyDT(InterpolantsBuilder):
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
                 hydrogen-helium interactions. Defaults to False.
+            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+                hydrogen and helium tables. Defaults to False.
+            use_smoothed_z_tables (bool, optional): whether to use smoothed
+                heavy-element tables. Defaults to False.
             build_interpolants (bool, optional): whether to build interpolants.
                 Defaults to False.
 
@@ -461,8 +465,6 @@ class TinyDT(InterpolantsBuilder):
             Tuple: tuple consisting of convergence information, individual
                 densities and gas pressure.
         """
-
-        self.__check_DT(logT, logRho)
         if np.isclose(Z, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
@@ -512,7 +514,7 @@ class TinyDT(InterpolantsBuilder):
             # i = np.where(np.isclose(logRho, logRhos, rtol=1e-3))
             # print(i)
 
-            return (conv, logRho_x, logRho_y, logRho_z, logP)
+        return (conv, logRho_x, logRho_y, logRho_z, logP)
 
     def __ideal_mixing_law_wrapper(
         self,
