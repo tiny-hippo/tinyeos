@@ -40,7 +40,7 @@ class TableLoader:
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
     ) -> None:
-        """_init__ method. Sets the equation of state
+        """__init__ method. Sets the equation of state
         boundaries and loads the tables.
 
         Args:
