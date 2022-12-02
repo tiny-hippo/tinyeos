@@ -15,10 +15,10 @@ def createTablesDT(
     del_logQ: float = 0.05,
     logT_min: float = 2.00,
     logT_max: float = 6.00,
-    logQ_min: float = -8,
-    logQ_max: float = 8,
-    del_X: float = 0.1,
-    del_Z: float = 0.1,
+    logQ_min: float = -8.00,
+    logQ_max: float = 8.00,
+    del_X: float = 0.10,
+    del_Z: float = 0.10,
     fname_prefix: str = "cms_qeos-eosDT",
     do_only_pure: bool = False,
     do_only_single: bool = False,
@@ -40,15 +40,24 @@ def createTablesDT(
     equation of state tables for MESA.
 
     Args:
-        del_logT (float): step-size for logT.
-        del_logQ (float): step-size for logQ.
-        logT_min (float): minimum logT.
-        logT_max (float): maximum logT.
-        logQ_min (float): minimum logQ.
-        logQ_max (float): maximum logQ.
-        del_X (float): step-size for hydrogen.
-        del_Z (float): step-size for heavy-elements.
-        fname_prefix (str): table prefix.
+        del_logT (float, optional): step-size for logT.
+            Defaults to 0.02.
+        del_logQ (float, optional): step-size for logQ.
+            Defaults to 0.05.
+        logT_min (float, optional): minimum logT.
+            Defaults to 2.00.
+        logT_max (float, optional): maximum logT.
+            Defaults to 6.00.
+        logQ_min (float, optional): minimum logQ.
+            Defaults to -8.00.
+        logQ_max (float, optional): maximum logQ.
+            Defaults to 8.00.
+        del_X (float, optional): step-size for hydrogen.
+            Defaults to 0.10.
+        del_Z (float, optional): step-size for heavy-elements.
+            Defaults to 0.10.
+        fname_prefix (str, optional): table prefix.
+            Defaults to "cms_qeos-eosDT".
         do_only_pure (bool, optional): whether to only create
             tables of pure substances. Defaults to False.
         do_only_single (bool, optional): _description_. Defaults to False.
