@@ -131,27 +131,33 @@ def createTablesDT(
             f"Creating single table with prefix {fname_prefix}",
             f"with X = 0.5 and Z = 0.2.",
         )
-        results = parallelWrapper(0.5, 0.2)
-        return results
+        comp_info, results = parallelWrapper(0.5, 0.2)
+        return comp_info, results
 
     if do_parallel:
         print(
             f"Creating grid of tables with prefix {fname_prefix}",
             f"using {num_cores:.0f} cores.",
         )
+        comp_info = np.zeros((num_tables, 2))
+        results = np.zeros((num_tables, num_logQs, num_logTs, num_vals))
         inputs = range(num_tables)
-        results = Parallel(n_jobs=num_cores, verbose=10)(
+        parallel_results = Parallel(n_jobs=num_cores, verbose=10)(
             delayed(parallelWrapper)(X=Xs[i], Z=Zs[i]) for i in inputs
         )
+        for i, pr in enumerate(parallel_results):
+            comp_info[i] = pr[0]
+            results[i] = pr[1]
     else:
+        comp_info = np.zeros((num_tables, 2))
         results = np.zeros((num_tables, num_logQs, num_logTs, num_vals))
         for i in range(len(Xs)):
             print(
                 f"Creating single table with prefix {fname_prefix}",
                 f"with X = {Xs[i]:.2f} and Z = {Zs[i]:.2f}.",
             )
-            results[i] = parallelWrapper(Xs[i], Zs[i])
-    return results
+            comp_info[i], results[i] = parallelWrapper(Xs[i], Zs[i])
+    return comp_info, results
 
 
 class TableCreatorDT(TinyDT):
@@ -542,7 +548,7 @@ class TableCreatorDT(TinyDT):
             dst = os.path.join(debug_dir, dname)
             np.save(dst, dbg_arr)
 
-        return results
+        return ([X, Z], results)
 
 
 class TableCreatorPT(TinyPT):
