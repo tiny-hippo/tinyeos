@@ -452,8 +452,11 @@ class TinyPT(InterpolantsBuilder):
         logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
         logU = self.interpPT_logU_z(logT, logP, **self.kwargs)
 
-        chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
-        chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
+        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dx=0, dy=1, **self.kwargs)
+        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, dy=0, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
+
         dlS_dlT = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
         dlS_dlRho = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
         grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)

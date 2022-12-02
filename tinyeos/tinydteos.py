@@ -660,7 +660,9 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def __get_xy_bracket_legacy(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
+    def __get_xy_bracket_legacy(
+        self, logT: float, logRho: float, X: float, Y: float
+    ) -> Tuple:
         """Finds the bracket in the hydrogen density.
 
         Args:
@@ -853,8 +855,10 @@ class TinyDT(InterpolantsBuilder):
         logS = self.interpDT_logS_z(logT, logRho, **self.kwargs)
         logU = self.interpDT_logU_z(logT, logRho, **self.kwargs)
 
-        chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
-        chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
+        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dx=0, dy=1, **self.kwargs)
+        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, dy=0, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         dlS_dlT = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
         dlS_dlRho = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
@@ -1438,7 +1442,7 @@ class TinyDT(InterpolantsBuilder):
                 print(msg)
             res[self.i_logT] = logT
             res[self.i_logRho] = logRho
-            res[self.i_logP:] = np.nan
+            res[self.i_logP :] = np.nan
             return res
 
         logRho_x = iml[1]
