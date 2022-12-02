@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import interp1d, NearestNDInterpolator
-from tinyeos.definitions import logP_min, logP_max
 
 
 class TableLoader:

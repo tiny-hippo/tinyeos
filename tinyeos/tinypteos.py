@@ -1,5 +1,4 @@
 import os
-from re import I
 import numpy as np
 from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
