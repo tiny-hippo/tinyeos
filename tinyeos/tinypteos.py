@@ -452,30 +452,32 @@ class TinyPT(InterpolantsBuilder):
         logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
         logU = self.interpPT_logU_z(logT, logP, **self.kwargs)
 
-        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dx=0, dy=1, **self.kwargs)
-        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, dy=0, **self.kwargs)
+        # new method with (logT, logP)
+        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
+        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        dlS_dlT = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
-        dlS_dlRho = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
-        grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
+        dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
+        # old method with (logT, logRho)
+        # chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
+        # chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlT_rho = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlRho_T = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
+        # dlS_dlRho_P = dlS_dlRho_T + dlS_dlT_rho * (- chiRho / chiT)
+        # dlS_dlP_rho = dlS_dlT_rho / chiT
+        # gamma1 = - dlS_dlRho_P / dlS_dlP_rho
+        # grad_ad = (1 - chiRho / gamma1) / chiT
+        # alternatively:
+        # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         # if self.heavy_element == "aqua":
         #     grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
         # else:
-        #     grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
-
-        # change to use PT only?
-        # dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
-        # dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
-
-        # chiRho = 1 / dlRho_dlP_T
-        # chiT = -dlRho_dlT_P / dlRho_dlP_T
-
-        # dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
-        # dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
-        # grad_ad = -dlS_dlP_T / dlS_dlT_P
+        #     grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         res_z = self.__get_zeros(logT, logP)
         res_z[self.i_logT] = logT
