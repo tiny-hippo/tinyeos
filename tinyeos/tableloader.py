@@ -4,8 +4,7 @@ import numpy as np
 from pathlib import Path
 from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
-from scipy.interpolate import interp1d
-from tinyeos.definitions import logP_min, logP_max
+from scipy.interpolate import interp1d, NearestNDInterpolator
 
 
 class TableLoader:
@@ -40,7 +39,7 @@ class TableLoader:
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
     ) -> None:
-        """_init__ method. Sets the equation of state
+        """__init__ method. Sets the equation of state
         boundaries and loads the tables.
 
         Args:
@@ -80,10 +79,10 @@ class TableLoader:
         """
 
         if which_hhe == "cms":
-            src = os.path.join(self.tables_path, "hydrogen_DT_table.pkl")
+            src = os.path.join(self.tables_path, "cms_dt_hydrogen.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.tables_path, "hydrogen_scvh_extended_DT_table.pkl")
+            src = os.path.join(self.tables_path, "scvh_extended_dt_hydrogen.pkl")
         else:
             raise NotImplementedError("this table is not available.")
         with open(src, "rb") as file:
@@ -93,11 +92,19 @@ class TableLoader:
         #          "log_free_e", "mu"]
         self.x_DT_table = data
 
+        # load the "effective" hydrogen table from Chabrier et al. 2021
+        # that can be used to account for hydrogen-helium interactions
         if which_hhe == "cms":
-            src = os.path.join(self.tables_path, "helium_DT_table.pkl")
+            src = os.path.join(self.tables_path, "cms_dt_effective_hydrogen.pkl")
+            with open(src, "rb") as file:
+                data = pickle.load(file)
+            self.x_eff_DT_table = data
+
+        if which_hhe == "cms":
+            src = os.path.join(self.tables_path, "cms_dt_helium.pkl")
         elif which_hhe == "scvh":
             # to-do: test extended scvh dt tables
-            src = os.path.join(self.tables_path, "helium_scvh_extended_DT_table.pkl")
+            src = os.path.join(self.tables_path, "scvh_extended_dt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_DT_table = data
@@ -115,9 +122,9 @@ class TableLoader:
         """
 
         if which_hhe == "cms":
-            src = os.path.join(self.tables_path, "hydrogen_PT_table.pkl")
+            src = os.path.join(self.tables_path, "cms_pt_hydrogen.pkl")
         elif which_hhe == "scvh":
-            src = os.path.join(self.tables_path, "hydrogen_scvh_PT_table.pkl")
+            src = os.path.join(self.tables_path, "scvh_pt_hydrogen.pkl")
         else:
             raise NotImplementedError("this table is not available.")
         with open(src, "rb") as file:
@@ -130,15 +137,15 @@ class TableLoader:
         # load the "effective" hydrogen table from Chabrier et al. 2021
         # that can be used to account for hydrogen-helium interactions
         if which_hhe == "cms":
-            src = os.path.join(self.tables_path, "hydrogen_eff_PT_table.pkl")
+            src = os.path.join(self.tables_path, "cms_pt_effective_hydrogen.pkl")
             with open(src, "rb") as file:
                 data = pickle.load(file)
             self.x_eff_PT_table = data
 
         if which_hhe == "cms":
-            src = os.path.join(self.tables_path, "helium_PT_table.pkl")
+            src = os.path.join(self.tables_path, "cms_pt_helium.pkl")
         elif which_hhe == "scvh":
-            src = os.path.join(self.tables_path, "helium_scvh_PT_table.pkl")
+            src = os.path.join(self.tables_path, "scvh_pt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_PT_table = data
@@ -217,8 +224,11 @@ class TableLoader:
     def invert_z_DT_table(
         self,
         which_heavy: str,
+        kind: str = "linear",
+        extrapolate: bool = True,
         smooth_table: bool = False,
         num_smoothing_rounds: int = 1,
+        store_table: bool = False,
     ) -> NDArray:
         """Converts a qeos heavy-element (logT, logRho) table to
         (logT, logP) and optionally smoothes the results.
@@ -227,87 +237,225 @@ class TableLoader:
         Args:
             which_heavy (str): name of the heavy element.
                 Current options are "h2o", "sio2" and "fe".
+            kind (str): interpolation method to use. Options
+                are linear and cubic. Defaults to linear.
+            extrapolate (bool): whether to extrapolate for missing
+                data. If False, uses a two-dimensional nearest
+                neigh-neighbour extrapolation to replace
+                the missing data. Defaults to True.
             smooth_table (bool, optional): whether to smooth the new table.
                 Defaults to False.
             num_smoothing_rounds (int, optional): number of times to smooth
                 the new table. Defaults to 1.
+            store_table (bool, optional): whether to store the table.
+                Defaults to False.
 
         Returns:
             NDArray: _description_
         """
         fname = f"qeos_dt_{which_heavy}.data"
         z_DT_table = self.__load_z_DT_table(which_heavy)
+        # indices: 0: logT, 1: logRho, 2: logP, 3: logU, 4: logS
         logT = z_DT_table[:, 0]
-        logRho = z_DT_table[:, 1]
         logP = z_DT_table[:, 2]
-        logU = z_DT_table[:, 3]
-        logS = z_DT_table[:, 4]
 
         # (logT, logP) grid
         x = np.unique(logT)
         dlogP = 0.05
-        y = np.arange(logP_min, logP_max + dlogP, dlogP)
+        # boundaries are close to min/max logP
+        # in the density-temperature tables
+        y = np.arange(-3.8, 15.8 + dlogP, dlogP)
         num_xs = x.size
         num_ys = y.size
+        num_vals = z_DT_table.shape[1]
 
-        # upper and lower bounds for the new tables
-        min_rho = np.min(logRho)
-        max_rho = np.max(logRho)
-        min_logU = np.min(logU)
-        max_logU = np.max(logU)
-        min_logS = np.min(logS)
-        max_logS = np.max(logS)
+        # indices for the dependent variables of the new table
+        which_values = [1, 3, 4, 5]
+        # get the upper and lower bounds
+        min_vals = np.min(z_DT_table, axis=0)
+        max_vals = np.max(z_DT_table, axis=0)
 
-        z_PT_table = np.zeros((x.size, y.size, z_DT_table.shape[1]))
-        for i, lT in enumerate(x):
-            # find and select the values on the current isotherm
-            k = logT == lT
-            lP = logP[k]
-            lP, n = np.unique(lP, return_index=True)
-            val1 = logRho[k]
-            val1 = val1[n]
-            val2 = logU[k]
-            val2 = val2[n]
-            val3 = logS[k]
-            val3 = val3[n]
-            vals = np.array([val1, val2, val3])
+        z_PT_table = np.zeros((num_xs, num_ys, num_vals))
+        for i, logT_isotherm in enumerate(x):
+            # look for the points on the current isotherm
+            k = logT == logT_isotherm
+            logP_isotherm = logP[k]
+            vals = z_DT_table[k, :]
+            # look for unique logP points and select those values
+            logP_isotherm, n = np.unique(logP_isotherm, return_index=True)
+            vals = vals[n, :]
+            # get rid of logT and logP
+            vals = vals[:, which_values]
 
-            # interpolate on the logP grid
-            f = interp1d(lP, vals, kind="linear", fill_value="extrapolate")
+            # interpolate on the unique logPs of the isotherm
+            if extrapolate:
+                fill_value = "extrapolate"
+            else:
+                fill_value = np.nan
+            f = interp1d(
+                logP_isotherm,
+                np.transpose(vals),
+                kind=kind,
+                fill_value=fill_value,
+                bounds_error=False,
+            )
             res = f(y)
 
+            sub_table = np.zeros((z_PT_table.shape[1], z_PT_table.shape[2]))
+            sub_table[:, 0] = logT_isotherm * np.ones_like(y)
+            sub_table[:, 1] = y
+            sub_table[:, 2:] = np.transpose(res)
             # enforce upper and lower bounds
-            check_min = res[0] < min_rho
-            check_max = res[0] > max_rho
-            res[0, check_min] = min_rho
-            res[0, check_max] = max_rho
-
-            check_min = res[1] < min_logU
-            check_max = res[1] > max_logU
-            res[1, check_min] = min_logU
-            res[1, check_max] = max_logU
-
-            check_min = res[2] < min_logS
-            check_max = res[2] > max_logS
-            res[2, check_min] = min_logS
-            res[2, check_max] = max_logS
-
-            # store values
-            z_PT_table[i, :, 0] = lT * np.ones(num_ys)
-            z_PT_table[i, :, 1] = y
-            z_PT_table[i, :, 2:5] = np.transpose(res)
-            z_PT_table[i, :, 5] = 0.3 * np.ones(num_ys)  # dummy values
+            for n, k in enumerate(which_values):
+                check_min = sub_table[:, n + 2] < min_vals[k]
+                check_max = sub_table[:, n + 2] > max_vals[k]
+                sub_table[check_min, n + 2] = min_vals[k]
+                sub_table[check_max, n + 2] = max_vals[k]
+            z_PT_table[i] = sub_table
 
         if smooth_table:
             fname = fname.replace("dt", "pt_smoothed")
             z_PT_table = self.smooth_z_table(z_PT_table, num_smoothing_rounds)
         else:
             fname = fname.replace("dt", "pt")
+        out_table = z_PT_table.reshape((-1, num_vals))
 
-        out_table = z_PT_table.reshape((-1, z_DT_table.shape[1]))
-        dst = os.path.join(self.tables_path, fname)
-        np.savetxt(dst, out_table, fmt="%.8e", header=self.z_PT_header)
-        return z_PT_table
+        # fill missing values with a 2d nearest neighbour extrapolation
+        if not extrapolate:
+            x = out_table[:, 0]  # logT
+            y = out_table[:, 1]  # logP
+            for i in range(2, out_table.shape[1]):
+                z = out_table[:, i]
+                mask = ~np.isnan(z)
+                f = NearestNDInterpolator(list(zip(x[mask], y[mask])), z[mask])
+                res = f(x, y)
+                mask = np.isnan(z)
+                z[mask] = res[mask]
+                out_table[:, i] = z
+
+        if store_table:
+            dst = os.path.join(self.tables_path, fname)
+            np.savetxt(dst, out_table, fmt="%.8e", header=self.z_PT_header)
+        return out_table
+
+    def invert_xeff_PT_table(
+        self,
+        kind: str = "linear",
+        extrapolate: bool = True,
+        smooth_table: bool = False,
+        num_smoothing_rounds: int = 1,
+        store_table: bool = False,
+    ) -> NDArray:
+        """Converts the CMS effective hydrogen (logT, logP) table to
+        (logT, logRho) and optionally smoothes the results.
+        Assumes that the table is organised along isotherms.
+
+        Args:
+            kind (str): interpolation method to use. Options
+                are linear and cubic. Defaults to linear.
+            extrapolate (bool): whether to extrapolate for missing
+                data. If False, uses a two-dimensional nearest
+                neigh-neighbour extrapolation to replace
+                the missing data. Defaults to True.
+            smooth_table (bool, optional): whether to smooth the new table.
+                Defaults to False.
+            num_smoothing_rounds (int, optional): number of times to smooth
+                the new table. Defaults to 1.
+            store_table (bool, optional): whether to store the table.
+                Defaults to False.
+
+        Returns:
+            NDArray: _description_
+        """
+        x_eff_PT_table = self.x_eff_PT_table
+        logT = x_eff_PT_table[:, 0]
+        logRho = x_eff_PT_table[:, 2]
+
+        # (logT, logRho) grid
+        x = np.unique(logT)
+        dlogRho = 0.05
+        # boundaries are close to min/max logRho
+        # in the pressure-temperature tables
+        y = np.arange(-9, 6 + dlogRho, dlogRho)
+        num_xs = x.size
+        num_ys = y.size
+        num_vals = x_eff_PT_table.shape[1]
+
+        # indices for the dependent variables of the new table
+        which_values = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        # get the upper and lower bounds
+        min_vals = np.min(x_eff_PT_table, axis=0)
+        max_vals = np.max(x_eff_PT_table, axis=0)
+
+        x_eff_DT_table = np.zeros((num_xs, num_ys, num_vals))
+        for i, logT_isotherm in enumerate(x):
+            # look for the points on the current isotherm
+            k = logT == logT_isotherm
+            logRho_isotherm = logRho[k]
+            vals = x_eff_PT_table[k, :]
+            # look for unique logRho points and select those values
+            logRho_isotherm, n = np.unique(logRho_isotherm, return_index=True)
+            vals = vals[n, :]
+            # get rid of logT and logRho
+            vals = vals[:, which_values]
+
+            # interpolate on the unique logRhos of the isotherm
+            if extrapolate:
+                fill_value = "extrapolate"
+            else:
+                fill_value = np.nan
+            f = interp1d(
+                logRho_isotherm,
+                np.transpose(vals),
+                kind=kind,
+                fill_value=fill_value,
+                bounds_error=False,
+            )
+            res = f(y)
+
+            sub_table = np.zeros((x_eff_DT_table.shape[1], x_eff_DT_table.shape[2]))
+            sub_table[:, 0] = logT_isotherm * np.ones_like(y)
+            sub_table[:, 1] = y
+            sub_table[:, 2:] = np.transpose(res)
+            # enforce upper and lower bounds
+            for n, k in enumerate(which_values):
+                check_min = sub_table[:, n + 2] < min_vals[k]
+                check_max = sub_table[:, n + 2] > max_vals[k]
+                sub_table[check_min, n + 2] = min_vals[k]
+                sub_table[check_max, n + 2] = max_vals[k]
+            x_eff_DT_table[i] = sub_table
+
+        fname = "cms_dt_effective_hydrogen.pkl"
+        if smooth_table:
+            fname = fname.replace("dt", "dt_smoothed")
+            x_eff_DT_table = self.smooth_xy_table(
+                x_eff_DT_table, "logRho", num_smoothing_rounds=num_smoothing_rounds
+            )
+        out_table = x_eff_DT_table.reshape((-1, num_vals))
+
+        # fill missing values with a 2d nearest neighbour extrapolation
+        if not extrapolate:
+            x = out_table[:, 0]  # logT
+            y = out_table[:, 1]  # logRho
+            for i in range(2, out_table.shape[1]):
+                z = out_table[:, i]
+                mask = ~np.isnan(z)
+                f = NearestNDInterpolator(list(zip(x[mask], y[mask])), z[mask])
+                res = f(x, y)
+                mask = np.isnan(z)
+                z[mask] = res[mask]
+                out_table[:, i] = z
+
+        # CMS tables have the same order of the data
+        # for pressure-temperature and density-temperature tables
+        tmp_table = np.copy(out_table)
+        out_table[:, 1] = tmp_table[:, 2]  # set logP
+        out_table[:, 2] = tmp_table[:, 1]  # set logRho
+        if store_table:
+            dst = os.path.join(self.tables_path, fname)
+            with open(dst, "wb") as file:
+                pickle.dump(out_table, file)
+        return out_table
 
     def mix_heavy_elements(
         self,
@@ -317,7 +465,7 @@ class TableLoader:
         Z2: float,
         which_Z3: str,
         Z3: float,
-        save_table: bool = False,
+        store_table: bool = False,
     ) -> NDArray:
         """Uses the ideal mixing approximation to
         calculates the density, energy and entropy for a mixture
@@ -333,7 +481,7 @@ class TableLoader:
             which_Z3 (str): name of the third heavy element.
                 Current options are "h2o", "sio2" or "iron.
             Z3 (float): mass-fraction of the third heavy element.
-            save_table (bool, optional): whether to store the table.
+            store_table (bool, optional): whether to store the table.
                 Defaults to False.
 
         Raises:
@@ -382,7 +530,7 @@ class TableLoader:
         grad_ad = 0.3 * np.ones_like(logRho)  # dummy values
         Z_table = np.column_stack([logT, logP, logRho, logU, logS, grad_ad])
 
-        if save_table:
+        if store_table:
             Z1 = 100 * Z1
             Z2 = 100 * Z2
             Z3 = 100 * Z3
@@ -390,6 +538,74 @@ class TableLoader:
             dst = os.path.join(self.tables_path, fname)
             np.savetxt(dst, Z_table, header=self.z_PT_header, fmt="%.8e")
         return Z_table
+
+    @staticmethod
+    def smooth_xy_table(
+        table: NDArray, which_y: str, num_smoothing_rounds: int = 1
+    ) -> NDArray:
+        """Smoothes the CMS hydrogen-helium tables by taking
+        the average of the original point and the four nearest neighbours
+        on the two-dimensional grid.
+
+        Args:
+            table (NDArray): original unsmoothed table
+            which_y (str): defines the second independent variable
+                for the equation of state (logT, which_y)
+            num_smoothing_rounds (int, optional): how many times the table
+                is smoothed. Defaults to 1.
+
+        Returns:
+            NDArray: smoothed table
+        """
+        if which_y == "logP":
+            i_y = 1
+        else:
+            i_y = 2
+
+        input_ndim = table.ndim
+        if input_ndim == 2:
+            num_xs = np.unique(table[:, 0]).size
+            num_ys = np.unique(table[:, i_y]).size
+            table = table.reshape((num_xs, num_ys, table.shape[1]))
+        else:
+            num_xs = table.shape[0]
+            num_ys = table.shape[1]
+
+        def do_smooth_table(in_table, num_xs, num_ys):
+            out_table = np.copy(in_table)
+            for i in range(num_xs):
+                if i < 1:
+                    continue
+                elif i > num_xs - 2:
+                    break
+                for j in range(num_ys):
+                    if j < 1:
+                        continue
+                    elif j > num_ys - 2:
+                        break
+                    out_table[i, j, 2:] = (
+                        in_table[i, j, 2:]
+                        + in_table[i + 1, j, 2:]
+                        + in_table[i - 1, j, 2:]
+                        + in_table[i, j - 1, 2:]
+                        + in_table[i, j + 1, 2:]
+                    ) / 5
+            return out_table
+
+        in_table = np.copy(table)
+        if which_y == "logRho" and input_ndim == 2:
+            # switch logP and logRho columns
+            in_table[:, 1] = table[:, 2]
+            in_table[:, 2] = table[:, 1]
+        for _ in range(num_smoothing_rounds):
+            out_table = do_smooth_table(in_table, num_xs, num_ys)
+            in_table = out_table
+        if which_y == "logRho" and input_ndim == 2:
+            # switch logP and logRho columns again
+            out_table[:, 1] = in_table[:, 2]
+            out_table[:, 2] = in_table[:, 1]
+
+        return out_table
 
     @staticmethod
     def smooth_z_table(table: NDArray, num_smoothing_rounds: int = 1) -> NDArray:
@@ -400,8 +616,8 @@ class TableLoader:
 
         Args:
             table (NDArray): original unsmoothed table
-            num_smoothing_rounds (int, optional): how many times the table is smoothed.
-                Defaults to 1.
+            num_smoothing_rounds (int, optional): how many times the table
+                is smoothed. Defaults to 1.
 
         Returns:
             NDArray: smoothed table
@@ -417,12 +633,12 @@ class TableLoader:
 
         def do_smooth_table(in_table, num_xs, num_ys):
             out_table = np.copy(in_table)
-            for i in range(num_ys):
+            for i in range(num_xs):
                 if i < 1:
                     continue
                 elif i > num_xs - 2:
                     break
-                for j in range(num_xs):
+                for j in range(num_ys):
                     if j < 1:
                         continue
                     elif j > num_ys - 2:
@@ -490,11 +706,28 @@ class TableLoader:
 
 
 if __name__ == "__main__":
+    T = TableLoader(which_hhe="cms")
+    # convert effective hydrogen table
+    # from (logT, logP) to (logT, logRho)
+    T.invert_xeff_PT_table(
+        kind="linear",
+        extrapolate=True,
+        smooth_table=False,
+        num_smoothing_rounds=2,
+        store_table=True,
+    )
+    
     # convert h2o, sio2 and fe tables from
     # (logT, logRho) to (logT, logP)
-    T = TableLoader()
     for element in ["h2o", "sio2", "fe"]:
-        T.invert_z_DT_table(element, smooth_table=False)
+        T.invert_z_DT_table(
+            element,
+            kind="linear",
+            extrapolate=True,
+            smooth_table=False,
+            num_smoothing_rounds=2,
+            store_table=True,
+        )
 
     # create a 50-50 h2o-sio2 mixture pt table
     T.mix_heavy_elements(
@@ -504,7 +737,7 @@ if __name__ == "__main__":
         Z2=0.5,
         which_Z3="fe",
         Z3=0,
-        save_table=True,
+        store_table=True,
     )
 
     # create smoothed dt tables
@@ -520,6 +753,7 @@ if __name__ == "__main__":
         fname = f"qeos_smoothed_dt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
         np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
+    
     # create smoothed pt tables
     for element in ["h2o", "sio2", "fe", "mixture"]:
         T = TableLoader(which_heavy=element)

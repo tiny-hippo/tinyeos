@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="tinyeos",
-    version="1.2.0",
+    version="1.4.1",
     description="equations of state and opacities for planets",
     url="",
     author="Simon Müller",
-    author_email="simon.mueller7@uzh.ch",
+    author_email="simonandres.mueller@uzh.ch",
     license="MIT",
     packages=find_packages(include=["tinyeos", "tinyeos.*"]),
     package_data={

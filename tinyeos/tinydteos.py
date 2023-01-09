@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike, NDArray
 from typing import Tuple
 from pathlib import Path
 from scipy.optimize import root_scalar
+from tinyeos.tinypteos import TinyPT
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
     A_H,
@@ -38,6 +39,9 @@ class TinyDT(InterpolantsBuilder):
         self,
         which_heavy: str = "h2o",
         which_hhe: str = "cms",
+        include_hhe_interactions: bool = False,
+        use_smoothed_xy_tables: bool = False,
+        use_smoothed_z_tables: bool = False,
         build_interpolants: bool = False,
     ) -> None:
         """__init__ method. Defines parameters and either loads or
@@ -49,6 +53,12 @@ class TinyDT(InterpolantsBuilder):
                 "mixture", or "fe".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
+            include_hhe_interactions (bool, optional): wether to include
+                hydrogen-helium interactions. Defaults to False.
+            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+                hydrogen and helium tables. Defaults to False.
+            use_smoothed_z_tables (bool, optional): whether to use smoothed
+                heavy-element tables. Defaults to False.
             build_interpolants (bool, optional): whether to build interpolants.
                 Defaults to False.
 
@@ -57,17 +67,24 @@ class TinyDT(InterpolantsBuilder):
                 are unavailable.
         """
 
+        self.tpt = TinyPT(
+            which_heavy=which_heavy,
+            which_hhe=which_hhe,
+            include_hhe_interactions=include_hhe_interactions,
+            use_smoothed_xy_tables=use_smoothed_xy_tables,
+            use_smoothed_z_tables=use_smoothed_z_tables,
+            build_interpolants=build_interpolants,
+        )
+
         if build_interpolants:
             super().__init__()
 
         self.logRho_max = logRho_max
         self.logRho_min = logRho_min
+        self.logP_min = logP_min
+        self.logP_max = logP_max
         self.logT_max = logT_max
         self.logT_min = logT_min
-
-        if which_hhe == "scvh":
-            self.logRho_max = 2
-            self.logRho_min = -12
 
         self.num_vals = num_vals
         self.i_logT = i_logT
@@ -93,9 +110,16 @@ class TinyDT(InterpolantsBuilder):
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in ["h2o", "sio2", "mixture", "fe"]:
-            raise NotImplementedError("h2o""invalid option for which_heavy")
+            raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
+        # to-do: scvh is currently giving inconsistent results between
+        # TinyPT and TinyDT; needs to be fixed before allowing it again
+        if which_hhe == "scvh":
+            raise NotImplementedError("scvh is currently disabled")
+        self.include_hhe_interactions = include_hhe_interactions
+        if include_hhe_interactions and which_hhe == "scvh":
+            raise NotImplementedError("can't include H-He interactions with scvh")
 
         # Heavy element: Charge, Atomic Mass
         # h2o: 10, 18.015
@@ -103,7 +127,7 @@ class TinyDT(InterpolantsBuilder):
         # fe: 26, 55.845
         self.heavy_element = which_heavy
         if which_heavy == "h2o":
-            self.A = 18.01
+            self.A = 18.015
         elif which_heavy == "sio2":
             self.A = 60.080
         elif which_heavy == "fe":
@@ -113,6 +137,10 @@ class TinyDT(InterpolantsBuilder):
         else:
             raise NotImplementedError("invalid option for which_heavy.")
 
+        # if use_smoothed_xy_tables:
+        #     which_hhe = which_hhe + "_smoothed"
+        if use_smoothed_z_tables:
+            which_heavy = which_heavy + "_smoothed"
         self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
         self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
         self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
@@ -120,6 +148,14 @@ class TinyDT(InterpolantsBuilder):
         self.interpDT_x = self.__load_interp("interpDT_x_" + which_hhe + ".npy")
         self.interpDT_y = self.__load_interp("interpDT_y_" + which_hhe + ".npy")
         self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
+
+        if self.include_hhe_interactions:
+            self.interpPT_x_eff = self.__load_interp(
+                "interpPT_x_eff_" + which_hhe + ".npy"
+            )
+            self.interpDT_x_eff = self.__load_interp(
+                "interpDT_x_eff_" + which_hhe + ".npy"
+            )
 
         self.interpDT_logP_x = self.interpDT_x[0]
         self.interpDT_logS_x = self.interpDT_x[1]
@@ -131,6 +167,18 @@ class TinyDT(InterpolantsBuilder):
         self.interpDT_grad_ad_x = self.interpDT_x[7]
         self.interpDT_lfe_x = self.interpDT_x[8]
         self.interpDT_mu_x = self.interpDT_x[9]
+
+        if self.include_hhe_interactions:
+            self.interpDT_logP_x_eff = self.interpDT_x_eff[0]
+            self.interpDT_logS_x_eff = self.interpDT_x_eff[1]
+            self.interpDT_logU_x_eff = self.interpDT_x_eff[2]
+            self.interpDT_dlRho_dlT_P_x_eff = self.interpDT_x_eff[3]
+            self.interpDT_dlRho_dlP_T_x_eff = self.interpDT_x_eff[4]
+            self.interpDT_dlS_dlT_P_x_eff = self.interpDT_x_eff[5]
+            self.interpDT_dlS_dlP_T_x_eff = self.interpDT_x_eff[6]
+            self.interpDT_grad_ad_x_eff = self.interpDT_x_eff[7]
+            self.interpDT_lfe_x_eff = self.interpDT_x_eff[8]
+            self.interpDT_mu_x_eff = self.interpDT_x_eff[9]
 
         self.interpDT_logP_y = self.interpDT_y[0]
         self.interpDT_logS_y = self.interpDT_y[1]
@@ -150,6 +198,8 @@ class TinyDT(InterpolantsBuilder):
         #     self.interpDT_grad_ad_z = self.interpDT_z[3]
 
         self.interpPT_logRho_x = self.interpPT_x[0]
+        if self.include_hhe_interactions:
+            self.interpPT_logRho_x_eff = self.interpPT_x_eff[0]
         self.interpPT_logRho_y = self.interpPT_y[0]
         self.interpPT_logRho_z = self.interpPT_z[0]
         self.interpPT_logS_z = self.interpPT_z[1]
@@ -255,7 +305,7 @@ class TinyDT(InterpolantsBuilder):
             msg = "unsupported input shape"
             raise ValueError(msg)
 
-    def __ideal_mixture(
+    def __ideal_mixture_legacy(
         self,
         logT: float,
         logRho: float,
@@ -284,31 +334,31 @@ class TinyDT(InterpolantsBuilder):
         if np.isclose(Z, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
-            logRho_x = self.logRho_min
-            logRho_y = self.logRho_min
+            logRho_x = tiny_logRho
+            logRho_y = tiny_logRho
             logRho_z = logRho
         elif np.isclose(X, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_x(logT, logRho, **self.kwargs)
             logRho_x = logRho
-            logRho_y = self.logRho_min
-            logRho_z = self.logRho_min
+            logRho_y = tiny_logRho
+            logRho_z = tiny_logRho
         elif np.isclose(Y, 1, atol=eps1):
             conv = True
             logP = self.interpDT_logP_y(logT, logRho, **self.kwargs)
-            logRho_x = self.logRho_min
+            logRho_x = tiny_logRho
             logRho_y = logRho
-            logRho_z = self.logRho_min
-        elif Z > 0:
+            logRho_z = tiny_logRho
+        elif Z > tiny_val:
             have_bracket = True
             x0 = self.logRho_max
             x1 = self.logRho_min
-            # have_bracket, x0, x1 = self.get_bracket(logT, logRho, X, Y, Z)
+            # have_bracket, x0, x1 = self.get_bracket_legacy(logT, logRho, X, Y, Z)
             if have_bracket:
                 # found bracket
                 try:
                     sol = root_scalar(
-                        self.__optimize_1d,
+                        self.__optimize_1d_legacy,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -339,15 +389,15 @@ class TinyDT(InterpolantsBuilder):
                 logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
             else:
                 logRho_y = self.logRho_min
-        elif X > 0:
-            # have_bracket, x0, x1 = self.get_xy_bracket(logT, logRho, X, Y)
+        elif X > tiny_val:
+            # have_bracket, x0, x1 = self.get_xy_bracket_legacy(logT, logRho, X, Y)
             have_bracket = True
             x0 = self.logRho_min
             x1 = self.logRho_max
             if have_bracket:
                 try:
                     sol = root_scalar(
-                        self.__optimize_1d,
+                        self.__optimize_1d_legacy,
                         args=(logT, logRho, X, Y, Z),
                         method="brentq",
                         bracket=[x0, x1],
@@ -374,13 +424,14 @@ class TinyDT(InterpolantsBuilder):
             logRho_z = self.logRho_min
 
         if debug:
-            res = self.__optimize_1d(logRho_z, logRho, logT, X, Y, Z)
-            logP_x = self.interpDT_logP_x(logT, logRho_x, **self.kwargs)
-            logP_y = self.interpDT_logP_y(logT, logRho_y, **self.kwargs)
+            if conv:
+                res = self.__optimize_1d_legacy(logRho_z, logRho, logT, X, Y, Z)
+                logP_x = self.interpDT_logP_x(logT, logRho_x, **self.kwargs)
+                logP_y = self.interpDT_logP_y(logT, logRho_y, **self.kwargs)
 
-            print(sol)
-            print("Residual: {:.2E}".format(res))
-            print("logP: {:.3f} {:.3f} {:.3f}".format(logP, logP_x, logP_y))
+                print(sol)
+                print("Residual: {:.2E}".format(res))
+                print("logP: {:.3f} {:.3f} {:.3f}".format(logP, logP_x, logP_y))
 
         if not conv:
             pass
@@ -393,7 +444,109 @@ class TinyDT(InterpolantsBuilder):
 
         return (conv, logRho_x, logRho_y, logRho_z, logP)
 
-    def __optimize_1d(
+    def __ideal_mixture(
+        self,
+        logT: float,
+        logRho: float,
+        X: float,
+        Y: float,
+        Z: float,
+    ) -> Tuple:
+        """Calculates the individual densities of the elements in the mixture.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (float): hydrogen mass-fraction
+            Y (float): helium mass-fraction.
+            Z (float): heavy-element mass-fraction.
+
+        Returns:
+            Tuple: tuple consisting of convergence information, individual
+                densities and gas pressure.
+        """
+        if np.isclose(Z, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
+            logRho_x = tiny_logRho
+            logRho_y = tiny_logRho
+            logRho_z = logRho
+        elif np.isclose(X, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_x(logT, logRho, **self.kwargs)
+            logRho_x = logRho
+            logRho_y = tiny_logRho
+            logRho_z = tiny_logRho
+        elif np.isclose(Y, 1, atol=eps1):
+            conv = True
+            logP = self.interpDT_logP_y(logT, logRho, **self.kwargs)
+            logRho_x = tiny_logRho
+            logRho_y = logRho
+            logRho_z = tiny_logRho
+        else:
+            logP0 = self.logP_min
+            logP1 = self.logP_max
+            f1 = self.__ideal_mixing_law_wrapper(logP0, logT, logRho, X, Y, Z)
+            f2 = self.__ideal_mixing_law_wrapper(logP1, logT, logRho, X, Y, Z)
+            if np.sign(f1) == np.sign(f2):
+                conv = False
+                logRho_x = np.nan
+                logRho_y = np.nan
+                logRho_z = np.nan
+                logP = np.nan
+            else:
+                sol = root_scalar(
+                    self.__ideal_mixing_law_wrapper,
+                    args=(logT, logRho, X, Y, Z),
+                    method="brentq",
+                    bracket=[logP0, logP1],
+                )
+                conv = sol.converged
+                logP = sol.root
+                logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
+                logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
+                logRho_z = self.interpPT_logRho_z(logT, logP, **self.kwargs)
+
+            # dlogP = 0.01
+            # logPs = np.arange(self.logP_min, self.logP_max, dlogP)
+            # logTs = logT * np.ones_like(logPs)
+            # logRhos = self.tpt.evaluate(logTs, logPs, X, Z)
+            # i = np.where(np.isclose(logRho, logRhos, rtol=1e-3))
+            # print(i)
+
+        return (conv, logRho_x, logRho_y, logRho_z, logP)
+
+    def __ideal_mixing_law_wrapper(
+        self,
+        logP: float,
+        logT: float,
+        logRho: float,
+        X: float,
+        Y: float,
+        Z: float,
+    ) -> float:
+
+        if X > tiny_val:
+            logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
+        else:
+            logRho_x = tiny_logRho
+        if Y > tiny_val:
+            logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
+        else:
+            logRho_y = tiny_logRho
+        if Z > tiny_val:
+            logRho_z = self.interpPT_logRho_z(logT, logP, **self.kwargs)
+        else:
+            logRho_z = tiny_logRho
+
+        rho_x = 10**logRho_x
+        rho_y = 10**logRho_y
+        rho_z = 10**logRho_z
+        log_iml = np.log10(ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z))
+        val = log_iml + logRho
+        return val
+
+    def __optimize_1d_legacy(
         self, xhat: float, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> float:
         """Defines the root finding problem to find the
@@ -437,7 +590,7 @@ class TinyDT(InterpolantsBuilder):
         f = np.log10(1 / rho) - np.log10(ideal_mixing_law(rho_x, rho_y, rho_z, X, Y, Z))
         return f
 
-    def __get_bracket(
+    def __get_bracket_legacy(
         self, logT: float, logRho: float, X: float, Y: float, Z: float
     ) -> Tuple:
         """Finds the bracket in the heavy-element density.
@@ -507,7 +660,9 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def __get_xy_bracket(self, logT: float, logRho: float, X: float, Y: float) -> Tuple:
+    def __get_xy_bracket_legacy(
+        self, logT: float, logRho: float, X: float, Y: float
+    ) -> Tuple:
         """Finds the bracket in the hydrogen density.
 
         Args:
@@ -571,12 +726,12 @@ class TinyDT(InterpolantsBuilder):
 
         return (have_bracket, x0, x1)
 
-    def __evaluate_x(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_x(self, logT: ArrayLike, logRho: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
 
         Returns:
             NDArray: equation of state output.
@@ -609,12 +764,50 @@ class TinyDT(InterpolantsBuilder):
 
         return res_x
 
-    def __evaluate_y(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_x_eff(self, logT: ArrayLike, logRho: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
         Args:
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+
+        Returns:
+            NDArray: equation of state output.
+        """
+
+        logP = self.interpDT_logP_x_eff(logT, logRho, **self.kwargs)
+        logS = self.interpDT_logS_x_eff(logT, logRho, **self.kwargs)
+        logU = self.interpDT_logU_x_eff(logT, logRho, **self.kwargs)
+
+        dlRho_dlP_T = self.interpDT_dlRho_dlP_T_x_eff(logT, logRho, **self.kwargs)
+        dlRho_dlT_P = self.interpDT_dlRho_dlT_P_x_eff(logT, logRho, **self.kwargs)
+
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
+        grad_ad = self.interpDT_grad_ad_x_eff(logT, logRho, **self.kwargs)
+        lfe = self.interpDT_lfe_x_eff(logT, logRho, **self.kwargs)
+        mu = self.interpDT_mu_x_eff(logT, logRho, **self.kwargs)
+
+        res_x_eff = self.__get_zeros(logT, logRho)
+        res_x_eff[self.i_logT] = logT
+        res_x_eff[self.i_logRho] = logRho
+        res_x_eff[self.i_logP] = logP
+        res_x_eff[self.i_logS] = logS
+        res_x_eff[self.i_logU] = logU
+        res_x_eff[self.i_chiRho] = chiRho
+        res_x_eff[self.i_chiT] = chiT
+        res_x_eff[self.i_grad_ad] = grad_ad
+        res_x_eff[self.i_mu] = mu
+        res_x_eff[self.i_lfe] = lfe
+
+        return res_x_eff
+
+    def __evaluate_y(self, logT: ArrayLike, logRho: ArrayLike) -> NDArray:
+        """Calculates equation of state output for hydrogen.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
 
         Returns:
             NDArray: equation of state output.
@@ -647,32 +840,50 @@ class TinyDT(InterpolantsBuilder):
 
         return res_y
 
-    def __evaluate_z(self, logT: float, logRho: float) -> NDArray:
+    def __evaluate_z(self, logT: ArrayLike, logRho: ArrayLike) -> NDArray:
         """Calculates equation of state output for the heavy element.
 
         Args:
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
 
         Returns:
             NDArray: equation of state output.
         """
 
         logP = self.interpDT_logP_z(logT, logRho, **self.kwargs)
-        logS = self.interpDT_logS_z(logT, logRho, **self.kwargs)
+        # logS = self.interpDT_logS_z(logT, logRho, **self.kwargs)
+        # use (logT, logP) for logS to be consistent
+        # with the upcoming derivatives
+        logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
         logU = self.interpDT_logU_z(logT, logRho, **self.kwargs)
 
-        chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
-        chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
+        # new method with (logT, logP)
+        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
+        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        dlS_dlT = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
-        dlS_dlRho = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
-        grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
+        dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
+        # old method with (logT, logRho)
+        # chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
+        # chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlT_rho = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlRho_T = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
+        # dlS_dlRho_P = dlS_dlRho_T + dlS_dlT_rho * (- chiRho / chiT)
+        # dlS_dlP_rho = dlS_dlT_rho / chiT
+        # gamma1 = - dlS_dlRho_P / dlS_dlP_rho
+        # grad_ad = (1 - chiRho / gamma1) / chiT
+        # alternatively:
+        # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         # if self.heavy_element == "aqua":
         #     grad_ad = self.interpDT_grad_ad_z(logT, logRho, **self.kwargs)
         # else:
-        #     grad_ad = 1 / (chiT - dlS_dlT * chiRho / dlS_dlRho)
+        #     grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         res_z = self.__get_zeros(logT, logRho)
         res_z[self.i_logT] = logT
@@ -1223,15 +1434,31 @@ class TinyDT(InterpolantsBuilder):
         self.Z_close = np.isclose(Z, 1, atol=eps1)
 
         res = self.__get_zeros(logT, logRho, X, Z)
-        res_x = self.__evaluate_x(logT, logRho)
+        if np.all(self.X_close) or not self.include_hhe_interactions:
+            res_x = self.__evaluate_x(logT, logRho)
+        elif np.any(self.X_close) and self.include_hhe_interactions:
+            i_xeff = X < 1
+            i_x = ~i_xeff
+            logT_x = logT[i_x]
+            logRho_x = logRho[i_x]
+            logT_xeff = logT[i_xeff]
+            logRho_xeff = logRho[i_xeff]
+            res_x = self.__get_zeros(logT, logRho, X, Z)
+            res_x[:, i_x] = self.__evaluate_x(logT_x, logRho_x)
+            res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logRho_xeff)
+        else:
+            res_x = self.__evaluate_x_eff(logT, logRho)
         res_y = self.__evaluate_y(logT, logRho)
         res_z = self.__evaluate_z(logT, logRho)
 
         iml = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not iml[0]:
             if verbose:
-                print("evaluate failed in density root find")
-            res.fill(-1)
+                msg = "evaluate failed in density root find"
+                print(msg)
+            res[self.i_logT] = logT
+            res[self.i_logRho] = logRho
+            res[self.i_logP :] = np.nan
             return res
 
         logRho_x = iml[1]
@@ -1285,8 +1512,29 @@ class TinyDT(InterpolantsBuilder):
         U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
         logU = np.log10(U)
 
-        dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x(logT, logRho_x, **self.kwargs)
-        dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x(logT, logRho_x, **self.kwargs)
+        if np.all(self.X_close) or not self.include_hhe_interactions:
+            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x(logT, logRho, **self.kwargs)
+            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x(logT, logRho, **self.kwargs)
+        elif np.any(self.X_close) and self.include_hhe_interactions:
+            dlS_dlP_T_x = np.zeros_like(logS)
+            dlS_dlP_T_x[i_x] = self.interpDT_dlS_dlP_T_x(
+                logT_x, logRho_x, **self.kwargs
+            )
+            dlS_dlP_T_x[i_xeff] = self.interpDT_dlS_dlP_T_x(
+                logT_xeff, logRho_xeff, **self.kwargs
+            )
+
+            dlS_dlT_P_x = np.zeros_like(logS)
+            dlS_dlT_P_x[i_x] = self.interpDT_dlS_dlT_P_x(
+                logT_x, logRho_x, **self.kwargs
+            )
+            dlS_dlT_P_x[i_xeff] = self.interpDT_dlS_dlT_P_x(
+                logT_xeff, logRho_xeff, **self.kwargs
+            )
+        else:
+            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x_eff(logT, logRho, **self.kwargs)
+            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x_eff(logT, logRho, **self.kwargs)
+
         dlS_dlP_T_y = self.interpDT_dlS_dlP_T_y(logT, logRho_y, **self.kwargs)
         dlS_dlT_P_y = self.interpDT_dlS_dlT_P_y(logT, logRho_y, **self.kwargs)
         dlS_dlP_T_z = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
