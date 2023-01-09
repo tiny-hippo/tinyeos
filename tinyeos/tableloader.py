@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d, NearestNDInterpolator
 
 class TableLoader:
     """Loads the equation of state tables for hydrogen, helium
-    and a heavy element.
+    and a heavy element.g
 
     Equations of state implemented:
         Hydrogen-Helium:
@@ -17,10 +17,11 @@ class TableLoader:
             SCvH (Saumon et al. 1995).
 
         Heavy element:
-            H2O (QEoS from More et al. 1988),
-            SiO2 (QEoS, More et al. 1988),
-            Fe (QEoS, More et al. 1998),
-            ideal mixture of water and rock (QEoS, More et al. 1988).
+            H2O (QEOS, More et al. 1988),
+            SiO2 (QEOS, More et al. 1988),
+            Fe (QEOS, More et al. 1998),
+            CO (QEOS, Podolak et al. 2022),
+            ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
 
     Attributes:
         x_DT_table (ndarray): hydrogen (logRho, logT) table
@@ -56,7 +57,7 @@ class TableLoader:
         self.use_smoothed_z_tables = use_smoothed_z_tables
         self.tables_path = Path(__file__).parent / "data/eos/tables"
         self.z_DT_header = (
-            "logT [K] logRho [g/cc] logP [Ba]  logU [erg/g] logS [erg/g/K] grad_ad"
+            "logT [K] logRho [g/cc] logP [Ba] logU [erg/g] logS [erg/g/K] grad_ad"
         )
         self.z_PT_header = (
             "logT [K] logP [Ba] logRho [g/cc] logU [erg/g] logS [erg/g/K] grad_ad"
@@ -176,13 +177,15 @@ class TableLoader:
             fname = f"qeos_{extra}dt_h2o_50_sio2_50_fe_00.data"
         elif which_heavy == "fe":
             fname = f"qeos_{extra}dt_fe.data"
+        elif which_heavy == "co":
+            fname = f"qeos_{extra}dt_co.data"
         else:
             raise NotImplementedError("this heavy element is not available")
 
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
-        data = data[np.where(data[:, 0] > 1.90)]
+        # data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
         self.z_DT_table = data
         return self.z_DT_table
@@ -212,11 +215,13 @@ class TableLoader:
             fname = f"qeos_{extra}pt_h2o_50_sio2_50_fe_00.data"
         elif which_heavy == "fe":
             fname = f"qeos_{extra}pt_fe.data"
+        elif which_heavy == "co":
+            fname = f"qeos_{extra}pt_co.data"
         else:
             raise NotImplementedError("this heavy element is not available")
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
-        data = data[np.where(data[:, 0] > 1.90)]
+        # data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logP", "logRho", "logU", "logS", "grad_ad"]
         self.z_PT_table = data
         return self.z_PT_table
@@ -236,7 +241,7 @@ class TableLoader:
 
         Args:
             which_heavy (str): name of the heavy element.
-                Current options are "h2o", "sio2" and "fe".
+                Current options are "h2o", "sio2", "fe" and "co".
             kind (str): interpolation method to use. Options
                 are linear and cubic. Defaults to linear.
             extrapolate (bool): whether to extrapolate for missing
@@ -473,13 +478,13 @@ class TableLoader:
 
         Args:
             which_Z1 (str): name of the first heavy element.
-                Current options are "h2o", "sio2" or "iron.
+                Current options are "h2o", "sio2", "fe" or "co".
             Z1 (float): mass-fraction of the first heavy element.
             which_Z2 (str): name of the second heavy element.
-                Current options are "h2o", "sio2" or "iron.
+                Current options are "h2o", "sio2", "fe" or "co".
             Z2 (float): mass-fraction of the second heavy element.
             which_Z3 (str): name of the third heavy element.
-                Current options are "h2o", "sio2" or "iron.
+                Current options are "h2o", "sio2", "fe" or "co".
             Z3 (float): mass-fraction of the third heavy element.
             store_table (bool, optional): whether to store the table.
                 Defaults to False.
@@ -534,7 +539,9 @@ class TableLoader:
             Z1 = 100 * Z1
             Z2 = 100 * Z2
             Z3 = 100 * Z3
-            fname = f"qeos_pt_h2o_{Z1:02.0f}_sio2_{Z2:02.0f}_fe_{Z3:02.0f}.data"
+            fname = f"qeos_pt_{which_Z1}_{Z1:02.0f}"
+            fname = fname + f"_{which_Z2}_{Z2:02.0f}"
+            fname = fname + f"_{which_Z3}_{Z3:02.0f}.data"
             dst = os.path.join(self.tables_path, fname)
             np.savetxt(dst, Z_table, header=self.z_PT_header, fmt="%.8e")
         return Z_table
@@ -716,10 +723,10 @@ if __name__ == "__main__":
         num_smoothing_rounds=2,
         store_table=True,
     )
-    
+
     # convert h2o, sio2 and fe tables from
     # (logT, logRho) to (logT, logP)
-    for element in ["h2o", "sio2", "fe"]:
+    for element in ["h2o", "sio2", "fe", "co"]:
         T.invert_z_DT_table(
             element,
             kind="linear",
@@ -742,7 +749,7 @@ if __name__ == "__main__":
 
     # create smoothed dt tables
     num_smoothing_rounds = 2
-    for element in ["h2o", "sio2", "fe", "mixture"]:
+    for element in ["h2o", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
         table = T.z_DT_table
         smoothed_table = T.smooth_z_table(
@@ -753,9 +760,9 @@ if __name__ == "__main__":
         fname = f"qeos_smoothed_dt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
         np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
-    
+
     # create smoothed pt tables
-    for element in ["h2o", "sio2", "fe", "mixture"]:
+    for element in ["h2o", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
         table = T.z_PT_table
         smoothed_table = T.smooth_z_table(

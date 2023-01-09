@@ -2,6 +2,23 @@
 array indices for the output.
 """
 
+# currently supported heavy elements
+heavy_elements = ["h2o", "sio2", "fe", "co", "mixture"]
+atomic_masses = {
+    "h2o": 18.015,
+    "sio2": 60.080,
+    "fe": 55.845,
+    "co": 28.010,
+    "mixture": 0.5 * (18.015 + 60.080)
+}
+ionic_charges = {
+    "h2o": 10,
+    "sio2": 30,
+    "fe": 26,
+    "co": 14,
+    "mixture": 0.5 * (10 + 30)
+}
+
 # min/max temperatures are limited by SCvH and CMS
 logT_max = 6.00
 logT_min = 2.00
