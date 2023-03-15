@@ -14,6 +14,7 @@ from tinyeos.support import (
     check_composition,
     get_h_he_number_fractions,
 )
+
 from tinyeos.definitions import *
 
 
@@ -27,10 +28,11 @@ class TinyPT(InterpolantsBuilder):
             SCvH (Saumon et al. 1995).
 
         Heavy element:
-            H2O (QEoS from More et al. 1988),
-            SiO2 (QEoS, More et al. 1988),
-            Fe (QEoS, More et al. 1998),
-            ideal mixture of water and rock (QEoS, More et al. 1988).
+            H2O (QEOS, More et al. 1988),
+            SiO2 (QEOS, More et al. 1988),
+            Fe (QEOS, More et al. 1998),
+            CO (QEOS, Podolak et al. 2022),
+            ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
     """
 
     def __init__(
@@ -48,7 +50,7 @@ class TinyPT(InterpolantsBuilder):
         Args:
             which_heavy (str, optional): which heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "sio2",
-                "mixture", or "fe".
+                "mixture", "fe" or "co".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
             include_hhe_interactions (bool, optional): wether to include
@@ -98,7 +100,7 @@ class TinyPT(InterpolantsBuilder):
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
-        if which_heavy not in ["h2o", "sio2", "mixture", "fe"]:
+        if which_heavy not in heavy_elements:
             raise NotImplementedError("invalid option for which_heavy")
         if which_hhe not in ["cms", "scvh"]:
             raise NotImplementedError("invalid option for which_hhe")
@@ -106,21 +108,10 @@ class TinyPT(InterpolantsBuilder):
         if include_hhe_interactions and which_hhe == "scvh":
             raise NotImplementedError("can't include H-He interactions with scvh")
 
-        # Heavy element: Charge, Atomic Mass
-        # h2o: 10, 18.015
-        # sio2: 30, 60.080
-        # fe: 26, 55.845
+        # heavy-element atomic mass and ionic charge
         self.heavy_element = which_heavy
-        if which_heavy == "h2o":
-            self.A = 18.015
-        elif which_heavy == "sio2":
-            self.A = 60.080
-        elif which_heavy == "fe":
-            self.A = 55.845
-        elif which_heavy == "mixture":
-            self.A = 0.5 * (18.015 + 60.080)
-        else:
-            raise NotImplementedError("invalid option for which_heavy.")
+        self.A = atomic_masses[which_heavy]
+        self.z = ionic_charges[which_heavy]
 
         # if use_smoothed_xy_tables:
         #     which_hhe = which_hhe + "_smoothed"

@@ -65,47 +65,23 @@ class InterpolantsBuilder(TableLoader):
         self.__build_PT_z_interpolants()
         self.__cache_z_interpolants("h2o_smoothed")
 
-        # cache interpolants for SiO2
-        super().__init__(which_heavy="sio2")
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("sio2")
-
-        # cache interpolants for smoothed SiO2
-        super().__init__(which_heavy="sio2", use_smoothed_z_tables=True)
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("sio2_smoothed")
+        # cache interpolants for SiO2, Fe, CO and the mixture
+        for heavy_element in ["sio2", "fe", "co", "mixture"]:
+            super().__init__(which_heavy=heavy_element)
+            self.__build_DT_z_interpolants()
+            self.__build_PT_z_interpolants()
+            self.__cache_z_interpolants(heavy_element)
+            # smoothed version
+            super().__init__(which_heavy=heavy_element, use_smoothed_z_tables=True)
+            self.__build_DT_z_interpolants()
+            self.__build_PT_z_interpolants()
+            self.__cache_z_interpolants(heavy_element + "_smoothed")
 
         # # cache interpolants for aqua
         # super().__init__(which_heavy="aqua", which_hhe="cms")
         # self.__build_DT_z_interpolants()
         # self.__build_PT_z_interpolants()
         # self.__cache_z_interpolants("aqua")
-
-        # cache interpolants for Fe
-        super().__init__(which_heavy="fe")
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("fe")
-
-        # cache interpolants for smoothed Fe
-        super().__init__(which_heavy="fe", use_smoothed_z_tables=True)
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("fe_smoothed")
-
-        # cache interpolants for the 50-50 H2O-SiO2 mixture
-        super().__init__(which_heavy="mixture")
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("mixture")
-
-        # cache interpolants for the smoothed 50-50 H2O-SiO2 mixture
-        super().__init__(which_heavy="mixture", use_smoothed_z_tables=True)
-        self.__build_DT_z_interpolants()
-        self.__build_PT_z_interpolants()
-        self.__cache_z_interpolants("mixture_smoothed")
 
     def __build_interpolant(
         self,

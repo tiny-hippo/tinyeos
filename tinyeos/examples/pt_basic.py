@@ -4,7 +4,7 @@ from tinyeos.tinypteos import TinyPT
 from tinyeos.definitions import i_logRho
 
 # Create the equation of state object.
-Tpt = TinyPT(which_heavy="h2o", which_hhe="cms")
+Tpt = TinyPT(which_heavy="co", which_hhe="cms")
 
 # Define input temperature, pressure and composition.
 logT = 3.00

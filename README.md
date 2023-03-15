@@ -3,11 +3,11 @@ tinyeos is a python package to calculate the equation of state of a mixture
 of hydrogen, helium and a heavy element.
 
 ### Installation
-Installation is simple: download or clone this repository, navigate into the directory and execute
+Download or clone this repository, navigate into the directory and execute
 ```
 pip install .
 ```
-which is the preferred way to install.
+
 Note that the package requires numpy, scipy, fortranformat and scikit-learn.
 
 ### Basic usage
