@@ -737,7 +737,6 @@ if __name__ == "__main__":
         )
 
     # create a 50-50 h2o-sio2 mixture pt table
-
     T.mix_heavy_elements(
         which_Z1="h2o",
         Z1=0.5,
