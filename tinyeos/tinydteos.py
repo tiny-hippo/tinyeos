@@ -16,8 +16,8 @@ from tinyeos.support import (
     check_composition,
     get_h_he_number_fractions,
 )
-
 from tinyeos.definitions import *
+
 
 class TinyDT(InterpolantsBuilder):
     """Temperature-density equation of state for a mixture of hydrogen,
@@ -755,7 +755,7 @@ class TinyDT(InterpolantsBuilder):
         return res_x
 
     def __evaluate_x_eff(self, logT: ArrayLike, logRho: ArrayLike) -> NDArray:
-        """Calculates equation of state output for hydrogen.
+        """Calculates equation of state output for effective hydrogen.
 
         Args:
             logT (ArrayLike): log10 of the temperature.

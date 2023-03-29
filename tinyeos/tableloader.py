@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Tuple
 from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import interp1d, NearestNDInterpolator
+from scipy.interpolate import PchipInterpolator
 
 
 class TableLoader:
@@ -229,7 +230,7 @@ class TableLoader:
     def invert_z_DT_table(
         self,
         which_heavy: str,
-        kind: str = "linear",
+        kind: str = "pchip",
         extrapolate: bool = True,
         smooth_table: bool = False,
         num_smoothing_rounds: int = 1,
@@ -242,9 +243,9 @@ class TableLoader:
         Args:
             which_heavy (str): name of the heavy element.
                 Current options are "h2o", "sio2", "fe" and "co".
-            kind (str): interpolation method to use. Options
-                are linear and cubic. Defaults to linear.
-            extrapolate (bool): whether to extrapolate for missing
+            kind (str, optional): interpolation method to use. Options
+                are linear and cubic, and pchip. Defaults to pchip.
+            extrapolate (bool, optional): whether to extrapolate for missing
                 data. If False, uses a two-dimensional nearest
                 neigh-neighbour extrapolation to replace
                 the missing data. Defaults to True.
@@ -256,7 +257,7 @@ class TableLoader:
                 Defaults to False.
 
         Returns:
-            NDArray: _description_
+            NDArray: inverted heavy-element table
         """
         fname = f"qeos_dt_{which_heavy}.data"
         z_DT_table = self.__load_z_DT_table(which_heavy)
@@ -293,18 +294,32 @@ class TableLoader:
             vals = vals[:, which_values]
 
             # interpolate on the unique logPs of the isotherm
-            if extrapolate:
-                fill_value = "extrapolate"
+            if kind == "linear" or kind == "cubic":
+                if extrapolate:
+                    fill_value = "extrapolate"
+                else:
+                    fill_value = np.nan
+                f = interp1d(
+                    x=logP_isotherm,
+                    y=np.transpose(vals),
+                    kind=kind,
+                    fill_value=fill_value,
+                    bounds_error=False,
+                )
+                res = f(y)
+            elif kind == "pchip":
+                # monotonic cubic interpolation
+                res = np.zeros((vals.shape[1], y.shape[0]))
+                for k in range(vals.shape[1]):
+                    which_val = vals[:, k]
+                    f = PchipInterpolator(
+                        x=logP_isotherm,
+                        y=which_val,
+                        extrapolate=extrapolate,
+                    )
+                    res[k, :] = f(y)
             else:
-                fill_value = np.nan
-            f = interp1d(
-                logP_isotherm,
-                np.transpose(vals),
-                kind=kind,
-                fill_value=fill_value,
-                bounds_error=False,
-            )
-            res = f(y)
+                raise ValueError("invalid interpolation method")
 
             sub_table = np.zeros((z_PT_table.shape[1], z_PT_table.shape[2]))
             sub_table[:, 0] = logT_isotherm * np.ones_like(y)
@@ -318,11 +333,9 @@ class TableLoader:
                 sub_table[check_max, n + 2] = max_vals[k]
             z_PT_table[i] = sub_table
 
+        fname = fname.replace("dt", "pt")
         if smooth_table:
-            fname = fname.replace("dt", "pt_smoothed")
             z_PT_table = self.smooth_z_table(z_PT_table, num_smoothing_rounds)
-        else:
-            fname = fname.replace("dt", "pt")
         out_table = z_PT_table.reshape((-1, num_vals))
 
         # fill missing values with a 2d nearest neighbour extrapolation
@@ -370,7 +383,7 @@ class TableLoader:
                 Defaults to False.
 
         Returns:
-            NDArray: _description_
+            NDArray: inverted effective hydrogen table
         """
         x_eff_PT_table = self.x_eff_PT_table
         logT = x_eff_PT_table[:, 0]
@@ -729,15 +742,14 @@ if __name__ == "__main__":
     for element in ["h2o", "sio2", "fe", "co"]:
         T.invert_z_DT_table(
             element,
-            kind="linear",
+            kind="pchip",
             extrapolate=True,
-            smooth_table=False,
-            num_smoothing_rounds=2,
+            smooth_table=True,
+            num_smoothing_rounds=1,
             store_table=True,
         )
 
     # create a 50-50 h2o-sio2 mixture pt table
-
     T.mix_heavy_elements(
         which_Z1="h2o",
         Z1=0.5,
