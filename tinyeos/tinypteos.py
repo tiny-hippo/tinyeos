@@ -14,7 +14,39 @@ from tinyeos.support import (
     check_composition,
     get_h_he_number_fractions,
 )
-from tinyeos.definitions import *
+from tinyeos.definitions import (
+    logP_max,
+    logP_min,
+    logT_max,
+    logT_min,
+    logRho_max,
+    logRho_min,
+    num_vals,
+    i_logT,
+    i_logRho,
+    i_logP,
+    i_logS,
+    i_logU,
+    i_chiRho,
+    i_chiT,
+    i_grad_ad,
+    i_cp,
+    i_cv,
+    i_gamma1,
+    i_gamma3,
+    i_dS_dT,
+    i_dS_dRho,
+    i_dE_dRho,
+    i_mu,
+    i_eta,
+    i_lfe,
+    i_csound,
+    eps1,
+    tiny_val,
+    heavy_elements,
+    atomic_masses,
+    ionic_charges,
+)
 
 
 class TinyPT(InterpolantsBuilder):
@@ -311,8 +343,42 @@ class TinyPT(InterpolantsBuilder):
                 10**logRho_x, 10**logRho_y, 10**logRho_z, X, Y, Z
             )
             logRho = np.log10(1 / iml)
-
         return logRho
+
+    def __get_mixing_entropy(self, Y: ArrayLike) -> ArrayLike:
+        """Calculates the ideal mixing entropy of the H-He
+        partial mixture with free-electron entropy neglected;
+        see eq. 11 of Chabrier et al. (2019)
+
+        Args:
+            Y (ArrayLike): helium mass-fraction.
+
+        Returns:
+            ArrayLike: mixing entropy.
+        """
+        S_mix = np.zeros(Y.shape)
+        if not self.include_hhe_interactions:
+            x_H, x_He = get_h_he_number_fractions(Y)
+            if self.input_ndim > 0:
+                if not np.all(self.Z_close):
+                    iZ = ~self.Z_close
+                    x_H = x_H[iZ]
+                    x_He = x_He[iZ]
+                    mean_A = x_H * A_H + x_He * A_He
+                    S_mix[iZ] = (
+                        -k_b
+                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
+                        / (mean_A * m_u)
+                    )
+            else:
+                if not self.Z_close:
+                    mean_A = x_H * A_H + x_He * A_He
+                    S_mix = (
+                        -k_b
+                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
+                        / (mean_A * m_u)
+                    )
+        return S_mix
 
     def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
@@ -349,7 +415,6 @@ class TinyPT(InterpolantsBuilder):
         res_x[self.i_grad_ad] = grad_ad
         res_x[self.i_mu] = mu
         res_x[self.i_lfe] = lfe
-
         return res_x
 
     def __evaluate_x_eff(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
@@ -387,7 +452,6 @@ class TinyPT(InterpolantsBuilder):
         res_x_eff[self.i_grad_ad] = grad_ad
         res_x_eff[self.i_mu] = mu
         res_x_eff[self.i_lfe] = lfe
-
         return res_x_eff
 
     def __evaluate_y(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
@@ -425,7 +489,6 @@ class TinyPT(InterpolantsBuilder):
         res_y[self.i_grad_ad] = grad_ad
         res_y[self.i_mu] = mu
         res_y[self.i_lfe] = lfe
-
         return res_y
 
     def __evaluate_z(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
@@ -481,7 +544,6 @@ class TinyPT(InterpolantsBuilder):
         res_z[self.i_mu] = self.A  # atomic weight
         res_z[self.i_lfe] = -99  # not available in tables
         res_z[self.i_eta] = 999  # not available since lfe is missing
-
         return res_z
 
     def evaluate(
@@ -512,7 +574,7 @@ class TinyPT(InterpolantsBuilder):
         elif logT.ndim < X.ndim:
             logT = logT * np.ones_like(X)
             logP = logP * np.ones_like(X)
-        input_ndim = np.max([logT.ndim, X.ndim])
+        self.input_ndim = np.max([logT.ndim, X.ndim])
 
         self.X_close = np.isclose(X, 1, atol=eps1)
         self.Y_close = np.isclose(X, 1, atol=eps1)
@@ -555,30 +617,7 @@ class TinyPT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
-
-        # ideal mixing entropy of the H-He partial mixture
-        # with free-electron entropy neglected;
-        # see eq. 11 of Chabrier et al. (2019)
-        x_H, x_He = get_h_he_number_fractions(Y)
-        S_mix = np.zeros_like(S)
-        if input_ndim > 0:
-            if not np.all(self.Z_close):
-                iZ = ~self.Z_close
-                x_H = x_H[iZ]
-                x_He = x_He[iZ]
-                mean_A = x_H * A_H + x_He * A_He
-                S_mix[iZ] = (
-                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
-                )
-        else:
-            if self.Z_close:
-                S_mix = 0
-            else:
-                mean_A = x_H * A_H + x_He * A_He
-                S_mix = (
-                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
-                )
-        S = S + S_mix
+        S = S + self.__get_mixing_entropy(Y)
         logS = np.log10(S)
 
         logU_x = res_x[self.i_logU]
@@ -618,7 +657,7 @@ class TinyPT(InterpolantsBuilder):
             X * S_x * dlS_dlT_P_x + Y * S_y * dlS_dlT_P_y + Z * S_z * dlS_dlT_P_z
         ) / S
 
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
             iX = np.isclose(X, tiny_val, atol=eps1)
@@ -670,7 +709,7 @@ class TinyPT(InterpolantsBuilder):
         grad_ad = -dlS_dlP_T / dlS_dlT_P
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             grad_ad[np.isnan(grad_ad)] = tiny_val
             grad_ad[grad_ad <= tiny_val] = tiny_val
             grad_ad[grad_ad > 1] = 1
@@ -724,7 +763,7 @@ class TinyPT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             lfe[lfe < -99] = -99
         else:
             lfe = np.max([lfe, -99])
