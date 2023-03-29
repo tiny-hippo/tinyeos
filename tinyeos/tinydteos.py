@@ -16,7 +16,40 @@ from tinyeos.support import (
     check_composition,
     get_h_he_number_fractions,
 )
-from tinyeos.definitions import *
+from tinyeos.definitions import (
+    logP_max,
+    logP_min,
+    logT_max,
+    logT_min,
+    logRho_max,
+    logRho_min,
+    num_vals,
+    i_logT,
+    i_logRho,
+    i_logP,
+    i_logS,
+    i_logU,
+    i_chiRho,
+    i_chiT,
+    i_grad_ad,
+    i_cp,
+    i_cv,
+    i_gamma1,
+    i_gamma3,
+    i_dS_dT,
+    i_dS_dRho,
+    i_dE_dRho,
+    i_mu,
+    i_eta,
+    i_lfe,
+    i_csound,
+    eps1,
+    tiny_val,
+    tiny_logRho,
+    heavy_elements,
+    atomic_masses,
+    ionic_charges,
+)
 
 
 class TinyDT(InterpolantsBuilder):
@@ -121,7 +154,7 @@ class TinyDT(InterpolantsBuilder):
         self.include_hhe_interactions = include_hhe_interactions
         if include_hhe_interactions and which_hhe == "scvh":
             raise NotImplementedError("can't include H-He interactions with scvh")
-        
+
         # heavy-element atomic mass and ionic charge
         self.heavy_element = which_heavy
         self.A = atomic_masses[which_heavy]
@@ -434,6 +467,41 @@ class TinyDT(InterpolantsBuilder):
 
         return (conv, logRho_x, logRho_y, logRho_z, logP)
 
+    def __get_mixing_entropy(self, Y: ArrayLike) -> ArrayLike:
+        """Calculates the ideal mixing entropy of the H-He
+        partial mixture with free-electron entropy neglected;
+        see eq. 11 of Chabrier et al. (2019)
+
+        Args:
+            Y (ArrayLike): helium mass-fraction.
+
+        Returns:
+            ArrayLike: mixing entropy.
+        """
+        S_mix = np.zeros(Y.shape)
+        if not self.include_hhe_interactions:
+            x_H, x_He = get_h_he_number_fractions(Y)
+            if self.input_ndim > 0:
+                if not np.all(self.Z_close):
+                    iZ = ~self.Z_close
+                    x_H = x_H[iZ]
+                    x_He = x_He[iZ]
+                    mean_A = x_H * A_H + x_He * A_He
+                    S_mix[iZ] = (
+                        -k_b
+                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
+                        / (mean_A * m_u)
+                    )
+            else:
+                if not self.Z_close:
+                    mean_A = x_H * A_H + x_He * A_He
+                    S_mix = (
+                        -k_b
+                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
+                        / (mean_A * m_u)
+                    )
+        return S_mix
+
     def __ideal_mixture(
         self,
         logT: float,
@@ -515,7 +583,6 @@ class TinyDT(InterpolantsBuilder):
         Y: float,
         Z: float,
     ) -> float:
-
         if X > tiny_val:
             logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
         else:
@@ -1470,30 +1537,7 @@ class TinyDT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
-
-        # ideal mixing entropy of the H-He partial mixture
-        # with free-electron entropy neglected;
-        # see eq. 11 of Chabrier et al. (2019)
-        x_H, x_He = get_h_he_number_fractions(Y)
-        S_mix = np.zeros_like(S)
-        if input_ndim > 0:
-            if not np.all(self.Z_close):
-                iZ = ~self.Z_close
-                x_H = x_H[iZ]
-                x_He = x_He[iZ]
-                mean_A = x_H * A_H + x_He * A_He
-                S_mix[iZ] = (
-                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
-                )
-        else:
-            if self.Z_close:
-                S_mix = 0
-            else:
-                mean_A = x_H * A_H + x_He * A_He
-                S_mix = (
-                    -k_b * (x_H * np.log(x_H) + x_He * np.log(x_He)) / (mean_A * m_u)
-                )
-        S = S + S_mix
+        S = S + self.__get_mixing_entropy(Y)
         logS = np.log10(S)
 
         logU_x = res_x[self.i_logU]
