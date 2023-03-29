@@ -233,8 +233,9 @@ class TinyPTMixture:
         Z2: ArrayLike,
         Z3: ArrayLike,
     ) -> ArrayLike:
-        """Calculates the mixing entropy for hydrogen-helium
-        mixture.
+        """Calculates the ideal mixing entropy of the H-He
+        partial mixture with free-electron entropy neglected;
+        see eq. 11 of Chabrier et al. (2019)
 
         Args:
             Y (ArrayLike): helium mass-fraction.
