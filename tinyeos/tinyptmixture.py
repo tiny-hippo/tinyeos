@@ -31,6 +31,7 @@ class TinyPTMixture:
         include_hhe_interactions: bool = True,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
+        limit_bad_values: bool = False
     ):
         """__init__ method. Defines parameters and either loads or
         builds the interpolants.
@@ -54,6 +55,8 @@ class TinyPTMixture:
                 hydrogen and helium tables. Defaults to False.
             use_smoothed_z_tables (bool, optional): whether to use smoothed
                 heavy-element tables. Defaults to False.
+            limit_bad_values (bool, optional): whether to limit bad equation
+                of state results. Defaults to False.
         """
         self.logP_max = logP_max
         self.logP_min = logP_min
@@ -67,6 +70,7 @@ class TinyPTMixture:
         self.i_dlS_dlT = 3
         self.i_grad_ad = 4
         self.include_hhe_interactions = include_hhe_interactions
+        self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
 
         self.tpt_z1 = TinyPT(
@@ -417,7 +421,7 @@ class TinyPTMixture:
         X: ArrayLike = 0,
         Z1: ArrayLike = 0,
         Z2: ArrayLike = 0,
-        Z3: ArrayLike = 0,
+        Z3: ArrayLike = 0
     ) -> NDArray:
         """Calculates the equation of state output for the mixture.
 
@@ -514,6 +518,24 @@ class TinyPTMixture:
             + Z3 * S_z3 * dlS_dlT_z3
         ) / S
         grad_ad = -dlS_dlP / dlS_dlT
+
+        if self.limit_bad_values:
+            if self.input_ndim > 0:
+                logS[np.isnan(logS)] = -10
+                logS[logS < -10] = -10
+                logS[logS > 12] = 12
+                grad_ad[np.isnan(grad_ad)] = tiny_val
+                grad_ad[grad_ad <= tiny_val] = tiny_val
+                grad_ad[grad_ad > 1] = 1
+            else:
+                if np.isnan(logS):
+                    logS = -10
+                logS = np.max([logS, -10])
+                logS = np.min([logS, 12])
+                if np.isnan(grad_ad):
+                    grad_ad = tiny_val
+                grad_ad = np.max([grad_ad, tiny_val])
+                grad_ad = np.min([grad_ad, 1])
 
         res = self.__get_zeros(self.num_vals_for_return, logT, logP)
         res[0] = logRho
