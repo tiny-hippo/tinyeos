@@ -22,6 +22,7 @@ class TinyPTMixture:
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
     """
+
     def __init__(
         self,
         which_xy: str = "cms",
@@ -31,7 +32,7 @@ class TinyPTMixture:
         include_hhe_interactions: bool = True,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
-        limit_bad_values: bool = False
+        limit_bad_values: bool = False,
     ):
         """__init__ method. Defines parameters and either loads or
         builds the interpolants.
@@ -62,13 +63,15 @@ class TinyPTMixture:
         self.logP_min = logP_min
         self.logT_max = logT_max
         self.logT_min = logT_min
-        self.num_vals_for_evaluate = 5
-        self.num_vals_for_return = 3
+        self.num_vals_for_evaluate = 7
+        self.num_vals_for_return = 5
         self.i_logRho = 0
         self.i_logS = 1
         self.i_dlS_dlP = 2
         self.i_dlS_dlT = 3
         self.i_grad_ad = 4
+        self.i_chiRho = 5
+        self.i_chiT = 6
         self.include_hhe_interactions = include_hhe_interactions
         self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
@@ -123,9 +126,7 @@ class TinyPTMixture:
         """
         return self.evaluate(logT, logP, X, Z1, Z2, Z3)
 
-    def __check_PT(
-        self, logT: ArrayLike, logP: ArrayLike
-    ) -> Tuple[NDArray, NDArray]:
+    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
@@ -200,7 +201,7 @@ class TinyPTMixture:
         Y = 1 - X - Z1 - Z2 - Z3
         composition = np.asarray([X, Y, Z1, Z2, Z3])
         check_zero = np.isclose(composition, 0, atol=eps1)
-        composition[check_zero] = tiny_val
+        composition[check_zero] = 0
         check_one = np.isclose(composition, 1, atol=eps1)
         composition[check_one] = 1
         X = composition[0]
@@ -276,32 +277,70 @@ class TinyPTMixture:
                     )
         return S_mix
 
-    def __get_zeros(
-        self,
-        num_vals: int,
-        logT: NDArray,
-        logP: NDArray,
-        X: NDArray = np.array(0),
-        Z: NDArray = np.array(0),
+    @staticmethod
+    def __get_shape(
+        num_vals: int, logT: NDArray, logP: NDArray, X: NDArray = np.array(0)
     ) -> NDArray:
-        """Helper function to return a result array of the appropriate shape.
+        """Helper function to return the appropriate shape.
 
         Args:
             num_vals (ArrayLike): number of values along the first dimension.
             logT (ArrayLike): log10 of the temperature.
             logP (ArrayLike): log10 of the pressure.
             X (ArrayLike): hydrogen mass-fraction.
-            Z (ArrayLike): heavy-element mass fraction.
 
         Returns:
             NDArray
         """
-        max_ndim = np.max([logT.ndim, logP.ndim, X.ndim, Z.ndim])
+
+        max_ndim = np.max([logT.ndim, logP.ndim, X.ndim])
         if max_ndim > 0:
             shape = (num_vals,) + logT.shape
-            return np.zeros(shape)
         elif max_ndim == 0:
-            return np.zeros(num_vals)
+            shape = num_vals
+        return shape
+
+    def __get_zeros(
+        self,
+        num_vals: int,
+        logT: NDArray,
+        logP: NDArray,
+        X: NDArray = np.array(0),
+    ) -> NDArray:
+        """Helper function to return a zero-array of the appropriate shape.
+
+        Args:
+            num_vals (ArrayLike): number of values along the first dimension.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+
+        Returns:
+            NDArray
+        """
+        shape = self.__get_shape(num_vals, logT, logP, X)
+        return np.zeros(shape)
+
+    def __get_empty(
+        self,
+        num_vals: int,
+        logT: NDArray,
+        logP: NDArray,
+        X: NDArray = np.array(0),
+    ) -> NDArray:
+        """Helper function to return an empty array of the appropriate shape.
+
+        Args:
+            num_vals (ArrayLike): number of values along the first dimension.
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+
+        Returns:
+            NDArray
+        """
+        shape = self.__get_shape(num_vals, logT, logP, X)
+        return np.empty(shape)
 
     def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
@@ -321,13 +360,19 @@ class TinyPTMixture:
         dlS_dlP_T = tpt.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
         dlS_dlT_P = tpt.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
         grad_ad = tpt.interpPT_grad_ad_x(logT, logP, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_x(logT, logP, **self.kwargs)
+        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_x(logT, logP, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         res_x = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
-        res_x[0] = logRho
-        res_x[1] = logS
-        res_x[2] = dlS_dlP_T
-        res_x[3] = dlS_dlT_P
-        res_x[4] = grad_ad
+        res_x[self.i_logRho] = logRho
+        res_x[self.i_logS] = logS
+        res_x[self.i_dlS_dlP] = dlS_dlP_T
+        res_x[self.i_dlS_dlT] = dlS_dlT_P
+        res_x[self.i_grad_ad] = grad_ad
+        res_x[self.i_chiRho] = chiRho
+        res_x[self.i_chiT] = chiT
         return res_x
 
     def __evaluate_x_eff(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
@@ -348,13 +393,19 @@ class TinyPTMixture:
         dlS_dlP_T = tpt.interpPT_dlS_dlP_T_x_eff(logT, logP, **self.kwargs)
         dlS_dlT_P = tpt.interpPT_dlS_dlT_P_x_eff(logT, logP, **self.kwargs)
         grad_ad = tpt.interpPT_grad_ad_x_eff(logT, logP, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_x_eff(logT, logP, **self.kwargs)
+        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_x_eff(logT, logP, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         res_x_eff = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
-        res_x_eff[0] = logRho
-        res_x_eff[1] = logS
-        res_x_eff[2] = dlS_dlP_T
-        res_x_eff[3] = dlS_dlT_P
-        res_x_eff[4] = grad_ad
+        res_x_eff[self.i_logRho] = logRho
+        res_x_eff[self.i_logS] = logS
+        res_x_eff[self.i_dlS_dlP] = dlS_dlP_T
+        res_x_eff[self.i_dlS_dlT] = dlS_dlT_P
+        res_x_eff[self.i_grad_ad] = grad_ad
+        res_x_eff[self.i_chiRho] = chiRho
+        res_x_eff[self.i_chiT] = chiT
         return res_x_eff
 
     def __evaluate_y(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
@@ -375,18 +426,22 @@ class TinyPTMixture:
         dlS_dlP_T = tpt.interpPT_dlS_dlP_T_y(logT, logP, **self.kwargs)
         dlS_dlT_P = tpt.interpPT_dlS_dlT_P_y(logT, logP, **self.kwargs)
         grad_ad = tpt.interpPT_grad_ad_y(logT, logP, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_y(logT, logP, **self.kwargs)
+        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_y(logT, logP, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         res_y = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
-        res_y[0] = logRho
-        res_y[1] = logS
-        res_y[2] = dlS_dlP_T
-        res_y[3] = dlS_dlT_P
-        res_y[4] = grad_ad
+        res_y[self.i_logRho] = logRho
+        res_y[self.i_logS] = logS
+        res_y[self.i_dlS_dlP] = dlS_dlP_T
+        res_y[self.i_dlS_dlT] = dlS_dlT_P
+        res_y[self.i_grad_ad] = grad_ad
+        res_y[self.i_chiRho] = chiRho
+        res_y[self.i_chiT] = chiT
         return res_y
 
-    def __evaluate_z(
-        self, which_iz: int, logT: ArrayLike, logP: ArrayLike
-    ) -> NDArray:
+    def __evaluate_z(self, which_iz: int, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for the heavy element. Only
         calculates the density, entropy, entropy derivatives,
         and adiabatic gradient.
@@ -405,13 +460,19 @@ class TinyPTMixture:
         dlS_dlP_T = tpt_zi.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
         dlS_dlT_P = tpt_zi.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
         grad_ad = -dlS_dlP_T / dlS_dlT_P
+        dlRho_dlP_T = tpt_zi.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
+        dlRho_dlT_P = tpt_zi.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         res_z = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
-        res_z[0] = logRho
-        res_z[1] = logS
-        res_z[2] = dlS_dlP_T
-        res_z[3] = dlS_dlT_P
-        res_z[4] = grad_ad
+        res_z[self.i_logRho] = logRho
+        res_z[self.i_logS] = logS
+        res_z[self.i_dlS_dlP] = dlS_dlP_T
+        res_z[self.i_dlS_dlT] = dlS_dlT_P
+        res_z[self.i_grad_ad] = grad_ad
+        res_z[self.i_chiRho] = chiRho
+        res_z[self.i_chiT] = chiT
         return res_z
 
     def evaluate(
@@ -421,7 +482,7 @@ class TinyPTMixture:
         X: ArrayLike = 0,
         Z1: ArrayLike = 0,
         Z2: ArrayLike = 0,
-        Z3: ArrayLike = 0
+        Z3: ArrayLike = 0,
     ) -> NDArray:
         """Calculates the equation of state output for the mixture.
 
@@ -455,30 +516,48 @@ class TinyPTMixture:
         self.input_ndim = np.max([logT.ndim, X.ndim])
 
         X_one = np.isclose(X, 1, atol=eps1)
-        if np.all(X_one) or not self.include_hhe_interactions:
-            res_x = self.__evaluate_x(logT, logP)
-        elif np.any(X_one) and self.include_hhe_interactions:
-            i_xeff = X < 1
-            i_x = ~i_xeff
-            logT_x = logT[i_x]
-            logP_x = logP[i_x]
-            logT_xeff = logT[i_xeff]
-            logP_xeff = logP[i_xeff]
-            res_x = self.__get_zeros(
-                self.num_vals_for_evaluate,
-                logT,
-                logP,
-                X,
-                Z1
-            )
-            res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
-            res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
+        if np.all(np.isclose(X, 0, atol=eps1)):
+            res_x = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_x.fill(tiny_val)
         else:
-            res_x = self.__evaluate_x_eff(logT, logP)
-        res_y = self.__evaluate_y(logT, logP)
-        res_z1 = self.__evaluate_z(0, logT, logP)
-        res_z2 = self.__evaluate_z(1, logT, logP)
-        res_z3 = self.__evaluate_z(2, logT, logP)
+            if np.all(X_one) or not self.include_hhe_interactions:
+                res_x = self.__evaluate_x(logT, logP)
+            elif np.any(X_one) and self.include_hhe_interactions:
+                i_xeff = X < 1
+                i_x = ~i_xeff
+                logT_x = logT[i_x]
+                logP_x = logP[i_x]
+                logT_xeff = logT[i_xeff]
+                logP_xeff = logP[i_xeff]
+                res_x = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+                res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
+                res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
+            else:
+                res_x = self.__evaluate_x_eff(logT, logP)
+
+        if np.all(np.isclose(Y, 0, atol=eps1)):
+            res_y = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_y.fill(tiny_val)
+        else:
+            res_y = self.__evaluate_y(logT, logP)
+
+        if np.all(np.isclose(Z1, 0, atol=eps1)):
+            res_z1 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z1.fill(tiny_val)
+        else:
+            res_z1 = self.__evaluate_z(0, logT, logP)
+
+        if np.all(np.isclose(Z2, 0, atol=eps1)):
+            res_z2 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z2.fill(tiny_val)
+        else:
+            res_z2 = self.__evaluate_z(1, logT, logP)
+
+        if np.all(np.isclose(Z3, 0, atol=eps1)):
+            res_z3 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z3.fill(tiny_val)
+        else:
+            res_z3 = self.__evaluate_z(2, logT, logP)
 
         logRho_x, logS_x, dlS_dlP_x, dlS_dlT_x, _ = self.__unpack(res_x)
         logRho_y, logS_y, dlS_dlP_y, dlS_dlT_y, _ = self.__unpack(res_y)
@@ -486,12 +565,13 @@ class TinyPTMixture:
         logRho_z2, logS_z2, dlS_dlP_z2, dlS_dlT_z2, _ = self.__unpack(res_z2)
         logRho_z3, logS_z3, dlS_dlP_z3, dlS_dlT_z3, _ = self.__unpack(res_z3)
 
-        rho_inv = (
-            X / 10**logRho_x + Y / 10**logRho_y +
-            Z1 / 10**logRho_z1 +
-            Z2 / 10**logRho_z2 +
-            Z3 / 10**logRho_z3
-        )
+        rho_x = 10**logRho_x
+        rho_y = 10**logRho_y
+        rho_z1 = 10**logRho_z1
+        rho_z2 = 10**logRho_z2
+        rho_z3 = 10**logRho_z3
+
+        rho_inv = X / rho_x + Y / rho_y + Z1 / rho_z1 + Z2 / rho_z2 + Z3 / rho_z3
         logRho = -np.log10(rho_inv)
 
         S_x = 10**logS_x
@@ -519,14 +599,41 @@ class TinyPTMixture:
         ) / S
         grad_ad = -dlS_dlP / dlS_dlT
 
+        if self.input_ndim > 0:
+            shape = (5, 2) + logT.shape
+        else:
+            shape = (5, 2)
+        fac = np.zeros(shape)
+        fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
+        fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
+        fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
+        fac[1, 1] = -fac[1, 0] * res_x[self.i_chiT]
+        fac[2, 0] = Z1 / rho_z1 / res_z1[self.i_chiRho]
+        fac[2, 1] = -fac[2, 0] * res_z1[self.i_chiT]
+        fac[3, 0] = Z2 / rho_z2 / res_z2[self.i_chiRho]
+        fac[3, 1] = -fac[3, 0] * res_z2[self.i_chiT]
+        fac[4, 0] = Z3 / rho_z3 / res_z3[self.i_chiRho]
+        fac[4, 1] = -fac[4, 0] * res_z3[self.i_chiT]
+
+        dlRho_dlP_T = (1 / rho_inv) * (
+            fac[0, 0] + fac[1, 0] + fac[2, 0] + fac[3, 0] + fac[4, 0]
+        )
+        dlRho_dlT_P = (1 / rho_inv) * (
+            fac[0, 1] + fac[1, 1] + fac[2, 1] + fac[3, 1] + fac[4, 1]
+        )
+        chiRho = 1 / dlRho_dlP_T
+        chiT = -dlRho_dlT_P / dlRho_dlP_T
+
         if self.limit_bad_values:
             if self.input_ndim > 0:
                 logS[np.isnan(logS)] = -10
                 logS[logS < -10] = -10
                 logS[logS > 12] = 12
                 grad_ad[np.isnan(grad_ad)] = tiny_val
-                grad_ad[grad_ad <= tiny_val] = tiny_val
+                grad_ad[grad_ad < tiny_val] = tiny_val
                 grad_ad[grad_ad > 1] = 1
+                chiRho[chiRho < tiny_val] = tiny_val
+                chiT[chiT < tiny_val] = tiny_val
             else:
                 if np.isnan(logS):
                     logS = -10
@@ -536,9 +643,13 @@ class TinyPTMixture:
                     grad_ad = tiny_val
                 grad_ad = np.max([grad_ad, tiny_val])
                 grad_ad = np.min([grad_ad, 1])
+                chiRho = np.max([chiRho, tiny_val])
+                chiT = np.max([chiT, tiny_val])
 
         res = self.__get_zeros(self.num_vals_for_return, logT, logP)
         res[0] = logRho
         res[1] = logS
         res[2] = grad_ad
+        res[3] = chiRho
+        res[4] = chiT
         return res
