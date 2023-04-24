@@ -667,7 +667,7 @@ class TinyDT(InterpolantsBuilder):
         elif logT.ndim < X.ndim:
             logT = logT * np.ones_like(X)
             logRho = logRho * np.ones_like(X)
-        input_ndim = np.max([logT.ndim, X.ndim])
+        self.input_ndim = np.max([logT.ndim, X.ndim])
 
         self.X_close = np.isclose(X, 1, atol=eps1)
         self.Y_close = np.isclose(X, 1, atol=eps1)
@@ -764,7 +764,7 @@ class TinyDT(InterpolantsBuilder):
             X * S_x * dlS_dlT_P_x + Y * S_y * dlS_dlT_P_y + Z * S_z * dlS_dlT_P_z
         ) / S
 
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
             iX = np.isclose(X, tiny_val, atol=eps1)
@@ -816,7 +816,7 @@ class TinyDT(InterpolantsBuilder):
         grad_ad = -dlS_dlP_T / dlS_dlT_P
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             grad_ad[np.isnan(grad_ad)] = tiny_val
             grad_ad[grad_ad <= tiny_val] = tiny_val
             grad_ad[grad_ad > 1] = 1
@@ -870,7 +870,7 @@ class TinyDT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
-        if input_ndim > 0:
+        if self.input_ndim > 0:
             lfe[lfe < -99] = -99
         else:
             lfe = np.max([lfe, -99])
