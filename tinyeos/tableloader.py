@@ -66,6 +66,7 @@ class TableLoader:
 
         _, _ = self.__load_xy_DT_tables(which_hhe)
         _, _ = self.__load_xy_PT_tables(which_hhe)
+        _ = self.__load_xy_PT_interaction_tables()
         _ = self.__load_z_DT_table(which_heavy)
         _ = self.__load_z_PT_table(which_heavy)
 
@@ -78,6 +79,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_hhe option is unavailable.
+
+        Returns:
+            Tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":
@@ -121,6 +125,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_hhe option is unvailable.
+
+        Returns:
+            Tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":
@@ -153,6 +160,20 @@ class TableLoader:
         self.y_PT_table = data
         return (self.x_PT_table, self.y_PT_table)
 
+    def __load_xy_PT_interaction_tables(self) -> NDArray:
+        """Loads the hydrogen-helium non-ideal interaction table
+        from Howard & Guillot (2023).
+
+        Returns:
+            NDArray: hydrogen-helium non-ideal interaction table
+        """
+        fname = "pt_hydrogen_helium_interactions.data"
+        src = os.path.join(self.tables_path, fname)
+        # columns = ["logP", "logT", "V_mix", "S_mix"]
+        data = np.loadtxt(src)
+        self.xy_interaction_PT_table = data
+        return self.xy_interaction_PT_table
+
     def __load_z_DT_table(self, which_heavy: str) -> NDArray:
         """Loads the heavy-element (logRho, logT) tables.
         For the qeos heavy-element tables, the adiabatic gradient
@@ -163,6 +184,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
+
+        Returns:
+            NDArray: the heavy-element table
         """
         if self.use_smoothed_z_tables:
             extra = "smoothed_"
@@ -201,6 +225,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
+
+        Returns:
+            NDArray: the heavy-element table
         """
         if self.use_smoothed_z_tables:
             extra = "smoothed_"
