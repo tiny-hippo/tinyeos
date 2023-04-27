@@ -684,9 +684,9 @@ class TinyDT(InterpolantsBuilder):
             res[self.i_logP :] = np.nan
             return res
 
-        logRho_x = iml[1]
-        logRho_y = iml[2]
-        logRho_z = iml[3]
+        logRho_x = np.array(iml[1], dtype=np.float64)
+        logRho_y = np.array(iml[2], dtype=np.float64)
+        logRho_z = np.array(iml[3], dtype=np.float64)
         logP = iml[4]
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
@@ -698,7 +698,7 @@ class TinyDT(InterpolantsBuilder):
             logRho_x_normal = logRho_x[i_x]
             logT_x_eff = logT[i_x_eff]
             logRho_x_eff = logRho_x[i_x_eff]
-            res_x = self.__get_zeros(logT, logRho_x, X, Z)
+            res_x = self.__get_zeros(logT, logRho, X, Z)
             res_x[:, i_x] = self.__evaluate_x(logT_x_normal, logRho_x_normal)
             res_x[:, i_x_eff] = self.__evaluate_x_eff(logT_x_eff, logRho_x_eff)
         else:
