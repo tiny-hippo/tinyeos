@@ -674,23 +674,6 @@ class TinyDT(InterpolantsBuilder):
         self.Z_close = np.isclose(Z, 1, atol=eps1)
 
         res = self.__get_zeros(logT, logRho, X, Z)
-        if np.all(self.X_close) or not self.include_hhe_interactions:
-            res_x = self.__evaluate_x(logT, logRho)
-        elif np.any(self.X_close) and self.include_hhe_interactions:
-            i_xeff = X < 1
-            i_x = ~i_xeff
-            logT_x = logT[i_x]
-            logRho_x = logRho[i_x]
-            logT_xeff = logT[i_xeff]
-            logRho_xeff = logRho[i_xeff]
-            res_x = self.__get_zeros(logT, logRho, X, Z)
-            res_x[:, i_x] = self.__evaluate_x(logT_x, logRho_x)
-            res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logRho_xeff)
-        else:
-            res_x = self.__evaluate_x_eff(logT, logRho)
-        res_y = self.__evaluate_y(logT, logRho)
-        res_z = self.__evaluate_z(logT, logRho)
-
         iml = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not iml[0]:
             if verbose:
@@ -701,10 +684,27 @@ class TinyDT(InterpolantsBuilder):
             res[self.i_logP :] = np.nan
             return res
 
-        logRho_x = iml[1]
-        logRho_y = iml[2]
-        logRho_z = iml[3]
+        logRho_x = np.array(iml[1], dtype=np.float64)
+        logRho_y = np.array(iml[2], dtype=np.float64)
+        logRho_z = np.array(iml[3], dtype=np.float64)
         logP = iml[4]
+
+        if np.all(self.X_close) or not self.include_hhe_interactions:
+            res_x = self.__evaluate_x(logT, logRho_x)
+        elif np.any(self.X_close) and self.include_hhe_interactions:
+            i_x_eff = X < 1
+            i_x = ~i_x_eff
+            logT_x_normal = logT[i_x]
+            logRho_x_normal = logRho_x[i_x]
+            logT_x_eff = logT[i_x_eff]
+            logRho_x_eff = logRho_x[i_x_eff]
+            res_x = self.__get_zeros(logT, logRho, X, Z)
+            res_x[:, i_x] = self.__evaluate_x(logT_x_normal, logRho_x_normal)
+            res_x[:, i_x_eff] = self.__evaluate_x_eff(logT_x_eff, logRho_x_eff)
+        else:
+            res_x = self.__evaluate_x_eff(logT, logRho_x)
+        res_y = self.__evaluate_y(logT, logRho_y)
+        res_z = self.__evaluate_z(logT, logRho_z)
 
         T = 10**logT
         P = 10**logP
@@ -730,27 +730,27 @@ class TinyDT(InterpolantsBuilder):
         logU = np.log10(U)
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
-            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x(logT, logRho, **self.kwargs)
-            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x(logT, logRho, **self.kwargs)
+            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x(logT, logRho_x, **self.kwargs)
+            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x(logT, logRho_x, **self.kwargs)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
             dlS_dlP_T_x[i_x] = self.interpDT_dlS_dlP_T_x(
-                logT_x, logRho_x, **self.kwargs
+                logT_x_normal, logRho_x_normal, **self.kwargs
             )
-            dlS_dlP_T_x[i_xeff] = self.interpDT_dlS_dlP_T_x(
-                logT_xeff, logRho_xeff, **self.kwargs
+            dlS_dlP_T_x[i_x_eff] = self.interpDT_dlS_dlP_T_x(
+                logT_x_eff, logRho_x_eff, **self.kwargs
             )
 
             dlS_dlT_P_x = np.zeros_like(logS)
             dlS_dlT_P_x[i_x] = self.interpDT_dlS_dlT_P_x(
-                logT_x, logRho_x, **self.kwargs
+                logT_x_normal, logRho_x_normal, **self.kwargs
             )
-            dlS_dlT_P_x[i_xeff] = self.interpDT_dlS_dlT_P_x(
-                logT_xeff, logRho_xeff, **self.kwargs
+            dlS_dlT_P_x[i_x_eff] = self.interpDT_dlS_dlT_P_x(
+                logT_x_eff, logRho_x_eff, **self.kwargs
             )
         else:
-            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x_eff(logT, logRho, **self.kwargs)
-            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x_eff(logT, logRho, **self.kwargs)
+            dlS_dlP_T_x = self.interpDT_dlS_dlP_T_x_eff(logT, logRho_x, **self.kwargs)
+            dlS_dlT_P_x = self.interpDT_dlS_dlT_P_x_eff(logT, logRho_x, **self.kwargs)
 
         dlS_dlP_T_y = self.interpDT_dlS_dlP_T_y(logT, logRho_y, **self.kwargs)
         dlS_dlT_P_y = self.interpDT_dlS_dlT_P_y(logT, logRho_y, **self.kwargs)
