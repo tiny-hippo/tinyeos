@@ -285,7 +285,11 @@ class TinyFreedmanKap:
 
         kap_fixed = np.copy(kap)
         if np.any(np.isnan(kap)):
-            fn = RegularGridInterpolator((unique_Ts, unique_Ps), kap, method="nearest")
+            fn = RegularGridInterpolator(
+                (unique_Ts, unique_Ps),
+                kap,
+                method="nearest"
+            )
             idcs = np.where(np.isnan(kap))
             i_nan = idcs[0]
             j_nan = idcs[1]
@@ -300,7 +304,11 @@ class TinyFreedmanKap:
                 raise ValueError()
 
         rgi = RegularGridInterpolator(
-            (unique_Ts, unique_Ps), kap_fixed, method="linear"
+            (unique_Ts, unique_Ps),
+            kap_fixed,
+            method="pchip",
+            bounds_error=False,
+            fill_value=np.nan,
         )
         # rbs = RectBivariateSpline(unique_Ts, unique_Ps, kap_fixed, kx=1, ky=1)
         # rgi = rbs
@@ -369,8 +377,6 @@ class TinyFreedmanKap:
         Z1 = get_Z_from_FeH(self.FeHs[j])
         kap0 = rgi0((T, P))
         kap1 = rgi1((T, P))
-        # kap0 = rgi0(T, P, grid=False)
-        # kap1 = rgi1(T, P, grid=False)
         kap = kap0 + (Z - Z0) * (kap1 - kap0) / (Z1 - Z0)
         return kap
 
@@ -644,7 +650,13 @@ class TinyElectronConduction:
         data = np.zeros((self.num_logTs, self.num_logRhos, self.num_logzs))
         for i in range(self.num_logzs):
             data[:, :, i] = self.rbs[i](x, y, grid=True)
-        rgi = RegularGridInterpolator((x, y, z), data, method="linear")
+        rgi = RegularGridInterpolator(
+            (x, y, z),
+            data,
+            method="pchip",
+            bounds_error=False,
+            fill_value=np.nan,
+        )
         return rgi
 
     def evaluate_rbs(self, logT: float, logRho: float, logz: float) -> float:
@@ -695,6 +707,8 @@ class TinyElectronConduction:
         Returns:
             ArrayLike: conductive opacity.
         """
+        if np.isscalar(logz):
+            logz = logz * np.ones_like(logT)
         pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
 
         # logK: log10 of the thermal conductivity
@@ -703,24 +717,3 @@ class TinyElectronConduction:
         logkap = 3 * logT - logRho - logK + np.log10(16 * sigma_b / 3)
         kap = np.power(10, logkap)
         return kap
-
-
-# if __name__ == "__main__":
-    # from tinydteos import TinyDT
-    # tec = TinyElectronConduction(download_tables=False)
-
-    # num = 2
-    # logT = 3 * np.ones(num)
-    # logRho = -6 * np.ones(num)
-    # Z = Z_sun * np.ones(num)
-    # X = 1 - 0.275 - Z
-    # logz = np.zeros(num)
-
-    # tdt = TinyDT()
-    # logP = np.zeros_like(logT)
-    # for i in range(logP.size):
-    #     logP[i] = tdt.evaluate(logT[i], logRho[i], X[i], Z[i])[tdt.i_logP]
-
-    # tkap = TinyKap(use_kap_rad_fit=False, build_interpolants=True)
-    # res = tkap.evaluate(logT, logRho, logP, Z, logz)
-    # print(res)
