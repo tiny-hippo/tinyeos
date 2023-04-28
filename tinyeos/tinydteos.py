@@ -818,8 +818,8 @@ class TinyDT(InterpolantsBuilder):
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if self.input_ndim > 0:
             grad_ad[np.isnan(grad_ad)] = tiny_val
-            grad_ad[grad_ad <= tiny_val] = tiny_val
-            grad_ad[grad_ad > 1] = 1
+            grad_ad[grad_ad < 0.1] = 0.1
+            grad_ad[grad_ad > 0.5] = 0.5
             chiT[chiT <= tiny_val] = tiny_val
             i = chiRho <= tiny_val
             chiRho[i] = tiny_val
@@ -845,8 +845,7 @@ class TinyDT(InterpolantsBuilder):
         else:
             if np.isnan(grad_ad):
                 grad_ad = tiny_val
-            grad_ad = np.max([grad_ad, tiny_val])
-            grad_ad = np.min([grad_ad, 1])
+            grad_ad = np.min(np.max(grad_ad, 0.1), 0.5)
             chiRho = np.max([chiRho, tiny_val])
             chiT = np.max([chiT, tiny_val])
 
