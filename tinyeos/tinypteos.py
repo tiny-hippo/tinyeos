@@ -738,7 +738,7 @@ class TinyPT(InterpolantsBuilder):
         else:
             if np.isnan(grad_ad):
                 grad_ad = tiny_val
-            grad_ad = np.min(np.max(grad_ad, 0.1), 0.5)
+            grad_ad = np.min([np.max([grad_ad, 0.1]), 0.5])
             chiRho = np.max([chiRho, tiny_val])
             chiT = np.max([chiT, tiny_val])
 
