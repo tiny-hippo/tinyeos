@@ -76,6 +76,14 @@ class TinyPTMixture:
         self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
 
+        # limits for derivatives
+        self.lower_grad_ad = 0.01
+        self.lower_chiT = 0.01
+        self.lower_chiRho = 0.01
+        self.upper_grad_ad = 2.5
+        self.upper_chiT = 2.5
+        self.upper_chiRho = 2.5
+
         self.tpt_z1 = TinyPT(
             which_hhe=which_xy,
             which_heavy=which_z1,
@@ -607,7 +615,7 @@ class TinyPTMixture:
         fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
         fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
         fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
-        fac[1, 1] = -fac[1, 0] * res_x[self.i_chiT]
+        fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
         fac[2, 0] = Z1 / rho_z1 / res_z1[self.i_chiRho]
         fac[2, 1] = -fac[2, 0] * res_z1[self.i_chiT]
         fac[3, 0] = Z2 / rho_z2 / res_z2[self.i_chiRho]
@@ -629,22 +637,26 @@ class TinyPTMixture:
                 logS[np.isnan(logS)] = -10
                 logS[logS < -10] = -10
                 logS[logS > 12] = 12
-                grad_ad[np.isnan(grad_ad)] = tiny_val
-                grad_ad[grad_ad < tiny_val] = tiny_val
-                grad_ad[grad_ad > 1] = 1
-                chiRho[chiRho < tiny_val] = tiny_val
-                chiT[chiT < tiny_val] = tiny_val
+                grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
+                grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
+                grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
+                chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
+                chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
+                chiT[chiT < self.lower_chiT] = self.lower_chiT
+                chiT[chiT > self.upper_chiT] = self.upper_chiT
             else:
                 if np.isnan(logS):
                     logS = -10
                 logS = np.max([logS, -10])
                 logS = np.min([logS, 12])
                 if np.isnan(grad_ad):
-                    grad_ad = tiny_val
-                grad_ad = np.max([grad_ad, tiny_val])
-                grad_ad = np.min([grad_ad, 1])
-                chiRho = np.max([chiRho, tiny_val])
-                chiT = np.max([chiT, tiny_val])
+                    grad_ad = self.lower_grad_ad
+                grad_ad = np.max([grad_ad, self.lower_grad_ad])
+                grad_ad = np.min([grad_ad, self.upper_grad_ad])
+                chiRho = np.max([chiRho, self.lower_chiRho])
+                chiRho = np.min([chiRho, self.upper_chiRho])
+                chiT = np.max([chiT, self.lower_chiT])
+                chiT = np.min([chiT, self.upper_chiT])
 
         res = self.__get_zeros(self.num_vals_for_return, logT, logP)
         res[0] = logRho
