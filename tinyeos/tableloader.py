@@ -18,7 +18,7 @@ class TableLoader:
             SCvH (Saumon et al. 1995).
 
         Heavy element:
-            H2O (QEOS, More et al. 1988),
+            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
