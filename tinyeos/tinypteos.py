@@ -195,8 +195,8 @@ class TinyPT(InterpolantsBuilder):
         self.interpPT_logRho_z = self.interpPT_z[0]
         self.interpPT_logS_z = self.interpPT_z[1]
         self.interpPT_logU_z = self.interpPT_z[2]
-        # if which_heavy == "aqua":
-        #     self.interpPT_grad_ad_z = self.interpPT_z[3]
+        if which_heavy == "aqua":
+            self.interpPT_grad_ad_z = self.interpPT_z[3]
 
         self.interpDT_logP_z = self.interpDT_z[0]
         self.interpDT_logS_z = self.interpDT_z[1]
@@ -511,9 +511,12 @@ class TinyPT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
-        dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
-        grad_ad = -dlS_dlP_T / dlS_dlT_P
+        if self.heavy_element == "aqua":
+            grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
+        else:
+            dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+            dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+            grad_ad = -dlS_dlP_T / dlS_dlT_P
 
         # old method with (logT, logRho)
         # chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
@@ -526,11 +529,6 @@ class TinyPT(InterpolantsBuilder):
         # grad_ad = (1 - chiRho / gamma1) / chiT
         # alternatively:
         # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
-
-        # if self.heavy_element == "aqua":
-        #     grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
-        # else:
-        #     grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         res_z = self.__get_zeros(logT, logP)
         res_z[self.i_logT] = logT
