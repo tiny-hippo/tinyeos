@@ -195,7 +195,7 @@ class TinyPT(InterpolantsBuilder):
         self.interpPT_logRho_z = self.interpPT_z[0]
         self.interpPT_logS_z = self.interpPT_z[1]
         self.interpPT_logU_z = self.interpPT_z[2]
-        if which_heavy == "aqua":
+        if self.heavy_element == "aqua":
             self.interpPT_grad_ad_z = self.interpPT_z[3]
 
         self.interpDT_logP_z = self.interpDT_z[0]
