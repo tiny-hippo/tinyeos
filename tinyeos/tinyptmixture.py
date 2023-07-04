@@ -170,7 +170,7 @@ class TinyPTMixture:
 
     def __check_composition(
         self, X: ArrayLike, Z1: ArrayLike, Z2: ArrayLike, Z3: ArrayLike
-    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
         """Checks whether input composition adds up to less than one,
         dumps the residual into helium, and formats the mass fractions.
 
