@@ -17,7 +17,7 @@ class TinyPTMixture:
             CMS (Chabrier et al. 2019),
             SCvH (Saumon et al. 1995).
         Heavy element:
-            H2O (QEOS, More et al. 1988),
+            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
@@ -42,14 +42,14 @@ class TinyPTMixture:
                 to use. Defaults to "cms". Options are "cms" or "scvh".
                 Defaults to "cms".
             which_z1 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "h2o".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "h2o".
             which_z2 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "sio2".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "sio2".
             which_z3 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "fe".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "fe".
             include_hhe_interactions (bool, optional): wether to include
                 hydrogen-helium interactions. Defaults to True.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed
