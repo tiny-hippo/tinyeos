@@ -141,6 +141,14 @@ class TinyDT(InterpolantsBuilder):
         self.i_lfe = i_lfe
         self.i_csound = i_csound
 
+        # limits for derivatives
+        self.lower_grad_ad = 0.01
+        self.lower_chiT = 0.01
+        self.lower_chiRho = 0.01
+        self.upper_grad_ad = 2.5
+        self.upper_chiT = 2.5
+        self.upper_chiRho = 2.5
+
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in heavy_elements:
@@ -815,12 +823,13 @@ class TinyDT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if self.input_ndim > 0:
-            grad_ad[np.isnan(grad_ad)] = tiny_val
-            grad_ad[grad_ad < 0.1] = 0.1
-            grad_ad[grad_ad > 0.5] = 0.5
-            chiT[chiT <= tiny_val] = tiny_val
-            i = chiRho <= tiny_val
-            chiRho[i] = tiny_val
+            grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
+            grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
+            grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
+            chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
+            chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
+            chiT[chiT < self.lower_chiT] = self.lower_chiT
+            chiT[chiT > self.upper_chiT] = self.upper_chiT
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
@@ -842,10 +851,13 @@ class TinyDT(InterpolantsBuilder):
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
             if np.isnan(grad_ad):
-                grad_ad = tiny_val
-            grad_ad = np.min([np.max([grad_ad, 0.1]), 0.5])
-            chiRho = np.max([chiRho, tiny_val])
-            chiT = np.max([chiT, tiny_val])
+                grad_ad = self.lower_grad_ad
+            grad_ad = np.max([grad_ad, self.lower_grad_ad])
+            grad_ad = np.min([grad_ad, self.upper_grad_ad])
+            chiRho = np.max([chiRho, self.lower_chiRho])
+            chiRho = np.min([chiRho, self.upper_chiRho])
+            chiT = np.max([chiT, self.lower_chiT])
+            chiT = np.min([chiT, self.upper_chiT])
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
