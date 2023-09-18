@@ -130,7 +130,7 @@ class TinyPTMixture:
             Z3 (ArrayLike): third heavy-element mass-fraction.
 
         Returns:
-            NDArray: logRho, logS and grad_ad of the mixture.
+            NDArray: logRho, logS, grad_ad, chiRho, chiT and c_sound.
         """
         return self.evaluate(logT, logP, X, Z1, Z2, Z3)
 
@@ -506,7 +506,7 @@ class TinyPTMixture:
                 Defaults to 0.
 
         Returns:
-            NDArray: logRho, logS and grad_ad of the mixture.
+            NDArray: logRho, logS, grad_ad, chiRho, chiT and c_sound.
         """
         # check the input and make sure everything
         # has the same shape
