@@ -64,7 +64,7 @@ class TinyPTMixture:
         self.logT_max = logT_max
         self.logT_min = logT_min
         self.num_vals_for_evaluate = 7
-        self.num_vals_for_return = 5
+        self.num_vals_for_return = 6
         self.i_logRho = 0
         self.i_logS = 1
         self.i_dlS_dlP = 2
@@ -658,10 +658,14 @@ class TinyPTMixture:
                 chiT = np.max([chiT, self.lower_chiT])
                 chiT = np.min([chiT, self.upper_chiT])
 
+        gamma1 = chiRho / (1 - chiT * grad_ad)
+        c_sound = np.sqrt(10**logP / 10**logRho * gamma1)
+
         res = self.__get_zeros(self.num_vals_for_return, logT, logP)
         res[0] = logRho
         res[1] = logS
         res[2] = grad_ad
         res[3] = chiRho
         res[4] = chiT
+        res[5] = c_sound
         return res
