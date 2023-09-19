@@ -835,19 +835,13 @@ class TinyDT(InterpolantsBuilder):
             gamma3 = 1 + gamma1 * grad_ad
             cp = S * dlS_dlT_P
 
-            cv = np.zeros_like(logT)
-            if np.any(i):
-                cv[i] = cp[i]
-                i = ~i
-                cv[i] = cp[i] * chiRho[i] / gamma1[i]
-                # Chabrier et al. (2019) eq. 5:
-                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho)
-            else:
-                cv = cp * chiRho / gamma1
-                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
-
-            c_sound = tiny_val * np.ones_like(logT)
             i = gamma1 >= tiny_val
+            cv = np.zeros_like(logT)
+            cv[i] = cp[i] * chiRho[i] / gamma1[i]
+            cv[~i] = cp[~i]
+            # Alternatively from Chabrier et al. (2019) eq. 5:
+            # cv = cp - (P * chiT**2) / (rho * T * chiRho)
+            c_sound = tiny_val * np.ones_like(logT)
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
             if np.isnan(grad_ad):
@@ -863,13 +857,11 @@ class TinyDT(InterpolantsBuilder):
             gamma3 = 1 + gamma1 * grad_ad
             cp = S * dlS_dlT_P
 
-            if np.isclose(chiRho, tiny_val, atol=eps1):
-                cv = cp
-            else:
-                cv = cp * chiRho / gamma1
             if gamma1 >= tiny_val:
+                cv = cp * chiRho / gamma1
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
+                cv = cp
                 c_sound = tiny_val
 
         # these are at constant density or temperature
