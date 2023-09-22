@@ -72,7 +72,6 @@ class TinyPTMixture:
         self.i_grad_ad = 4
         self.i_chiRho = 5
         self.i_chiT = 6
-        self.i_c_sound = 7
         self.include_hhe_interactions = include_hhe_interactions
         self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
