@@ -833,9 +833,10 @@ class TinyDT(InterpolantsBuilder):
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
-            cp = S * dlS_dlT_P
+            # from the definition of the specific heat
+            # cp = S * dlS_dlT_P
             # Alternatively from Stellar Interiors pp. 176
-            # cp = P * chiT / (rho * T * chiRho * grad_ad)
+            cp = P * chiT / (rho * T * chiRho * grad_ad)
 
             i = gamma1 >= tiny_val
             cv = np.zeros_like(logT)
@@ -857,7 +858,8 @@ class TinyDT(InterpolantsBuilder):
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
-            cp = S * dlS_dlT_P
+            # cp = S * dlS_dlT_P
+            cp = P * chiT / (rho * T * chiRho * grad_ad)
 
             if gamma1 >= tiny_val:
                 cv = cp * chiRho / gamma1
