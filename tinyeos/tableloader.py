@@ -18,7 +18,7 @@ class TableLoader:
             SCvH (Saumon et al. 1995).
 
         Heavy element:
-            H2O (QEOS, More et al. 1988),
+            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
@@ -194,8 +194,8 @@ class TableLoader:
             extra = ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}dt_h2o.data"
-        # elif which_heavy == "aqua":
-        #     fname = "aqua_dt.data"
+        elif which_heavy == "aqua":
+            fname = "aqua_dt_h2o.data"
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}dt_sio2.data"
         elif which_heavy == "mixture":
@@ -210,7 +210,6 @@ class TableLoader:
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
-        # data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
         self.z_DT_table = data
         return self.z_DT_table
@@ -235,8 +234,8 @@ class TableLoader:
             extra = ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}pt_h2o.data"
-        # elif which_heavy == "aqua":
-        #     fname = "aqua_pt.data"
+        elif which_heavy == "aqua":
+            fname = "aqua_pt_h2o.data"
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}pt_sio2.data"
         elif which_heavy == "mixture":
@@ -249,7 +248,6 @@ class TableLoader:
             raise NotImplementedError("this heavy element is not available")
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
-        # data = data[np.where(data[:, 0] > 1.90)]
         # columns = ["logT", "logP", "logRho", "logU", "logS", "grad_ad"]
         self.z_PT_table = data
         return self.z_PT_table
@@ -789,7 +787,7 @@ if __name__ == "__main__":
 
     # create smoothed dt tables
     num_smoothing_rounds = 2
-    for element in ["h2o", "sio2", "fe", "co", "mixture"]:
+    for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
         table = T.z_DT_table
         smoothed_table = T.smooth_z_table(
@@ -802,7 +800,7 @@ if __name__ == "__main__":
         np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
 
     # create smoothed pt tables
-    for element in ["h2o", "sio2", "fe", "co", "mixture"]:
+    for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
         table = T.z_PT_table
         smoothed_table = T.smooth_z_table(
@@ -810,6 +808,9 @@ if __name__ == "__main__":
         )
         if element == "mixture":
             element = "h2o_50_sio2_50_fe_00"
-        fname = f"qeos_smoothed_pt_{element}.data"
+        if element == "aqua":
+            fname = "aqua_smoothed_pt_h2o.data"
+        else:
+            fname = f"qeos_smoothed_pt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
         np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)

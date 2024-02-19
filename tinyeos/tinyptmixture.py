@@ -17,7 +17,7 @@ class TinyPTMixture:
             CMS (Chabrier et al. 2019),
             SCvH (Saumon et al. 1995).
         Heavy element:
-            H2O (QEOS, More et al. 1988),
+            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
@@ -42,14 +42,14 @@ class TinyPTMixture:
                 to use. Defaults to "cms". Options are "cms" or "scvh".
                 Defaults to "cms".
             which_z1 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "h2o".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "h2o".
             which_z2 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "sio2".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "sio2".
             which_z3 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sio2", "mixture", "fe" or "co".
-                Defaults to "fe".
+                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
+                or "co". Defaults to "fe".
             include_hhe_interactions (bool, optional): wether to include
                 hydrogen-helium interactions. Defaults to True.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed
@@ -64,7 +64,7 @@ class TinyPTMixture:
         self.logT_max = logT_max
         self.logT_min = logT_min
         self.num_vals_for_evaluate = 7
-        self.num_vals_for_return = 5
+        self.num_vals_for_return = 6
         self.i_logRho = 0
         self.i_logS = 1
         self.i_dlS_dlP = 2
@@ -75,6 +75,14 @@ class TinyPTMixture:
         self.include_hhe_interactions = include_hhe_interactions
         self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
+
+        # limits for derivatives
+        self.lower_grad_ad = 0.01
+        self.lower_chiT = 0.01
+        self.lower_chiRho = 0.01
+        self.upper_grad_ad = 2.5
+        self.upper_chiT = 2.5
+        self.upper_chiRho = 2.5
 
         self.tpt_z1 = TinyPT(
             which_hhe=which_xy,
@@ -122,7 +130,7 @@ class TinyPTMixture:
             Z3 (ArrayLike): third heavy-element mass-fraction.
 
         Returns:
-            NDArray: logRho, logS and grad_ad of the mixture.
+            NDArray: logRho, logS, grad_ad, chiRho, chiT and c_sound.
         """
         return self.evaluate(logT, logP, X, Z1, Z2, Z3)
 
@@ -162,7 +170,7 @@ class TinyPTMixture:
 
     def __check_composition(
         self, X: ArrayLike, Z1: ArrayLike, Z2: ArrayLike, Z3: ArrayLike
-    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
         """Checks whether input composition adds up to less than one,
         dumps the residual into helium, and formats the mass fractions.
 
@@ -498,7 +506,7 @@ class TinyPTMixture:
                 Defaults to 0.
 
         Returns:
-            NDArray: logRho, logS and grad_ad of the mixture.
+            NDArray: logRho, logS, grad_ad, chiRho, chiT and c_sound.
         """
         # check the input and make sure everything
         # has the same shape
@@ -607,7 +615,7 @@ class TinyPTMixture:
         fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
         fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
         fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
-        fac[1, 1] = -fac[1, 0] * res_x[self.i_chiT]
+        fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
         fac[2, 0] = Z1 / rho_z1 / res_z1[self.i_chiRho]
         fac[2, 1] = -fac[2, 0] * res_z1[self.i_chiT]
         fac[3, 0] = Z2 / rho_z2 / res_z2[self.i_chiRho]
@@ -629,22 +637,29 @@ class TinyPTMixture:
                 logS[np.isnan(logS)] = -10
                 logS[logS < -10] = -10
                 logS[logS > 12] = 12
-                grad_ad[np.isnan(grad_ad)] = tiny_val
-                grad_ad[grad_ad < tiny_val] = tiny_val
-                grad_ad[grad_ad > 1] = 1
-                chiRho[chiRho < tiny_val] = tiny_val
-                chiT[chiT < tiny_val] = tiny_val
+                grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
+                grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
+                grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
+                chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
+                chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
+                chiT[chiT < self.lower_chiT] = self.lower_chiT
+                chiT[chiT > self.upper_chiT] = self.upper_chiT
             else:
                 if np.isnan(logS):
                     logS = -10
                 logS = np.max([logS, -10])
                 logS = np.min([logS, 12])
                 if np.isnan(grad_ad):
-                    grad_ad = tiny_val
-                grad_ad = np.max([grad_ad, tiny_val])
-                grad_ad = np.min([grad_ad, 1])
-                chiRho = np.max([chiRho, tiny_val])
-                chiT = np.max([chiT, tiny_val])
+                    grad_ad = self.lower_grad_ad
+                grad_ad = np.max([grad_ad, self.lower_grad_ad])
+                grad_ad = np.min([grad_ad, self.upper_grad_ad])
+                chiRho = np.max([chiRho, self.lower_chiRho])
+                chiRho = np.min([chiRho, self.upper_chiRho])
+                chiT = np.max([chiT, self.lower_chiT])
+                chiT = np.min([chiT, self.upper_chiT])
+
+        gamma1 = chiRho / (1 - chiT * grad_ad)
+        c_sound = np.sqrt(10**logP / 10**logRho * gamma1)
 
         res = self.__get_zeros(self.num_vals_for_return, logT, logP)
         res[0] = logRho
@@ -652,4 +667,5 @@ class TinyPTMixture:
         res[2] = grad_ad
         res[3] = chiRho
         res[4] = chiT
+        res[5] = c_sound
         return res

@@ -30,8 +30,8 @@ logRho_eos = tpt.evaluate(logT, logP, X, Z)[i_logRho]
 fig, ax = plt.subplots(1, 1)
 ax.plot(logP, logRho, lw=2)
 ax.plot(logP, logRho_eos, lw=2)
-ax.set_xlabel("logP [Ba]")
-ax.set_ylabel("logRho [g/cc]")
+ax.set_xlabel("logP (Ba)")
+ax.set_ylabel("logRho (g/cc)")
 fig.tight_layout()
 plt.show()
 
@@ -47,8 +47,8 @@ logRho = tpt.evaluate(logT, logP, X, Z)[i_logRho]
 # make a contour plot of the density
 fig, ax = plt.subplots(1, 1)
 cf = ax.contourf(logT, logP, logRho, levels=50)
-fig.colorbar(cf, label="logRho [g/cc")
-ax.set_xlabel("logT [K]")
-ax.set_ylabel("logP [Ba]")
+fig.colorbar(cf, label="logRho (g/cc)")
+ax.set_xlabel("logT (K)")
+ax.set_ylabel("logP (Ba)")
 fig.tight_layout()
 plt.show()

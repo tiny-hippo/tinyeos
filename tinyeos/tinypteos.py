@@ -59,7 +59,7 @@ class TinyPT(InterpolantsBuilder):
             SCvH (Saumon et al. 1995).
 
         Heavy element:
-            H2O (QEOS, More et al. 1988),
+            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
@@ -80,7 +80,7 @@ class TinyPT(InterpolantsBuilder):
 
         Args:
             which_heavy (str, optional): which heavy-element equation of state
-                to use. Defaults to "h2o". Options are "h2o", "sio2",
+                to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
@@ -128,6 +128,14 @@ class TinyPT(InterpolantsBuilder):
         self.i_eta = i_eta
         self.i_lfe = i_lfe
         self.i_csound = i_csound
+
+        # limits for derivatives
+        self.lower_grad_ad = 0.01
+        self.lower_chiT = 0.01
+        self.lower_chiRho = 0.01
+        self.upper_grad_ad = 2.5
+        self.upper_chiT = 2.5
+        self.upper_chiRho = 2.5
 
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
@@ -195,8 +203,8 @@ class TinyPT(InterpolantsBuilder):
         self.interpPT_logRho_z = self.interpPT_z[0]
         self.interpPT_logS_z = self.interpPT_z[1]
         self.interpPT_logU_z = self.interpPT_z[2]
-        # if which_heavy == "aqua":
-        #     self.interpPT_grad_ad_z = self.interpPT_z[3]
+        if self.heavy_element == "aqua":
+            self.interpPT_grad_ad_z = self.interpPT_z[3]
 
         self.interpDT_logP_z = self.interpDT_z[0]
         self.interpDT_logS_z = self.interpDT_z[1]
@@ -511,9 +519,12 @@ class TinyPT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
-        dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
-        grad_ad = -dlS_dlP_T / dlS_dlT_P
+        if self.heavy_element == "aqua":
+            grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
+        else:
+            dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+            dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+            grad_ad = -dlS_dlP_T / dlS_dlT_P
 
         # old method with (logT, logRho)
         # chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
@@ -526,11 +537,6 @@ class TinyPT(InterpolantsBuilder):
         # grad_ad = (1 - chiRho / gamma1) / chiT
         # alternatively:
         # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
-
-        # if self.heavy_element == "aqua":
-        #     grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
-        # else:
-        #     grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         res_z = self.__get_zeros(logT, logP)
         res_z[self.i_logT] = logT
@@ -710,49 +716,49 @@ class TinyPT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
         if self.input_ndim > 0:
-            grad_ad[np.isnan(grad_ad)] = tiny_val
-            grad_ad[grad_ad < 0.1] = 0.1
-            grad_ad[grad_ad > 0.5] = 0.5
-            chiT[chiT <= tiny_val] = tiny_val
-            i = chiRho <= tiny_val
-            chiRho[i] = tiny_val
+            grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
+            grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
+            grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
+            chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
+            chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
+            chiT[chiT < self.lower_chiT] = self.lower_chiT
+            chiT[chiT > self.upper_chiT] = self.upper_chiT
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
-            cp = S * dlS_dlT_P
+            # from the definition of the specific heat
+            # cp = S * dlS_dlT_P
+            # Alternatively from Stellar Interiors pp. 176
+            cp = P * chiT / (rho * T * chiRho * grad_ad)
 
-            cv = np.zeros_like(logT)
-            if np.any(i):
-                cv[i] = cp[i]
-                i = ~i
-                cv[i] = cp[i] * chiRho[i] / gamma1[i]
-                # Chabrier et al. (2019) eq. 5:
-                # cv[i] = cp[i] - (P[i] * chiT[i]**2) / (rho[i] * T[i] * chiRho)
-            else:
-                cv = cp * chiRho / gamma1
-                # cv = cp - (P * chiT**2) / (rho * T * chiRho)
-
-            c_sound = tiny_val * np.ones_like(logT)
             i = gamma1 >= tiny_val
+            cv = np.zeros_like(logT)
+            cv[i] = cp[i] * chiRho[i] / gamma1[i]
+            cv[~i] = cp[~i]
+            # Alternatively from Chabrier et al. (2019) eq. 5:
+            # cv = cp - (P * chiT**2) / (rho * T * chiRho)
+            c_sound = tiny_val * np.ones_like(logT)
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
             if np.isnan(grad_ad):
-                grad_ad = tiny_val
-            grad_ad = np.min(np.max(grad_ad, 0.1), 0.5)
-            chiRho = np.max([chiRho, tiny_val])
-            chiT = np.max([chiT, tiny_val])
+                grad_ad = self.lower_grad_ad
+            grad_ad = np.max([grad_ad, self.lower_grad_ad])
+            grad_ad = np.min([grad_ad, self.upper_grad_ad])
+            chiRho = np.max([chiRho, self.lower_chiRho])
+            chiRho = np.min([chiRho, self.upper_chiRho])
+            chiT = np.max([chiT, self.lower_chiT])
+            chiT = np.min([chiT, self.upper_chiT])
 
             gamma1 = chiRho / (1 - chiT * grad_ad)
             gamma3 = 1 + gamma1 * grad_ad
-            cp = S * dlS_dlT_P
+            # cp = S * dlS_dlT_P
+            cp = P * chiT / (rho * T * chiRho * grad_ad)
 
-            if np.isclose(chiRho, tiny_val, atol=eps1):
-                cv = cp
-            else:
-                cv = cp * chiRho / gamma1
             if gamma1 >= tiny_val:
+                cv = cp * chiRho / gamma1
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
+                cv = cp
                 c_sound = tiny_val
 
         # these are at constant density or temperature

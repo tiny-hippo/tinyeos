@@ -3,9 +3,10 @@ array indices for the output.
 """
 
 # currently supported heavy elements
-heavy_elements = ["h2o", "sio2", "fe", "co", "mixture"]
+heavy_elements = ["h2o", "aqua", "sio2", "fe", "co", "mixture"]
 atomic_masses = {
     "h2o": 18.015,
+    "aqua": 18.015,
     "sio2": 60.080,
     "fe": 55.845,
     "co": 28.010,
@@ -13,6 +14,7 @@ atomic_masses = {
 }
 ionic_charges = {
     "h2o": 10,
+    "aqua": 10,
     "sio2": 30,
     "fe": 26,
     "co": 14,
