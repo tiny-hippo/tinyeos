@@ -79,18 +79,18 @@ class TinyPT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
-            which_heavy (str, optional): which heavy-element equation of state
+            which_heavy (str, optional): heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
-            which_hhe (str, optional): which hydrogen-helium equation of state
+            which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
-            include_hhe_interactions (bool, optional): wether to include
+            include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
-            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+            use_smoothed_xy_tables (bool, optional): use smoothed
                 hydrogen and helium tables. Defaults to False.
-            use_smoothed_z_tables (bool, optional): whether to use smoothed
+            use_smoothed_z_tables (bool, optional): use smoothed
                 heavy-element tables. Defaults to False.
-            build_interpolants (bool, optional): whether to build interpolants.
+            build_interpolants (bool, optional): build interpolants.
                 Defaults to False.
 
         Raises:
