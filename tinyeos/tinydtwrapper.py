@@ -141,5 +141,6 @@ class TinyDTWrapper:
             res[i_logT] = logT
             res[i_logRho] = logRho
             res[i_logRho + 1 :] = np.nan
-        res = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+        else:
+            res = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
         return res
