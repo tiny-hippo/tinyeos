@@ -1,12 +1,14 @@
 import os
 import pickle
-import requests
-import numpy as np
-from typing import Tuple
 from pathlib import Path
+from typing import Tuple
+
+import numpy as np
+import requests
 from numpy.typing import ArrayLike
-from scipy.interpolate import interp1d, RegularGridInterpolator, RectBivariateSpline
-from tinyeos.support import Z_sun, sigma_b, get_FeH_from_Z, get_Z_from_FeH
+from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator, interp1d
+
+from tinyeos.support import Z_sun, get_FeH_from_Z, get_Z_from_FeH, sigma_b
 
 
 class TinyKap:
@@ -172,7 +174,7 @@ class TinyFreedmanKap:
         i_kap = 3
         fname = self.__get_freedman_kap_fname(Z)
         src = os.path.join(self.tables_path, fname)
-        with open(src, "r") as file:
+        with open(src) as file:
             data = np.loadtxt(file, skiprows=38, dtype=np.float64)
         data = np.transpose(data)
         return (data[i_T, :], data[i_P, :], data[i_kap, :])
@@ -201,10 +203,10 @@ class TinyFreedmanKap:
         unique_Ts = np.unique(Ts)
         T_min = np.min(unique_Ts)
         T_max = np.max(unique_Ts)
-        if T < T_min:
+        if T_min > T:
             msg = f"T = {T} < T_min = {T_max}"
             raise ValueError(msg)
-        elif T > T_max:
+        elif T_max < T:
             msg = f"T = {T} > T_max = {T_max}"
             raise ValueError(msg)
 
@@ -226,10 +228,10 @@ class TinyFreedmanKap:
             idcs = np.where(Ts == new_T)
             P_min = np.min(Ps[idcs])
             P_max = np.max(Ps[idcs])
-            if P < P_min:
+            if P_min > P:
                 msg = f"P = {P} < P_min = {P_min} for T = {new_T}"
                 in_range = False
-            elif P > P_max:
+            elif P_max < P:
                 msg = f"P = {P} > P_max = {P_max} for T = {new_T}"
                 in_range = False
             if in_range:
@@ -398,12 +400,11 @@ class TinyFreedmanKap:
         if not isinstance(logP, np.ndarray):
             logP = np.array(logP)
 
-        if not logT.shape == logP.shape:
+        if logT.shape != logP.shape:
             msg = "logT and logP must have equal shape"
             raise ValueError(msg)
 
         T = np.power(10, logT)
-        P = np.power(10, logP)
         met = np.log10(Z / Z_sun)
 
         input_ndim = logT.ndim

@@ -1,11 +1,11 @@
 import os
 import pickle
-import numpy as np
 from pathlib import Path
 from typing import Tuple
+
+import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy.interpolate import interp1d, NearestNDInterpolator
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import NearestNDInterpolator, PchipInterpolator, interp1d
 
 
 class TableLoader:
@@ -188,10 +188,7 @@ class TableLoader:
         Returns:
             NDArray: the heavy-element table
         """
-        if self.use_smoothed_z_tables:
-            extra = "smoothed_"
-        else:
-            extra = ""
+        extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}dt_h2o.data"
         elif which_heavy == "aqua":
@@ -228,10 +225,7 @@ class TableLoader:
         Returns:
             NDArray: the heavy-element table
         """
-        if self.use_smoothed_z_tables:
-            extra = "smoothed_"
-        else:
-            extra = ""
+        extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}pt_h2o.data"
         elif which_heavy == "aqua":
@@ -320,10 +314,7 @@ class TableLoader:
 
             # interpolate on the unique logPs of the isotherm
             if kind == "linear" or kind == "cubic":
-                if extrapolate:
-                    fill_value = "extrapolate"
-                else:
-                    fill_value = np.nan
+                fill_value = "extrapolate" if extrapolate else np.nan
                 f = interp1d(
                     x=logP_isotherm,
                     y=np.transpose(vals),
@@ -443,10 +434,7 @@ class TableLoader:
             vals = vals[:, which_values]
 
             # interpolate on the unique logRhos of the isotherm
-            if extrapolate:
-                fill_value = "extrapolate"
-            else:
-                fill_value = np.nan
+            fill_value = "extrapolate" if extrapolate else np.nan
             f = interp1d(
                 logRho_isotherm,
                 np.transpose(vals),
@@ -602,10 +590,7 @@ class TableLoader:
         Returns:
             NDArray: smoothed table
         """
-        if which_y == "logP":
-            i_y = 1
-        else:
-            i_y = 2
+        i_y = 1 if which_y == "logP" else 2
 
         input_ndim = table.ndim
         if input_ndim == 2:
@@ -718,8 +703,6 @@ class TableLoader:
         Returns:
             NDArray: Monotonic version of the data.
         """
-
-        x = data[:, 0]  # logT
         if element in ["hydrogen", "helium"]:
             if DT:
                 y = data[:, 2]  # logRho

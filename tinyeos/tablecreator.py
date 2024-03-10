@@ -1,37 +1,39 @@
 import os
-import numpy as np
+from multiprocessing import cpu_count
 from typing import Tuple
-from numpy.typing import NDArray, ArrayLike
+
+import numpy as np
 from fortranformat import FortranRecordWriter
 from joblib import Parallel, delayed
-from multiprocessing import cpu_count
-from tinyeos.tinydteos import TinyDT
-from tinyeos.tinypteos import TinyPT
-from tinyeos.tinydtwrapper import TinyDTWrapper
-from tinyeos.support import NearestND
+from numpy.typing import ArrayLike, NDArray
+
 from tinyeos.definitions import (
+    i_chiRho,
+    i_chiT,
+    i_cp,
+    i_cv,
+    i_dE_dRho,
+    i_dS_dRho,
+    i_dS_dT,
+    i_eta,
+    i_gamma1,
+    i_gamma3,
+    i_grad_ad,
+    i_lfe,
+    i_logP,
+    i_logRho,
+    i_logS,
+    i_logT,
+    i_logU,
+    i_mu,
     logRho_max,
     logRho_min,
     num_vals,
-    i_logT,
-    i_logRho,
-    i_logP,
-    i_logS,
-    i_logU,
-    i_chiRho,
-    i_chiT,
-    i_grad_ad,
-    i_cp,
-    i_cv,
-    i_gamma1,
-    i_gamma3,
-    i_dS_dT,
-    i_dS_dRho,
-    i_dE_dRho,
-    i_mu,
-    i_lfe,
-    i_eta,
 )
+from tinyeos.support import NearestND
+from tinyeos.tinydteos import TinyDT
+from tinyeos.tinydtwrapper import TinyDTWrapper
+from tinyeos.tinypteos import TinyPT
 
 
 def createTablesDT(
@@ -457,16 +459,8 @@ class TableCreatorDT:
             self.logQ_max,
             self.del_logQ,
         ]
-
-        if X >= 0.1:
-            xtext = f"{100 * X:.0f}x.data"
-        else:
-            xtext = f"0{100 * X:.0f}x.data"
-
-        if Z >= 0.1:
-            ztext = f"{100 * Z:.0f}z"
-        else:
-            ztext = f"0{100 * Z:.0f}z"
+        xtext = f"{100 * X:.0f}x.data" if X >= 0.1 else f"0{100 * X:.0f}x.data"
+        ztext = f"{100 * Z:.0f}z" if Z >= 0.1 else f"0{100 * Z:.0f}z"
 
         fname = "".join([self.fname_prefix, ztext, xtext])
         dst = os.path.join(self.output_path, fname)
@@ -544,9 +538,8 @@ class TableCreatorDT:
             for _ in range(self.num_extra_smoothing_rounds):
                 results = self.__smooth_table(results)
 
-        if self.check_if_file_exists:
-            if os.path.isfile(dst):
-                return
+        if self.check_if_file_exists and os.path.isfile(dst):
+            return
 
         with open(dst, "w") as file:
             file.write(self.header1_line.write(self.header1))
@@ -772,22 +765,14 @@ class TableCreatorPT(TinyPT):
             self.del_logW,
         ]
 
-        if X >= 0.1:
-            xtext = f"{100 * X:.0f}x.data"
-        else:
-            xtext = f"0{100 * X:.0f}x.data"
-
-        if Z >= 0.1:
-            ztext = f"{100 * Z:.0f}z"
-        else:
-            ztext = f"0{100 * Z:.0f}z"
+        xtext = f"{100 * X:.0f}x.data" if X >= 0.1 else f"0{100 * X:.0f}x.data"
+        ztext = f"{100 * Z:.0f}z" if Z >= 0.1 else f"0{100 * Z:.0f}z"
 
         fname = "".join([self.fname_prefix, ztext, xtext])
         fdir = "data/mesa/eosPT"
         dst = os.path.join(fdir, fname)
-        if self.check_if_file_exists:
-            if os.path.isfile(dst):
-                return
+        if self.check_if_file_exists and os.path.isfile(dst):
+            return
 
         results = np.zeros(
             (self.num_logWs, self.num_logTs, self.num_vals), dtype=np.float32
