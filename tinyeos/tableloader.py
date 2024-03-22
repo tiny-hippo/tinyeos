@@ -1,11 +1,11 @@
 import os
 import pickle
-import numpy as np
 from pathlib import Path
 from typing import Tuple
+
+import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy.interpolate import interp1d, NearestNDInterpolator
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import NearestNDInterpolator, PchipInterpolator, interp1d
 
 
 class TableLoader:
@@ -66,6 +66,7 @@ class TableLoader:
 
         _, _ = self.__load_xy_DT_tables(which_hhe)
         _, _ = self.__load_xy_PT_tables(which_hhe)
+        _ = self.__load_xy_PT_interaction_tables()
         _ = self.__load_z_DT_table(which_heavy)
         _ = self.__load_z_PT_table(which_heavy)
 
@@ -78,6 +79,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_hhe option is unavailable.
+
+        Returns:
+            Tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":
@@ -121,6 +125,9 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_hhe option is unvailable.
+
+        Returns:
+            Tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":
@@ -153,6 +160,20 @@ class TableLoader:
         self.y_PT_table = data
         return (self.x_PT_table, self.y_PT_table)
 
+    def __load_xy_PT_interaction_tables(self) -> NDArray:
+        """Loads the hydrogen-helium non-ideal interaction table
+        from Howard & Guillot (2023).
+
+        Returns:
+            NDArray: hydrogen-helium non-ideal interaction table
+        """
+        fname = "pt_hydrogen_helium_interactions.data"
+        src = os.path.join(self.tables_path, fname)
+        # columns = ["logP", "logT", "V_mix", "S_mix"]
+        data = np.loadtxt(src)
+        self.xy_interaction_PT_table = data
+        return self.xy_interaction_PT_table
+
     def __load_z_DT_table(self, which_heavy: str) -> NDArray:
         """Loads the heavy-element (logRho, logT) tables.
         For the qeos heavy-element tables, the adiabatic gradient
@@ -163,11 +184,11 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
+
+        Returns:
+            NDArray: the heavy-element table
         """
-        if self.use_smoothed_z_tables:
-            extra = "smoothed_"
-        else:
-            extra = ""
+        extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}dt_h2o.data"
         elif which_heavy == "aqua":
@@ -200,11 +221,11 @@ class TableLoader:
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
+
+        Returns:
+            NDArray: the heavy-element table
         """
-        if self.use_smoothed_z_tables:
-            extra = "smoothed_"
-        else:
-            extra = ""
+        extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}pt_h2o.data"
         elif which_heavy == "aqua":
@@ -293,10 +314,7 @@ class TableLoader:
 
             # interpolate on the unique logPs of the isotherm
             if kind == "linear" or kind == "cubic":
-                if extrapolate:
-                    fill_value = "extrapolate"
-                else:
-                    fill_value = np.nan
+                fill_value = "extrapolate" if extrapolate else np.nan
                 f = interp1d(
                     x=logP_isotherm,
                     y=np.transpose(vals),
@@ -416,10 +434,7 @@ class TableLoader:
             vals = vals[:, which_values]
 
             # interpolate on the unique logRhos of the isotherm
-            if extrapolate:
-                fill_value = "extrapolate"
-            else:
-                fill_value = np.nan
+            fill_value = "extrapolate" if extrapolate else np.nan
             f = interp1d(
                 logRho_isotherm,
                 np.transpose(vals),
@@ -575,10 +590,7 @@ class TableLoader:
         Returns:
             NDArray: smoothed table
         """
-        if which_y == "logP":
-            i_y = 1
-        else:
-            i_y = 2
+        i_y = 1 if which_y == "logP" else 2
 
         input_ndim = table.ndim
         if input_ndim == 2:
@@ -691,8 +703,6 @@ class TableLoader:
         Returns:
             NDArray: Monotonic version of the data.
         """
-
-        x = data[:, 0]  # logT
         if element in ["hydrogen", "helium"]:
             if DT:
                 y = data[:, 2]  # logRho

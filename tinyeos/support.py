@@ -1,10 +1,12 @@
-import numpy as np
 from typing import Tuple
+
+import numpy as np
 from numpy.typing import ArrayLike
-from scipy.spatial import cKDTree
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
+from scipy.spatial import cKDTree
 from sklearn.neighbors._base import _get_weights
+
 from tinyeos.definitions import eps1, eps2, tiny_val
 
 # constants (in cgs units)
@@ -161,7 +163,7 @@ def check_composition(
     if not isinstance(Z, np.ndarray):
         Z = np.array(Z)
 
-    if not X.shape == Z.shape:
+    if X.shape != Z.shape:
         msg = "X and Z must have equal shape"
         raise ValueError(msg)
 
@@ -210,15 +212,15 @@ def ideal_mixing_law(
 
     if max_ndim > 0:
         x_rho_x = np.zeros_like(rho_x)
-        i = np.logical_and(X > eps1, rho_x > eps2)
+        i = np.logical_and(eps1 < X, rho_x > eps2)
         x_rho_x[i] = X[i] / rho_x[i]
 
         y_rho_y = np.zeros_like(rho_y)
-        i = np.logical_and(Y > eps1, rho_y > eps2)
+        i = np.logical_and(eps1 < Y, rho_y > eps2)
         y_rho_y[i] = Y[i] / rho_y[i]
 
         z_rho_z = np.zeros_like(rho_z)
-        i = np.logical_and(Z > eps1, rho_z > eps2)
+        i = np.logical_and(eps1 < Z, rho_z > eps2)
         z_rho_z[i] = Z[i] / rho_z[i]
     else:
         if np.isclose(X, 0, atol=eps1) or np.isclose(rho_x, 0, atol=eps2):
@@ -262,10 +264,7 @@ def get_h_he_number_fractions(
         x_He = tiny_val * np.ones_like(Y)
     else:
         x_H2 = 0  # no molecular hydrogen
-        if ionized:
-            mu = 2 * X + 3 / 4 * Y
-        else:
-            mu = X / (1 + x_H2) + Y / 4
+        mu = 2 * X + 3 / 4 * Y if ionized else X / (1 + x_H2) + Y / 4
         mu = 1 / mu
 
         x_He = Y * mu * m_u / m_He

@@ -146,3 +146,4 @@ cython_debug/
 .vscode/launch.json
 tinyeos/debug_tables.ipynb
 tinyeos/data/tables/fix_grada.py
+.DS_Store

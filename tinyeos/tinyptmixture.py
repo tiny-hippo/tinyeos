@@ -1,11 +1,11 @@
-import numpy as np
 from typing import Tuple
+
+import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from tinyeos.definitions import eps1, logP_max, logP_min, logT_max, logT_min, tiny_val
+from tinyeos.support import A_H, A_He, get_h_he_number_fractions, k_b, m_u
 from tinyeos.tinypteos import TinyPT
-from tinyeos.definitions import eps1, tiny_val
-from tinyeos.support import get_h_he_number_fractions
-from tinyeos.support import m_u, k_b, A_H, A_He
-from tinyeos.definitions import logP_max, logP_min, logT_max, logT_min
 
 
 class TinyPTMixture:
@@ -156,7 +156,7 @@ class TinyPTMixture:
         if not isinstance(logP, np.ndarray):
             logP = np.array(logP, dtype=np.float64)
 
-        if not logT.shape == logP.shape:
+        if logT.shape != logP.shape:
             msg = "logT and logP must have equal shape"
             raise ValueError(msg)
         if np.any(logT < self.logT_min) or np.any(logT > self.logT_max):
@@ -287,7 +287,7 @@ class TinyPTMixture:
 
     @staticmethod
     def __get_shape(
-        num_vals: int, logT: NDArray, logP: NDArray, X: NDArray = np.array(0)
+        num_vals: int, logT: NDArray, logP: NDArray, X: NDArray | None = None
     ) -> NDArray:
         """Helper function to return the appropriate shape.
 
@@ -300,7 +300,8 @@ class TinyPTMixture:
         Returns:
             NDArray
         """
-
+        if X is None:
+            X = np.array(0)
         max_ndim = np.max([logT.ndim, logP.ndim, X.ndim])
         if max_ndim > 0:
             shape = (num_vals,) + logT.shape
@@ -313,7 +314,7 @@ class TinyPTMixture:
         num_vals: int,
         logT: NDArray,
         logP: NDArray,
-        X: NDArray = np.array(0),
+        X: NDArray | None = None,
     ) -> NDArray:
         """Helper function to return a zero-array of the appropriate shape.
 
@@ -326,6 +327,8 @@ class TinyPTMixture:
         Returns:
             NDArray
         """
+        if X is None:
+            X = np.array(0)
         shape = self.__get_shape(num_vals, logT, logP, X)
         return np.zeros(shape)
 
@@ -334,7 +337,7 @@ class TinyPTMixture:
         num_vals: int,
         logT: NDArray,
         logP: NDArray,
-        X: NDArray = np.array(0),
+        X: NDArray | None = None,
     ) -> NDArray:
         """Helper function to return an empty array of the appropriate shape.
 
@@ -347,6 +350,8 @@ class TinyPTMixture:
         Returns:
             NDArray
         """
+        if X is None:
+            X = np.array(0)
         shape = self.__get_shape(num_vals, logT, logP, X)
         return np.empty(shape)
 
@@ -607,10 +612,7 @@ class TinyPTMixture:
         ) / S
         grad_ad = -dlS_dlP / dlS_dlT
 
-        if self.input_ndim > 0:
-            shape = (5, 2) + logT.shape
-        else:
-            shape = (5, 2)
+        shape = (5, 2) + logT.shape if self.input_ndim > 0 else (5, 2)
         fac = np.zeros(shape)
         fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
         fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]

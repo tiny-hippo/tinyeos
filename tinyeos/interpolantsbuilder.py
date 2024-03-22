@@ -1,13 +1,15 @@
 import os
+from pathlib import Path
+from typing import Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike
-from typing import Tuple
-from pathlib import Path
 from scipy.interpolate import (
     RectBivariateSpline,
     RegularGridInterpolator,
     SmoothBivariateSpline,
 )
+
 from tinyeos.tableloader import TableLoader
 
 

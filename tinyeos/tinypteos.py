@@ -1,51 +1,53 @@
 import os
-import numpy as np
-from typing import Tuple
-from numpy.typing import ArrayLike, NDArray
 from pathlib import Path
+from typing import Tuple
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+from tinyeos.definitions import (
+    atomic_masses,
+    eps1,
+    heavy_elements,
+    i_chiRho,
+    i_chiT,
+    i_cp,
+    i_csound,
+    i_cv,
+    i_dE_dRho,
+    i_dS_dRho,
+    i_dS_dT,
+    i_eta,
+    i_gamma1,
+    i_gamma3,
+    i_grad_ad,
+    i_lfe,
+    i_logP,
+    i_logRho,
+    i_logS,
+    i_logT,
+    i_logU,
+    i_mu,
+    ionic_charges,
+    logP_max,
+    logP_min,
+    logRho_max,
+    logRho_min,
+    logT_max,
+    logT_min,
+    num_vals,
+    tiny_val,
+)
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
     A_H,
     A_He,
-    m_u,
-    k_b,
-    get_eta,
-    ideal_mixing_law,
     check_composition,
+    get_eta,
     get_h_he_number_fractions,
-)
-from tinyeos.definitions import (
-    logP_max,
-    logP_min,
-    logT_max,
-    logT_min,
-    logRho_max,
-    logRho_min,
-    num_vals,
-    i_logT,
-    i_logRho,
-    i_logP,
-    i_logS,
-    i_logU,
-    i_chiRho,
-    i_chiT,
-    i_grad_ad,
-    i_cp,
-    i_cv,
-    i_gamma1,
-    i_gamma3,
-    i_dS_dT,
-    i_dS_dRho,
-    i_dE_dRho,
-    i_mu,
-    i_eta,
-    i_lfe,
-    i_csound,
-    eps1,
-    tiny_val,
-    heavy_elements,
-    atomic_masses,
-    ionic_charges,
+    ideal_mixing_law,
+    k_b,
+    m_u,
 )
 
 
@@ -79,18 +81,18 @@ class TinyPT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
-            which_heavy (str, optional): which heavy-element equation of state
+            which_heavy (str, optional): heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
-            which_hhe (str, optional): which hydrogen-helium equation of state
+            which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms" or "scvh".
-            include_hhe_interactions (bool, optional): wether to include
+            include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
-            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+            use_smoothed_xy_tables (bool, optional): use smoothed
                 hydrogen and helium tables. Defaults to False.
-            use_smoothed_z_tables (bool, optional): whether to use smoothed
+            use_smoothed_z_tables (bool, optional): use smoothed
                 heavy-element tables. Defaults to False.
-            build_interpolants (bool, optional): whether to build interpolants.
+            build_interpolants (bool, optional): build interpolants.
                 Defaults to False.
 
         Raises:
@@ -266,7 +268,7 @@ class TinyPT(InterpolantsBuilder):
         if not isinstance(logP, np.ndarray):
             logP = np.array(logP, dtype=np.float64)
 
-        if not logT.shape == logP.shape:
+        if logT.shape != logP.shape:
             msg = "logT and logP must have equal shape"
             raise ValueError(msg)
         if np.any(logT < self.logT_min) or np.any(logT > self.logT_max):
@@ -282,8 +284,8 @@ class TinyPT(InterpolantsBuilder):
         self,
         logT: NDArray,
         logP: NDArray,
-        X: NDArray = np.array(0),
-        Z: NDArray = np.array(0),
+        X: NDArray | None = None,
+        Z: NDArray | None = None,
     ) -> NDArray:
         """Helper function to return a result array of the appropriate shape
 
@@ -299,6 +301,10 @@ class TinyPT(InterpolantsBuilder):
         Returns:
             NDArray
         """
+        if X is None:
+            X = np.array(0)
+        if Z is None:
+            Z = np.array(0)
         max_ndim = np.max([logT.ndim, logP.ndim, X.ndim, Z.ndim])
         if max_ndim > 0:
             shape = (self.num_vals,) + logT.shape
@@ -347,9 +353,7 @@ class TinyPT(InterpolantsBuilder):
             logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
             logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
 
-            iml = ideal_mixing_law(
-                10**logRho_x, 10**logRho_y, 10**logRho_z, X, Y, Z
-            )
+            iml = ideal_mixing_law(10**logRho_x, 10**logRho_y, 10**logRho_z, X, Y, Z)
             logRho = np.log10(1 / iml)
         return logRho
 
@@ -670,17 +674,17 @@ class TinyPT(InterpolantsBuilder):
             iY = np.isclose(Y, tiny_val, atol=eps1)
             iZ = np.isclose(Z, tiny_val, atol=eps1)
             if np.any(iX) or np.any(iY) or np.any(iZ):
-                i = X > tiny_val
+                i = tiny_val < X
                 fac[0, 0, i] = X[i] / rho_x[i] / res_x[self.i_chiRho, i]
                 fac[0, 1, i] = -fac[0, 0, i] * res_x[self.i_chiT, i]
                 fac[0, 2, i] = X[i] / res_x[self.i_mu, i]
 
-                i = Y > tiny_val
+                i = tiny_val < Y
                 fac[1, 0, i] = Y[i] / rho_y[i] / res_y[self.i_chiRho, i]
                 fac[1, 1, i] = -fac[1, 0, i] * res_y[self.i_chiT, i]
                 fac[1, 2, i] = Y[i] / res_y[self.i_mu, i]
 
-                i = Z > tiny_val
+                i = tiny_val < Z
                 fac[2, 0, i] = Z[i] / rho_z[i] / res_z[self.i_chiRho, i]
                 fac[2, 1, i] = -fac[2, 0, i] * res_z[self.i_chiT, i]
                 fac[2, 2, i] = Z[i] / res_z[self.i_mu, i]
@@ -696,15 +700,15 @@ class TinyPT(InterpolantsBuilder):
                 fac[2, 2] = Z / res_z[self.i_mu]
         else:
             fac = np.zeros((3, 3))
-            if X > tiny_val:
+            if tiny_val < X:
                 fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
                 fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
                 fac[0, 2] = X / res_x[self.i_mu]
-            if Y > tiny_val:
+            if tiny_val < Y:
                 fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
                 fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
                 fac[1, 2] = Y / res_y[self.i_mu]
-            if Z > tiny_val:
+            if tiny_val < Z:
                 fac[2, 0] = Z / rho_z / res_z[self.i_chiRho]
                 fac[2, 1] = -fac[2, 0] * res_z[self.i_chiT]
                 fac[2, 2] = Z / res_z[self.i_mu]

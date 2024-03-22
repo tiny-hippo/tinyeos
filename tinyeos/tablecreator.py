@@ -1,13 +1,39 @@
 import os
-import numpy as np
+from multiprocessing import cpu_count
 from typing import Tuple
-from numpy.typing import NDArray, ArrayLike
+
+import numpy as np
 from fortranformat import FortranRecordWriter
 from joblib import Parallel, delayed
-from multiprocessing import cpu_count
-from tinyeos.tinydteos import TinyDT
-from tinyeos.tinypteos import TinyPT
+from numpy.typing import ArrayLike, NDArray
+
+from tinyeos.definitions import (
+    i_chiRho,
+    i_chiT,
+    i_cp,
+    i_cv,
+    i_dE_dRho,
+    i_dS_dRho,
+    i_dS_dT,
+    i_eta,
+    i_gamma1,
+    i_gamma3,
+    i_grad_ad,
+    i_lfe,
+    i_logP,
+    i_logRho,
+    i_logS,
+    i_logT,
+    i_logU,
+    i_mu,
+    logRho_max,
+    logRho_min,
+    num_vals,
+)
 from tinyeos.support import NearestND
+from tinyeos.tinydteos import TinyDT
+from tinyeos.tinydtwrapper import TinyDTWrapper
+from tinyeos.tinypteos import TinyPT
 
 
 def createTablesDT(
@@ -20,11 +46,13 @@ def createTablesDT(
     del_X: float = 0.10,
     del_Z: float = 0.10,
     fname_prefix: str = "cms_qeos-eosDT",
+    output_path: str = "data/mesa/eosDT",
     do_only_pure: bool = False,
     do_only_single: bool = False,
     which_heavy: str = "h2o",
     which_hhe: str = "cms",
     include_hhe_interactions: bool = False,
+    use_pt_eos: bool = False,
     use_smoothed_xy_tables: bool = False,
     use_smoothed_z_tables: bool = False,
     build_interpolants: bool = False,
@@ -33,7 +61,7 @@ def createTablesDT(
     num_extra_smoothing_rounds: int = 2,
     fix_bad_values: bool = True,
     do_parallel: bool = True,
-    num_cores: int = cpu_count(),
+    num_cores: int = cpu_count() - 2,
     debug: bool = False,
 ) -> ArrayLike:
     """Wrapper function to creates density-temperature
@@ -58,35 +86,38 @@ def createTablesDT(
             Defaults to 0.10.
         fname_prefix (str, optional): table prefix.
             Defaults to "cms_qeos-eosDT".
-        do_only_pure (bool, optional): whether to only create
-            tables of pure substances. Defaults to False.
-        do_only_single (bool, optional): _description_. Defaults to False.
-        which_heavy (str, optional): which heavy-element
+        do_only_pure (bool, optional): only create tables of
+            pure substances. Defaults to False.
+        do_only_single (bool, optional):  create a single table
+            for debugging. Defaults to False.
+        which_heavy (str, optional): heavy-element
             equation of state to use. Defaults to "h2o".
-        which_hhe (str, optional): which hydrogen-helium
+        which_hhe (str, optional): hydrogen-helium
             equation of state to use. Defaults to "cms".
-        include_hhe_interactions (bool, optional): wether to include
+        include_hhe_interactions (bool, optional): include
             hydrogen-helium interactions. Defaults to False.
-        use_smoothed_xy_tables (bool, optional): whether to use smoothed
+        use_pt_eos (bool, optional): use the pressure-temperature
+            equation of state as the basis. Defaults to False.
+        use_smoothed_xy_tables (bool, optional): use smoothed
             hydrogen and helium tables. Defaults to False.
-        use_smoothed_z_tables (bool, optional): whether to use smoothed
+        use_smoothed_z_tables (bool, optional): use smoothed
             heavy-element tables. Defaults to False.
-        build_interpolants (bool, optional): whether to build interpolants.
+        build_interpolants (bool, optional): build interpolants.
             Defaults to False.
-        do_simple_smoothing (bool, optional): whether to smooth tables
+        do_simple_smoothing (bool, optional): smooth tables
             with a nearest-neighbour method. Defaults to False.
-        do_extra_smoothing (bool, optional): whether to do extra smoothing
+        do_extra_smoothing (bool, optional): do extra smoothing
             by using the average of the five nearest points.
             Defaults to False.
         num_extra_smoothing_rounds (int, optional): how many times to
             do extra smoothing. Defaults to 2.
-        fix_bad_values (bool, optional): whether to fix bad equation of
+        fix_bad_values (bool, optional): fix bad equation of
             state results with a nearest-neighbour interpolation.
             Defaults to True.
-        do_parallel (bool, optional): whether to build tables in
-            parallel. Defaults to True.
+        do_parallel (bool, optional): build tables in parallel.
+            Defaults to True.
         num_cores (int, optional): how many cores to use in parallel.
-            Defaults to cpu_count().
+            Defaults to cpu_count() - 2.
         debug (bool, optional): _description_. Defaults to False.
 
     Returns:
@@ -97,6 +128,7 @@ def createTablesDT(
         which_heavy=which_heavy,
         which_hhe=which_hhe,
         include_hhe_interactions=include_hhe_interactions,
+        use_pt_eos=use_pt_eos,
         use_smoothed_xy_tables=use_smoothed_xy_tables,
         use_smoothed_z_tables=use_smoothed_z_tables,
         build_interpolants=build_interpolants,
@@ -117,6 +149,7 @@ def createTablesDT(
         del_X=del_X,
         del_Z=del_Z,
         fname_prefix=fname_prefix,
+        output_path=output_path,
         do_only_pure=do_only_pure,
     )
     num_logQs = TC.num_logQs
@@ -127,9 +160,11 @@ def createTablesDT(
         return TC.create_tables(X, Z)
 
     if do_only_single:
+        X = 0.5
+        Z = 0.2
         print(
             f"Creating single table with prefix {fname_prefix}",
-            f"with X = 0.5 and Z = 0.2.",
+            f"with X = {X} and Z = {Z}.",
         )
         comp_info, results = parallelWrapper(0.5, 0.2)
         return comp_info, results
@@ -160,7 +195,7 @@ def createTablesDT(
     return comp_info, results
 
 
-class TableCreatorDT(TinyDT):
+class TableCreatorDT:
     """Creates density-temperature tables for use with the stellar evolution
     code MESA.
     """
@@ -170,6 +205,7 @@ class TableCreatorDT(TinyDT):
         which_heavy: str = "h2o",
         which_hhe: str = "cms",
         include_hhe_interactions: bool = False,
+        use_pt_eos: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
         build_interpolants: bool = False,
@@ -183,39 +219,51 @@ class TableCreatorDT(TinyDT):
         for creating the equation of state tables.
 
         Args:
-            which_heavy (str, optional): which heavy-element
+            which_heavy (str, optional): heavy-element
                 equation of state to use. Defaults to "h2o".
-            which_hhe (str, optional): which hydrogen-helium
+            which_hhe (str, optional): hydrogen-helium
                 equation of state to use. Defaults to "cms".
-            include_hhe_interactions (bool, optional): wether to include
-                hydrogen-helium interactions. Defaults to False.
-            use_smoothed_xy_tables (bool, optional): whether to use smoothed
+            include_hhe_interactions (bool, optional): include
+                hydrogen-helium interactions. Defaults to False
+            use_pt_eos (bool, optional): use the pressure-temperature
+                equation of state as the basis. Defaults to False.
+            use_smoothed_xy_tables (bool, optional): use smoothed
                 hydrogen and helium tables. Defaults to False.
-            use_smoothed_z_tables (bool, optional): whether to use smoothed
+            use_smoothed_z_tables (bool, optional): use smoothed
                 heavy-element tables. Defaults to False.
-            build_interpolants (bool, optional): whether to build interpolants.
+            build_interpolants (bool, optional): build interpolants.
                 Defaults to False.
-            do_simple_smoothing (bool, optional): whether to smooth tables
+            do_simple_smoothing (bool, optional): smooth tables
                 with a nearest-neighbour method. Defaults to False.
-            do_extra_smoothing (bool, optional): whether to do extra smoothing
+            do_extra_smoothing (bool, optional): do extra smoothing
                 by using the average of the five nearest points.
                 Defaults to False.
             num_extra_smoothing_rounds (int, optional): how many times to
                 do extra smoothing. Defaults to 2.
-            fix_bad_values (bool, optional): whether to fix bad equation of
+            fix_bad_values (bool, optional): fix bad equation of
                 state results with a nearest-neighbour interpolation.
                 Defaults to True.
-            debug (bool, optional): whether to enable debugging mode for
+            debug (bool, optional): enable debugging mode for
                 additional output. Defaults to False.
         """
-        super().__init__(
-            which_heavy=which_heavy,
-            which_hhe=which_hhe,
-            include_hhe_interactions=include_hhe_interactions,
-            use_smoothed_xy_tables=use_smoothed_xy_tables,
-            use_smoothed_z_tables=use_smoothed_z_tables,
-            build_interpolants=build_interpolants,
-        )
+        if use_pt_eos:
+            self.eos = TinyDTWrapper(
+                which_heavy=which_heavy,
+                which_hhe=which_hhe,
+                include_hhe_interactions=include_hhe_interactions,
+                use_smoothed_xy_tables=use_smoothed_xy_tables,
+                use_smoothed_z_tables=use_smoothed_z_tables,
+                build_interpolants=build_interpolants,
+            )
+        else:
+            self.eos = TinyDT(
+                which_heavy=which_heavy,
+                which_hhe=which_hhe,
+                include_hhe_interactions=include_hhe_interactions,
+                use_smoothed_xy_tables=use_smoothed_xy_tables,
+                use_smoothed_z_tables=use_smoothed_z_tables,
+                build_interpolants=build_interpolants,
+            )
 
         self.fix_bad_values = fix_bad_values
         self.do_simple_smoothing = do_simple_smoothing
@@ -283,27 +331,31 @@ class TableCreatorDT(TinyDT):
         del_X: float,
         del_Z: float,
         fname_prefix: str,
+        output_path: str,
         do_only_pure: bool = False,
     ) -> Tuple[int, NDArray, NDArray]:
         """Sets the table parameters.
 
         Args:
-            del_logT (float): step-size for logT.
-            del_logQ (float): step-size for logQ.
+            del_logT (float): step size for logT.
+            del_logQ (float): step size for logQ.
             logT_min (float): minimum logT.
             logT_max (float): maximum logT.
             logQ_min (float): minimum logQ.
             logQ_max (float): maximum logQ.
-            del_X (float): step-size for hydrogen.
-            del_Z (float): step-size for heavy-elements.
+            del_X (float): step size for hydrogen.
+            del_Z (float): step size for heavy-elements.
             fname_prefix (str): table prefix.
-            do_only_pure (bool, optional): whether to only create
+            output_path (str): path to where the tables
+                are saved.
+            do_only_pure (bool, optional): only create
                 tables of pure substances. Defaults to False.
 
         Returns:
             Tuple[int, NDArray, NDarray]: number of tables and
                 mass fractions.
         """
+        self.num_vals = num_vals
         self.logT_min = logT_min
         self.logT_max = logT_max
         self.logQ_min = logQ_min
@@ -313,6 +365,7 @@ class TableCreatorDT(TinyDT):
         self.num_logTs = np.int32(1 + np.ceil((logT_max - logT_min) / del_logT))
         self.num_logQs = np.int32(1 + np.rint((logQ_max - logQ_min) / del_logQ))
         self.fname_prefix = fname_prefix
+        self.output_path = output_path
 
         if do_only_pure:
             self.Xs = np.array([1, 0, 0])
@@ -336,8 +389,8 @@ class TableCreatorDT(TinyDT):
         hydrogen, helium and a heavy-element.
 
         Args:
-            X (float): hydrogen mass-fraction.
-            Z (float): heavy-element mass-fraction.
+            X (float): hydrogen mass fraction.
+            Z (float): heavy-element mass fraction.
 
         Returns:
             ArrayLike: equation of state tables.
@@ -366,12 +419,12 @@ class TableCreatorDT(TinyDT):
                     continue
                 elif j > self.num_logTs - 2:
                     break
-                out_table[i, j, self.i_logP :] = (
-                    table[i, j, self.i_logP :]
-                    + table[i + 1, j, self.i_logP :]
-                    + table[i - 1, j, self.i_logP :]
-                    + table[i, j - 1, self.i_logP :]
-                    + table[i, j + 1, self.i_logP :]
+                out_table[i, j, i_logP:] = (
+                    table[i, j, i_logP:]
+                    + table[i + 1, j, i_logP:]
+                    + table[i - 1, j, i_logP:]
+                    + table[i, j - 1, i_logP:]
+                    + table[i, j + 1, i_logP:]
                 ) / 5
         return out_table
 
@@ -406,26 +459,15 @@ class TableCreatorDT(TinyDT):
             self.logQ_max,
             self.del_logQ,
         ]
-
-        if X >= 0.1:
-            xtext = f"{100 * X:.0f}x.data"
-        else:
-            xtext = f"0{100 * X:.0f}x.data"
-
-        if Z >= 0.1:
-            ztext = f"{100 * Z:.0f}z"
-        else:
-            ztext = f"0{100 * Z:.0f}z"
+        xtext = f"{100 * X:.0f}x.data" if X >= 0.1 else f"0{100 * X:.0f}x.data"
+        ztext = f"{100 * Z:.0f}z" if Z >= 0.1 else f"0{100 * Z:.0f}z"
 
         fname = "".join([self.fname_prefix, ztext, xtext])
-        fdir = "data/mesa/eosDT"
-        dst = os.path.join(fdir, fname)
+        dst = os.path.join(self.output_path, fname)
 
-        results = np.zeros(
-            (self.num_logQs, self.num_logTs, self.num_vals), dtype=np.float32
-        )
+        results = np.zeros((self.num_logQs, self.num_logTs, num_vals), dtype=np.float32)
         if self.debug:
-            dbg_arr = np.zeros((self.num_logQs, self.num_logTs, self.num_vals))
+            dbg_arr = np.zeros((self.num_logQs, self.num_logTs, num_vals))
 
         for i in range(self.num_logQs):
             logQ = self.logQ_min + i * self.del_logQ
@@ -433,40 +475,42 @@ class TableCreatorDT(TinyDT):
                 logT = self.logT_min + j * self.del_logT
                 # make sure to stay within equation of state
                 # logRho boundaries
-                logRho = np.max([self.logRho_min, logQ + 2 * logT - 12])
-                logRho = np.min([logRho, self.logRho_max])
-                res = self.evaluate(logT, logRho, X, Z)
+                logRho = np.max([logRho_min, logQ + 2 * logT - 12])
+                logRho = np.min([logRho, logRho_max])
+                res = self.eos.evaluate(logT=logT, logRho=logRho, X=X, Z=Z)
                 if (
                     np.any(np.isnan(res))
                     or np.any(np.isinf(res))
-                    or res[self.i_logS] > 15
-                    or res[self.i_logU] > 20
-                    or res[self.i_chiRho] <= 0
-                    or res[self.i_chiT] <= 0
-                    or res[self.i_grad_ad] <= 0
-                    or res[self.i_cp] <= 0
-                    or res[self.i_cv] <= 0
-                    or res[self.i_cp] > 1e20
-                    or res[self.i_cv] > 1e20
-                    or res[self.i_gamma1] >= 9.99
-                    or res[self.i_gamma3] >= 9.99
-                    or res[self.i_dS_dT] <= 0
+                    or res[i_logU] > 20
+                    or res[i_logS] > 15
+                    or res[i_chiRho] <= 0
+                    or res[i_chiT] <= 0
+                    or res[i_grad_ad] <= 0
+                    or res[i_cp] <= 0
+                    or res[i_cv] <= 0
+                    or res[i_cp] > 1e20
+                    or res[i_cv] > 1e20
+                    or res[i_gamma1] >= 9.99
+                    or res[i_gamma1] <= 0
+                    or res[i_gamma3] >= 9.99
+                    or res[i_gamma3] <= 0
+                    or res[i_dS_dT] <= 0
                 ):
-                    res[self.i_logT] = logT
-                    res[self.i_logRho] = logRho
+                    res[i_logT] = logT
+                    res[i_logRho] = logRho
                     if self.debug:
                         dbg_arr[i, j, :] = res
-                        dbg_arr[i, j, self.i_logT] = logT
-                        dbg_arr[i, j, self.i_logP] = res[self.i_logP]
-                        dbg_arr[i, j, self.i_logRho] = logRho
+                        dbg_arr[i, j, i_logT] = logT
+                        dbg_arr[i, j, i_logP] = res[i_logP]
+                        dbg_arr[i, j, i_logRho] = logRho
                     if self.fix_bad_values:
-                        res[self.i_logRho + 1 :] = np.nan
+                        res[i_logRho + 1 :] = np.nan
                 results[i, j, :] = res
 
         if self.fix_bad_values:
-            x = results[:, :, self.i_logT].reshape(-1)
-            y = results[:, :, self.i_logRho].reshape(-1)
-            z = results[:, :, self.i_logRho + 1 :].reshape((-1, self.num_vals - 2))
+            x = results[:, :, i_logT].reshape(-1)
+            y = results[:, :, i_logRho].reshape(-1)
+            z = results[:, :, i_logRho + 1 :].reshape((-1, num_vals - 2))
             idcs = np.where(np.isfinite(z))[0]
 
             if self.debug:
@@ -479,10 +523,10 @@ class TableCreatorDT(TinyDT):
             )
 
             if self.do_simple_smoothing:
-                results[:, :, self.i_logRho + 1 :] = zhat
+                results[:, :, i_logRho + 1 :] = zhat
             else:
                 res2 = np.copy(results)
-                res2[:, :, self.i_logRho + 1 :] = zhat
+                res2[:, :, i_logRho + 1 :] = zhat
                 idcs = np.where(np.isfinite(results))
                 res2[idcs] = results[idcs]
                 results = np.copy(res2)
@@ -494,9 +538,8 @@ class TableCreatorDT(TinyDT):
             for _ in range(self.num_extra_smoothing_rounds):
                 results = self.__smooth_table(results)
 
-        if self.check_if_file_exists:
-            if os.path.isfile(dst):
-                return
+        if self.check_if_file_exists and os.path.isfile(dst):
+            return
 
         with open(dst, "w") as file:
             file.write(self.header1_line.write(self.header1))
@@ -516,23 +559,23 @@ class TableCreatorDT(TinyDT):
                 for j in range(self.num_logTs):
                     res = results[i, j, :]
                     content3 = [
-                        res[self.i_logT],
-                        res[self.i_logP],
-                        res[self.i_logU],
-                        res[self.i_logS],
-                        res[self.i_chiRho],
-                        res[self.i_chiT],
-                        res[self.i_cp],
-                        res[self.i_cv],
-                        res[self.i_dE_dRho],
-                        res[self.i_dS_dT],
-                        res[self.i_dS_dRho],
-                        res[self.i_mu],
-                        res[self.i_lfe],
-                        res[self.i_gamma1],
-                        res[self.i_gamma3],
-                        res[self.i_grad_ad],
-                        res[self.i_eta],
+                        res[i_logT],
+                        res[i_logP],
+                        res[i_logU],
+                        res[i_logS],
+                        res[i_chiRho],
+                        res[i_chiT],
+                        res[i_cp],
+                        res[i_cv],
+                        res[i_dE_dRho],
+                        res[i_dS_dT],
+                        res[i_dS_dRho],
+                        res[i_mu],
+                        res[i_lfe],
+                        res[i_gamma1],
+                        res[i_gamma3],
+                        res[i_grad_ad],
+                        res[i_eta],
                     ]
                     file.write(self.content3_line.write(content3))
                     file.write("\n")
@@ -542,10 +585,8 @@ class TableCreatorDT(TinyDT):
             file.close()
 
         if self.debug:
-            debug_dir = os.path.join("data", "debug/eosDT")
-            dname = fname.replace(self.fname_prefix, "debugDT_")
-            dname = dname.replace(".data", ".npy")
-            dst = os.path.join(debug_dir, dname)
+            dname = fname.replace(".data", ".npy")
+            dst = os.path.join(self.output_path, dname)
             np.save(dst, dbg_arr)
 
         return ([X, Z], results)
@@ -724,22 +765,14 @@ class TableCreatorPT(TinyPT):
             self.del_logW,
         ]
 
-        if X >= 0.1:
-            xtext = f"{100 * X:.0f}x.data"
-        else:
-            xtext = f"0{100 * X:.0f}x.data"
-
-        if Z >= 0.1:
-            ztext = f"{100 * Z:.0f}z"
-        else:
-            ztext = f"0{100 * Z:.0f}z"
+        xtext = f"{100 * X:.0f}x.data" if X >= 0.1 else f"0{100 * X:.0f}x.data"
+        ztext = f"{100 * Z:.0f}z" if Z >= 0.1 else f"0{100 * Z:.0f}z"
 
         fname = "".join([self.fname_prefix, ztext, xtext])
         fdir = "data/mesa/eosPT"
         dst = os.path.join(fdir, fname)
-        if self.check_if_file_exists:
-            if os.path.isfile(dst):
-                return
+        if self.check_if_file_exists and os.path.isfile(dst):
+            return
 
         results = np.zeros(
             (self.num_logWs, self.num_logTs, self.num_vals), dtype=np.float32
