@@ -13,7 +13,6 @@ class TinyDTWrapper:
         self,
         which_heavy: str = "h2o",
         which_hhe: str = "cms",
-        *,
         include_hhe_interactions: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
