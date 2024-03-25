@@ -54,6 +54,13 @@ class TinyDTWrapper:
             build_interpolants=build_interpolants,
         )
 
+        self.logRho_max = self.tpt.logRho_max
+        self.logRho_min = self.tpt.logRho_min
+        self.logP_max = self.tpt.logP_max
+        self.logP_min = self.tpt.logP_min
+        self.logT_max = self.tpt.logT_max
+        self.logT_min = self.tpt.logT_min
+
     def __call__(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
         """__call__ method acting as convenience wrapper for the evaluate method.
 
