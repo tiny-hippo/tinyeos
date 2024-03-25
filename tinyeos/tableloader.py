@@ -15,7 +15,8 @@ class TableLoader:
     Equations of state implemented:
         Hydrogen-Helium:
             CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995).
+            SCvH (Saumon et al. 1995),
+            SCvH extended version (R. Helled, priv. comm.).
 
         Heavy element:
             H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
@@ -86,8 +87,7 @@ class TableLoader:
 
         if which_hhe == "cms":
             src = os.path.join(self.tables_path, "cms_dt_hydrogen.pkl")
-        elif which_hhe == "scvh":
-            # to-do: test extended scvh dt tables
+        elif which_hhe == "scvh" or which_hhe == "scvh_extended":
             src = os.path.join(self.tables_path, "scvh_extended_dt_hydrogen.pkl")
         else:
             raise NotImplementedError("this table is not available.")
@@ -108,8 +108,7 @@ class TableLoader:
 
         if which_hhe == "cms":
             src = os.path.join(self.tables_path, "cms_dt_helium.pkl")
-        elif which_hhe == "scvh":
-            # to-do: test extended scvh dt tables
+        elif which_hhe == "scvh" or which_hhe == "scvh_extended":
             src = os.path.join(self.tables_path, "scvh_extended_dt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
@@ -134,6 +133,8 @@ class TableLoader:
             src = os.path.join(self.tables_path, "cms_pt_hydrogen.pkl")
         elif which_hhe == "scvh":
             src = os.path.join(self.tables_path, "scvh_pt_hydrogen.pkl")
+        elif which_hhe == "scvh_extended":
+            src = os.path.join(self.tables_path, "scvh_extended_pt_hydrogen.pkl")
         else:
             raise NotImplementedError("this table is not available.")
         with open(src, "rb") as file:
@@ -155,6 +156,8 @@ class TableLoader:
             src = os.path.join(self.tables_path, "cms_pt_helium.pkl")
         elif which_hhe == "scvh":
             src = os.path.join(self.tables_path, "scvh_pt_helium.pkl")
+        elif which_hhe == "scvh_extended":
+            src = os.path.join(self.tables_path, "scvh_extended_pt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
         self.y_PT_table = data

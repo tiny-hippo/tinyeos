@@ -61,6 +61,16 @@ class InterpolantsBuilder(TableLoader):
         self.__build_PT_y_interpolants()
         self.__cache_xy_interpolants("scvh")
 
+        # cache DT interpolants for scvh_extended
+        super().__init__(which_heavy="h2o", which_hhe="scvh_extended")
+        self.__build_DT_x_interpolants()
+        self.__build_DT_y_interpolants()
+
+        # cache PT interpolants for scvh_extended
+        self.__build_PT_x_interpolants()
+        self.__build_PT_y_interpolants()
+        self.__cache_xy_interpolants("scvh_extended")
+
         # cache interpolants for smoothed H2O
         super().__init__(which_heavy="h2o", use_smoothed_z_tables=True)
         self.__build_DT_z_interpolants()
@@ -184,7 +194,7 @@ class InterpolantsBuilder(TableLoader):
 
         filename = filename + ".npy"
         dst = os.path.join(self.cache_path, filename)
-        np.save(dst, obj)
+        np.save(file=dst, arr=obj)
 
     def __cache_xy_interpolants(self, which_hhe: str = "cms") -> None:
         """Stores all interpolants for hydrogen and helium

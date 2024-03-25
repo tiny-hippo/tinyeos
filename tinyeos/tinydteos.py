@@ -61,7 +61,8 @@ class TinyDT(InterpolantsBuilder):
     Equations of state implemented:
         Hydrogen-Helium:
             CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995).
+            SCvH (Saumon et al. 1995),
+            SCvH extended version (R. Helled, priv. comm.).
 
         Heavy element:
             H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
@@ -117,10 +118,14 @@ class TinyDT(InterpolantsBuilder):
 
         self.logRho_max = logRho_max
         self.logRho_min = logRho_min
-        self.logP_min = logP_min
         self.logP_max = logP_max
+        self.logP_min = logP_min
         self.logT_max = logT_max
         self.logT_min = logT_min
+        if which_hhe == "scvh_extended":
+            self.logRho_min = -15.00
+            self.logP_min = -6.00
+            self.logT_min = 1.10
 
         self.num_vals = num_vals
         self.i_logT = i_logT
@@ -155,7 +160,7 @@ class TinyDT(InterpolantsBuilder):
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in heavy_elements:
             raise NotImplementedError("invalid option for which_heavy")
-        if which_hhe not in ["cms", "scvh"]:
+        if which_hhe not in ["cms", "scvh", "scvh_extended"]:
             raise NotImplementedError("invalid option for which_hhe")
         # to-do: scvh is currently giving inconsistent results between
         # TinyPT and TinyDT; needs to be fixed before allowing it again
@@ -254,6 +259,36 @@ class TinyDT(InterpolantsBuilder):
                 algorithm failed, the output will be filled with negative ones.
         """
         return self.evaluate(logT, logRho, X, Z)
+
+    def __prepare(
+        self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
+        """Prepare the equation of state input.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logRho (float): log10 of the density.
+            X (ArrayLike): hydrogen mass-fraction.
+            Z (ArrayLike): heavy-element mass-fraction.
+
+        Returns:
+            Tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
+        """
+        logT, logRho = self.__check_DT(logT, logRho)
+        X, Y, Z = check_composition(X, Z)
+        if logT.ndim > X.ndim:
+            X = X * np.ones_like(logT)
+            Y = Y * np.ones_like(logT)
+            Z = Z * np.ones_like(logT)
+        elif logT.ndim < X.ndim:
+            logT = logT * np.ones_like(X)
+            logRho = logRho * np.ones_like(X)
+        self.input_ndim = np.max([logT.ndim, X.ndim])
+        self.X_close = np.isclose(X, 1, atol=eps1)
+        self.Y_close = np.isclose(X, 1, atol=eps1)
+        self.Z_close = np.isclose(Z, 1, atol=eps1)
+        res = self.__get_zeros(logT, logRho, X, Z)
+        return (logT, logRho, X, Y, Z, res)
 
     def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
@@ -670,22 +705,8 @@ class TinyDT(InterpolantsBuilder):
                 individual quantities are defined in the __init__ method.
         """
 
-        logT, logRho = self.__check_DT(logT, logRho)
-        X, Y, Z = check_composition(X, Z)
-        if logT.ndim > X.ndim:
-            X = X * np.ones_like(logT)
-            Y = Y * np.ones_like(logT)
-            Z = Z * np.ones_like(logT)
-        elif logT.ndim < X.ndim:
-            logT = logT * np.ones_like(X)
-            logRho = logRho * np.ones_like(X)
-        self.input_ndim = np.max([logT.ndim, X.ndim])
+        logT, logRho, X, Y, Z, res = self.__prepare(logT=logT, logRho=logRho, X=X, Z=Z)
 
-        self.X_close = np.isclose(X, 1, atol=eps1)
-        self.Y_close = np.isclose(X, 1, atol=eps1)
-        self.Z_close = np.isclose(Z, 1, atol=eps1)
-
-        res = self.__get_zeros(logT, logRho, X, Z)
         iml = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not iml[0]:
             if verbose:

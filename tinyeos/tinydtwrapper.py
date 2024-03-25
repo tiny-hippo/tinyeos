@@ -82,6 +82,7 @@ class TinyDTWrapper:
         logT: float,
         logRho: float,
         X: float,
+        Y: float,
         Z: float,
     ) -> float:
         """Helper function for the root finding.
@@ -95,6 +96,7 @@ class TinyDTWrapper:
             logT (float): log10 of the temperature.
             logRho (float): log10 of the density.
             X (float): hydrogen mass fraction.
+            Y (float): helium mass fraction.
             Z (float): heavy-element mass fraction.
 
         Returns:
@@ -102,14 +104,17 @@ class TinyDTWrapper:
             float: difference of the input and calculated density.
 
         """
-        res = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)[i_logRho]
-        return logRho - res
+        logRho_iml = self.tpt._TinyPT__ideal_mixture(
+            logT=logT, logP=logP, X=X, Y=Y, Z=Z
+        )
+        return logRho - logRho_iml
 
     def __root_finder(
         self,
         logT: float,
         logRho: float,
         X: float,
+        Y: float,
         Z: float,
     ) -> Tuple[bool, float]:
         """Root finding function.
@@ -123,6 +128,7 @@ class TinyDTWrapper:
             logT (float): log10 of the temperature.
             logRho (float): log10 of the density.
             X (float): hydrogen mass fraction.
+            Y (float): helium mass fraction.
             Z (float): heavy-element mass fraction.
 
         Returns:
@@ -132,15 +138,15 @@ class TinyDTWrapper:
         """
         logP0 = self.tpt.logP_min
         logP1 = self.tpt.logP_max
-        f1 = self.__helper(logP=logP0, logT=logT, logRho=logRho, X=X, Z=Z)
-        f2 = self.__helper(logP=logP1, logT=logT, logRho=logRho, X=X, Z=Z)
+        f1 = self.__helper(logP=logP0, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
+        f2 = self.__helper(logP=logP1, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
         if np.sign(f1) == np.sign(f2):
             converged = False
             root = np.nan
         else:
             sol = root_scalar(
                 f=self.__helper,
-                args=(logT, logRho, X, Z),
+                args=(logT, logRho, X, Y, Z),
                 method="brentq",
                 bracket=[logP0, logP1],
             )
@@ -167,7 +173,10 @@ class TinyDTWrapper:
                 individual quantities are defined in definitions.py.
 
         """
-        converged, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Z=Z)
+        _, _, X, Y, Z, _ = self.tpt._TinyPT__prepare(
+            logT=logT, logP=6, X=X, Z=Z
+        )
+        converged, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
         if not converged:
             res = np.zeros(num_vals)
             res[i_logT] = logT

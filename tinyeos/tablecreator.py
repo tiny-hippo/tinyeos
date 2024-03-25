@@ -26,8 +26,6 @@ from tinyeos.definitions import (
     i_logT,
     i_logU,
     i_mu,
-    logRho_max,
-    logRho_min,
     num_vals,
 )
 from tinyeos.support import NearestND
@@ -475,8 +473,8 @@ class TableCreatorDT:
                 logT = self.logT_min + j * self.del_logT
                 # make sure to stay within equation of state
                 # logRho boundaries
-                logRho = np.max([logRho_min, logQ + 2 * logT - 12])
-                logRho = np.min([logRho, logRho_max])
+                logRho = np.max([self.eos.logRho_min, logQ + 2 * logT - 12])
+                logRho = np.min([logRho, self.eos.logRho_max])
                 res = self.eos.evaluate(logT=logT, logRho=logRho, X=X, Z=Z)
                 if (
                     np.any(np.isnan(res))

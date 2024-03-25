@@ -58,7 +58,8 @@ class TinyPT(InterpolantsBuilder):
     Equations of state implemented:
         Hydrogen-Helium:
             CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995).
+            SCvH (Saumon et al. 1995),
+            SCvH extended version (R. Helled, priv. comm.).
 
         Heavy element:
             H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
@@ -85,7 +86,7 @@ class TinyPT(InterpolantsBuilder):
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
             which_hhe (str, optional): hydrogen-helium equation of state
-                to use. Defaults to "cms". Options are "cms" or "scvh".
+                to use. Defaults to "cms". Options are "cms", "scvh" or "scvh_extended".
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed
@@ -103,12 +104,16 @@ class TinyPT(InterpolantsBuilder):
         if build_interpolants:
             super().__init__()
 
+        self.logRho_max = logRho_max
+        self.logRho_min = logRho_min
         self.logP_max = logP_max
         self.logP_min = logP_min
         self.logT_max = logT_max
         self.logT_min = logT_min
-        self.logRho_max = logRho_max
-        self.logRho_min = logRho_min
+        if which_hhe == "scvh_extended":
+            self.logRho_min = -15.00
+            self.logP_min = -6.00
+            self.logT_min = 1.10
 
         self.num_vals = num_vals
         self.i_logT = i_logT
@@ -143,7 +148,7 @@ class TinyPT(InterpolantsBuilder):
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in heavy_elements:
             raise NotImplementedError("invalid option for which_heavy")
-        if which_hhe not in ["cms", "scvh"]:
+        if which_hhe not in ["cms", "scvh", "scvh_extended"]:
             raise NotImplementedError("invalid option for which_hhe")
         self.include_hhe_interactions = include_hhe_interactions
         if include_hhe_interactions and which_hhe == "scvh":
@@ -228,6 +233,36 @@ class TinyPT(InterpolantsBuilder):
                 quantities is defined in the __init__ method.
         """
         return self.evaluate(logT, logP, X, Z)
+
+    def __prepare(
+        self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
+        """Prepare the equation of state input.
+
+        Args:
+            logT (ArrayLike): log10 of the temperature.
+            logP (ArrayLike): log10 of the pressure.
+            X (ArrayLike): hydrogen mass-fraction.
+            Z (ArrayLike): heavy-element mass-fraction.
+
+        Returns:
+            Tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
+        """
+        logT, logP = self.__check_PT(logT, logP)
+        X, Y, Z = check_composition(X, Z)
+        if logT.ndim > X.ndim:
+            X = X * np.ones_like(logT)
+            Y = Y * np.ones_like(logT)
+            Z = Z * np.ones_like(logT)
+        elif logT.ndim < X.ndim:
+            logT = logT * np.ones_like(X)
+            logP = logP * np.ones_like(X)
+        self.input_ndim = np.max([logT.ndim, X.ndim])
+        self.X_close = np.isclose(X, 1, atol=eps1)
+        self.Y_close = np.isclose(X, 1, atol=eps1)
+        self.Z_close = np.isclose(Z, 1, atol=eps1)
+        res = self.__get_zeros(logT, logP, X, Z)
+        return (logT, logP, X, Y, Z, res)
 
     def __load_interp(self, filename: str) -> object:
         """Loads the interpolant from the disk.
@@ -574,23 +609,8 @@ class TinyPT(InterpolantsBuilder):
             NDArray: reduced equation of state output. The indices of the
                 individual quantities are defined in the __init__ method.
         """
+        logT, logP, X, Y, Z, res = self.__prepare(logT, logP, X, Z)
 
-        logT, logP = self.__check_PT(logT, logP)
-        X, Y, Z = check_composition(X, Z)
-        if logT.ndim > X.ndim:
-            X = X * np.ones_like(logT)
-            Y = Y * np.ones_like(logT)
-            Z = Z * np.ones_like(logT)
-        elif logT.ndim < X.ndim:
-            logT = logT * np.ones_like(X)
-            logP = logP * np.ones_like(X)
-        self.input_ndim = np.max([logT.ndim, X.ndim])
-
-        self.X_close = np.isclose(X, 1, atol=eps1)
-        self.Y_close = np.isclose(X, 1, atol=eps1)
-        self.Z_close = np.isclose(Z, 1, atol=eps1)
-
-        res = self.__get_zeros(logT, logP, X, Z)
         if np.all(self.X_close) or not self.include_hhe_interactions:
             res_x = self.__evaluate_x(logT, logP)
         elif np.any(self.X_close) and self.include_hhe_interactions:
