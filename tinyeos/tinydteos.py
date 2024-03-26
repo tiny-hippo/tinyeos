@@ -194,6 +194,7 @@ class TinyDT(InterpolantsBuilder):
             self.interpDT_x_eff = self.__load_interp(
                 "interpDT_x_eff_" + which_hhe + ".npy"
             )
+            self.interpPT_xy = self.__load_interp("interpPT_xy_int.npy")
 
         self.interpDT_logP_x = self.interpDT_x[0]
         self.interpDT_logS_x = self.interpDT_x[1]
@@ -217,6 +218,8 @@ class TinyDT(InterpolantsBuilder):
             self.interpDT_grad_ad_x_eff = self.interpDT_x_eff[7]
             self.interpDT_lfe_x_eff = self.interpDT_x_eff[8]
             self.interpDT_mu_x_eff = self.interpDT_x_eff[9]
+            self.interpPT_V_mix_xy = self.interpPT_xy[0]
+            self.interpPT_S_mix_xy = self.interpPT_xy[1]
 
         self.interpDT_logP_y = self.interpDT_y[0]
         self.interpDT_logS_y = self.interpDT_y[1]

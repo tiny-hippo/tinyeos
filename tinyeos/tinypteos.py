@@ -170,6 +170,7 @@ class TinyPT(InterpolantsBuilder):
             self.interpPT_x_eff = self.__load_interp(
                 "interpPT_x_eff_" + which_hhe + ".npy"
             )
+            self.interpPT_xy = self.__load_interp("interpPT_xy_int.npy")
 
         self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
 
@@ -195,6 +196,8 @@ class TinyPT(InterpolantsBuilder):
             self.interpPT_grad_ad_x_eff = self.interpPT_x_eff[7]
             self.interpPT_lfe_x_eff = self.interpPT_x_eff[8]
             self.interpPT_mu_x_eff = self.interpPT_x_eff[9]
+            self.interpPT_V_mix_xy = self.interpPT_xy[0]
+            self.interpPT_S_mix_xy = self.interpPT_xy[1]
 
         self.interpPT_logRho_y = self.interpPT_y[0]
         self.interpPT_logS_y = self.interpPT_y[1]

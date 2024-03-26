@@ -44,6 +44,7 @@ class InterpolantsBuilder(TableLoader):
         self.__build_PT_x_interpolants()
         self.__build_PT_x_eff_interpolants()
         self.__build_PT_y_interpolants()
+        self.__build_PT_xy_interaction_interpolants()
         self.__build_PT_z_interpolants()
 
         # store interpolants to disk
@@ -309,6 +310,10 @@ class InterpolantsBuilder(TableLoader):
         )
         self.__cache_interpolant(filename, interp_array)
 
+        filename = "interpPT_xy_int"
+        interp_array = np.array([self.interpPT_V_mix_xy, self.interpPT_S_mix_xy])
+        self.__cache_interpolant(filename, interp_array)
+
     def __cache_z_interpolants(self, which_heavy: str) -> None:
         """Stores all interpolants for the heavy element.
         to the disk.
@@ -560,6 +565,25 @@ class InterpolantsBuilder(TableLoader):
 
         mu = self.y_PT_table[:, 11]
         self.interpPT_mu_y = self.__build_interpolant(X, Y, mu)
+
+    def __build_PT_xy_interaction_interpolants(self) -> None:
+        """Builds (logP, logT) interpolants for the
+        hydrogen-helium non-ideal interaction.
+        """
+        logT = self.xy_interaction_PT_table[:, 1]
+        logP = self.xy_interaction_PT_table[:, 0]
+        V_mix = self.xy_interaction_PT_table[:, 2]
+        S_mix = self.xy_interaction_PT_table[:, 3]
+
+        X = np.unique(logP)
+        Y = np.unique(logT)
+        self.interpPT_V_mix_xy = self.__build_interpolant(X, Y, V_mix)
+        self.interpPT_S_mix_xy = self.__build_interpolant(X, Y, S_mix)
+        # points = (X, Y)
+        # values = np.reshape(V_mix, (X.size, Y.size))
+        # self.interpPT_V_mix_xy = RegularGridInterpolator(points, values, method="linear")
+        # values = np.reshape(S_mix, (X.size, Y.size))
+        # self.interpPT_S_mix_xy = RegularGridInterpolator(points, values, method="linear")
 
     def __build_DT_z_interpolants(self) -> None:
         """Builds (logT, logRho) interpolants for the heavy element."""
