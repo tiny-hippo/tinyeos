@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from tinyeos.definitions import eps1, logP_max, logP_min, logT_max, logT_min, tiny_val
-from tinyeos.support import A_H, A_He, get_h_he_number_fractions, k_b, m_u
+from tinyeos.support import A_H, A_He, get_h_he_number_fractions, get_zeros, k_b, m_u
 from tinyeos.tinypteos import TinyPT
 
 
@@ -285,76 +285,6 @@ class TinyPTMixture:
                     )
         return S_mix
 
-    @staticmethod
-    def __get_shape(
-        num_vals: int, logT: NDArray, logP: NDArray, X: NDArray | None = None
-    ) -> NDArray:
-        """Helper function to return the appropriate shape.
-
-        Args:
-            num_vals (ArrayLike): number of values along the first dimension.
-            logT (ArrayLike): log10 of the temperature.
-            logP (ArrayLike): log10 of the pressure.
-            X (ArrayLike): hydrogen mass-fraction.
-
-        Returns:
-            NDArray
-        """
-        if X is None:
-            X = np.array(0)
-        max_ndim = np.max([logT.ndim, logP.ndim, X.ndim])
-        if max_ndim > 0:
-            shape = (num_vals,) + logT.shape
-        elif max_ndim == 0:
-            shape = num_vals
-        return shape
-
-    def __get_zeros(
-        self,
-        num_vals: int,
-        logT: NDArray,
-        logP: NDArray,
-        X: NDArray | None = None,
-    ) -> NDArray:
-        """Helper function to return a zero-array of the appropriate shape.
-
-        Args:
-            num_vals (ArrayLike): number of values along the first dimension.
-            logT (ArrayLike): log10 of the temperature.
-            logP (ArrayLike): log10 of the pressure.
-            X (ArrayLike): hydrogen mass-fraction.
-
-        Returns:
-            NDArray
-        """
-        if X is None:
-            X = np.array(0)
-        shape = self.__get_shape(num_vals, logT, logP, X)
-        return np.zeros(shape)
-
-    def __get_empty(
-        self,
-        num_vals: int,
-        logT: NDArray,
-        logP: NDArray,
-        X: NDArray | None = None,
-    ) -> NDArray:
-        """Helper function to return an empty array of the appropriate shape.
-
-        Args:
-            num_vals (ArrayLike): number of values along the first dimension.
-            logT (ArrayLike): log10 of the temperature.
-            logP (ArrayLike): log10 of the pressure.
-            X (ArrayLike): hydrogen mass-fraction.
-
-        Returns:
-            NDArray
-        """
-        if X is None:
-            X = np.array(0)
-        shape = self.__get_shape(num_vals, logT, logP, X)
-        return np.empty(shape)
-
     def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
         Only calculates the density, entropy, entropy derivatives,
@@ -378,7 +308,8 @@ class TinyPTMixture:
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        res_x = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+        input_shape = logT.shape
+        res_x = get_zeros(input_shape=input_shape, num_vals=self.num_vals_for_evaluate)
         res_x[self.i_logRho] = logRho
         res_x[self.i_logS] = logS
         res_x[self.i_dlS_dlP] = dlS_dlP_T
@@ -411,7 +342,10 @@ class TinyPTMixture:
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        res_x_eff = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+        input_shape = logT.shape
+        res_x_eff = get_zeros(
+            input_shape=input_shape, num_vals=self.num_vals_for_evaluate
+        )
         res_x_eff[self.i_logRho] = logRho
         res_x_eff[self.i_logS] = logS
         res_x_eff[self.i_dlS_dlP] = dlS_dlP_T
@@ -444,7 +378,8 @@ class TinyPTMixture:
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        res_y = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+        input_shape = logT.shape
+        res_y = get_zeros(input_shape=input_shape, num_vals=self.num_vals_for_evaluate)
         res_y[self.i_logRho] = logRho
         res_y[self.i_logS] = logS
         res_y[self.i_dlS_dlP] = dlS_dlP_T
@@ -478,7 +413,8 @@ class TinyPTMixture:
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        res_z = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+        input_shape = logT.shape
+        res_z = get_zeros(input_shape=input_shape, num_vals=self.num_vals_for_evaluate)
         res_z[self.i_logRho] = logRho
         res_z[self.i_logS] = logS
         res_z[self.i_dlS_dlP] = dlS_dlP_T
@@ -526,11 +462,16 @@ class TinyPTMixture:
         elif logT.ndim < X.ndim:
             logT = logT * np.ones_like(X)
             logP = logP * np.ones_like(X)
-        self.input_ndim = np.max([logT.ndim, X.ndim])
+        self.input_shape = logT.shape
+        self.input_ndim = len(logT.shape)
 
         X_one = np.isclose(X, 1, atol=eps1)
         if np.all(np.isclose(X, 0, atol=eps1)):
-            res_x = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_x = get_zeros(
+                input_shape=self.input_shape,
+                num_vals=self.num_vals_for_evaluate,
+                empty=True,
+            )
             res_x.fill(tiny_val)
         else:
             if np.all(X_one) or not self.include_hhe_interactions:
@@ -542,32 +483,50 @@ class TinyPTMixture:
                 logP_x = logP[i_x]
                 logT_xeff = logT[i_xeff]
                 logP_xeff = logP[i_xeff]
-                res_x = self.__get_zeros(self.num_vals_for_evaluate, logT, logP)
+                res_x = get_zeros(
+                    input_shape=self.input_shape, num_vals=self.num_vals_for_evaluate
+                )
                 res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
                 res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
             else:
                 res_x = self.__evaluate_x_eff(logT, logP)
 
         if np.all(np.isclose(Y, 0, atol=eps1)):
-            res_y = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_y = get_zeros(
+                input_shape=self.input_shape,
+                num_vals=self.num_vals_for_evaluate,
+                empty=True,
+            )
             res_y.fill(tiny_val)
         else:
             res_y = self.__evaluate_y(logT, logP)
 
         if np.all(np.isclose(Z1, 0, atol=eps1)):
-            res_z1 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z1 = get_zeros(
+                input_shape=self.input_shape,
+                num_vals=self.num_vals_for_evaluate,
+                empty=True,
+            )
             res_z1.fill(tiny_val)
         else:
             res_z1 = self.__evaluate_z(0, logT, logP)
 
         if np.all(np.isclose(Z2, 0, atol=eps1)):
-            res_z2 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z2 = get_zeros(
+                input_shape=self.input_shape,
+                num_vals=self.num_vals_for_evaluate,
+                empty=True,
+            )
             res_z2.fill(tiny_val)
         else:
             res_z2 = self.__evaluate_z(1, logT, logP)
 
         if np.all(np.isclose(Z3, 0, atol=eps1)):
-            res_z3 = self.__get_empty(self.num_vals_for_evaluate, logT, logP)
+            res_z3 = get_zeros(
+                input_shape=self.input_shape,
+                num_vals=self.num_vals_for_evaluate,
+                empty=True,
+            )
             res_z3.fill(tiny_val)
         else:
             res_z3 = self.__evaluate_z(2, logT, logP)
@@ -657,7 +616,7 @@ class TinyPTMixture:
         gamma1 = chiRho / (1 - chiT * grad_ad)
         c_sound = np.sqrt(10**logP / 10**logRho * gamma1)
 
-        res = self.__get_zeros(self.num_vals_for_return, logT, logP)
+        res = get_zeros(input_shape=self.input_shape, num_vals=self.num_vals_for_return)
         res[0] = logRho
         res[1] = logS
         res[2] = grad_ad

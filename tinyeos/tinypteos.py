@@ -7,6 +7,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from tinyeos.definitions import (
     atomic_masses,
+    eos_num_vals,
     eps1,
     heavy_elements,
     i_chiRho,
@@ -35,7 +36,6 @@ from tinyeos.definitions import (
     logRho_min,
     logT_max,
     logT_min,
-    num_vals,
     tiny_val,
 )
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
@@ -45,6 +45,7 @@ from tinyeos.support import (
     check_composition,
     get_eta,
     get_h_he_number_fractions,
+    get_zeros,
     ideal_mixing_law,
     k_b,
     m_u,
@@ -115,7 +116,7 @@ class TinyPT(InterpolantsBuilder):
             self.logP_min = -6.00
             self.logT_min = 1.10
 
-        self.num_vals = num_vals
+        self.eos_num_vals = eos_num_vals
         self.i_logT = i_logT
         self.i_logRho = i_logRho
         self.i_logP = i_logP
@@ -260,11 +261,13 @@ class TinyPT(InterpolantsBuilder):
         elif logT.ndim < X.ndim:
             logT = logT * np.ones_like(X)
             logP = logP * np.ones_like(X)
-        self.input_ndim = np.max([logT.ndim, X.ndim])
+
         self.X_close = np.isclose(X, 1, atol=eps1)
         self.Y_close = np.isclose(X, 1, atol=eps1)
         self.Z_close = np.isclose(Z, 1, atol=eps1)
-        res = self.__get_zeros(logT, logP, X, Z)
+        self.input_shape = logT.shape
+        self.input_ndim = len(self.input_shape)
+        res = get_zeros(input_shape=self.input_shape)
         return (logT, logP, X, Y, Z, res)
 
     def __load_interp(self, filename: str) -> object:
@@ -317,41 +320,6 @@ class TinyPT(InterpolantsBuilder):
             raise ValueError(msg)
         else:
             return (logT, logP)
-
-    def __get_zeros(
-        self,
-        logT: NDArray,
-        logP: NDArray,
-        X: NDArray | None = None,
-        Z: NDArray | None = None,
-    ) -> NDArray:
-        """Helper function to return a result array of the appropriate shape
-
-        Args:
-            logT (ArrayLike): log10 of the temperature.
-            logP (ArrayLike): log10 of the pressure.
-            X (ArrayLike): hydrogen mass-fraction.
-            Z (ArrayLike): heavy-element mass fraction.
-
-        Raises:
-            ValueError: input can at most be two-dimensional.
-
-        Returns:
-            NDArray
-        """
-        if X is None:
-            X = np.array(0)
-        if Z is None:
-            Z = np.array(0)
-        max_ndim = np.max([logT.ndim, logP.ndim, X.ndim, Z.ndim])
-        if max_ndim > 0:
-            shape = (self.num_vals,) + logT.shape
-            return np.zeros(shape)
-        elif max_ndim == 0:
-            return np.zeros(self.num_vals)
-        else:
-            msg = "unsupported input shape"
-            raise ValueError(msg)
 
     def __ideal_mixture(
         self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Y: ArrayLike, Z: ArrayLike
@@ -454,7 +422,8 @@ class TinyPT(InterpolantsBuilder):
         lfe = self.interpPT_lfe_x(logT, logP, **self.kwargs)
         mu = self.interpPT_mu_x(logT, logP, **self.kwargs)
 
-        res_x = self.__get_zeros(logT, logP)
+        input_shape = logT.shape
+        res_x = get_zeros(input_shape)
         res_x[self.i_logT] = logT
         res_x[self.i_logRho] = logRho
         res_x[self.i_logP] = logP
@@ -491,7 +460,8 @@ class TinyPT(InterpolantsBuilder):
         lfe = self.interpPT_lfe_x_eff(logT, logP, **self.kwargs)
         mu = self.interpPT_mu_x_eff(logT, logP, **self.kwargs)
 
-        res_x_eff = self.__get_zeros(logT, logP)
+        input_shape = logT.shape
+        res_x_eff = get_zeros(input_shape)
         res_x_eff[self.i_logT] = logT
         res_x_eff[self.i_logRho] = logRho
         res_x_eff[self.i_logP] = logP
@@ -528,7 +498,8 @@ class TinyPT(InterpolantsBuilder):
         lfe = self.interpPT_lfe_y(logT, logP, **self.kwargs)
         mu = self.interpPT_mu_y(logT, logP, **self.kwargs)
 
-        res_y = self.__get_zeros(logT, logP)
+        input_shape = logT.shape
+        res_y = get_zeros(input_shape)
         res_y[self.i_logT] = logT
         res_y[self.i_logRho] = logRho
         res_y[self.i_logP] = logP
@@ -580,7 +551,8 @@ class TinyPT(InterpolantsBuilder):
         # alternatively:
         # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
-        res_z = self.__get_zeros(logT, logP)
+        input_shape = logT.shape
+        res_z = get_zeros(input_shape)
         res_z[self.i_logT] = logT
         res_z[self.i_logRho] = logRho
         res_z[self.i_logP] = logP
@@ -623,7 +595,7 @@ class TinyPT(InterpolantsBuilder):
             logP_x = logP[i_x]
             logT_xeff = logT[i_xeff]
             logP_xeff = logP[i_xeff]
-            res_x = self.__get_zeros(logT, logP, X, Z)
+            res_x = get_zeros(self.input_shape)
             res_x[:, i_x] = self.__evaluate_x(logT_x, logP_x)
             res_x[:, i_xeff] = self.__evaluate_x_eff(logT_xeff, logP_xeff)
         else:

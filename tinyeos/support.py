@@ -1,13 +1,13 @@
 from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
 from sklearn.neighbors._base import _get_weights
 
-from tinyeos.definitions import eps1, eps2, tiny_val
+from tinyeos.definitions import eos_num_vals, eps1, eps2, tiny_val
 
 # constants (in cgs units)
 A_H = 1.0078  # atomic mass of hydrogen
@@ -137,6 +137,31 @@ def get_1d_spline(
 
     spl = UnivariateSpline(x, y, s=S, k=K, ext=0)
     return spl
+
+
+def get_zeros(
+    input_shape: Tuple[int, ...],
+    num_vals: int = eos_num_vals,
+    empty: bool = False,
+) -> NDArray:
+    """Helper function to return a result array of the appropriate shape.
+
+    Args:
+        input_shape (Tuple): shape of the inputs.
+        num_vals (int, optional): number of values in the first dimension.
+            Defaults to num_eos_vals.
+        empty (bool, optional): whether to return an empty array.
+            Defaults to False.
+
+    Returns:
+        NDArray
+    """
+    input_ndim = len(input_shape)
+    shape = (num_vals,) + input_shape if input_ndim > 0 else num_vals
+    if empty:
+        return np.empty(shape=shape, dtype=np.float64)
+    else:
+        return np.zeros(shape=shape, dtype=np.float64)
 
 
 def check_composition(

@@ -1,6 +1,8 @@
-""" Definitions for the equation of state boundaries and the
+"""Definitions for the equation of state boundaries and the
 array indices for the output.
 """
+
+import numpy as np
 
 # currently supported heavy elements
 heavy_elements = ["h2o", "aqua", "sio2", "fe", "co", "mixture"]
@@ -10,7 +12,7 @@ atomic_masses = {
     "sio2": 60.080,
     "fe": 55.845,
     "co": 28.010,
-    "mixture": 0.5 * (18.015 + 60.080)
+    "mixture": 0.5 * (18.015 + 60.080),
 }
 ionic_charges = {
     "h2o": 10,
@@ -18,7 +20,7 @@ ionic_charges = {
     "sio2": 30,
     "fe": 26,
     "co": 14,
-    "mixture": 0.5 * (10 + 30)
+    "mixture": 0.5 * (10 + 30),
 }
 
 # min/max temperatures are limited by SCvH and CMS
@@ -36,7 +38,7 @@ eps2 = 1e-32
 tiny_val = 1e-16
 tiny_logRho = -32
 
-num_vals = 19
+eos_num_vals = 19
 i_logT = 0
 i_logRho = 1
 i_logP = 2
@@ -58,25 +60,25 @@ i_lfe = 17
 i_csound = 18
 
 eos_dict = {
-    i_logT: "logT",
-    i_logRho: "logRho",
-    i_logP: "logP",
-    i_logS: "logS",
-    i_logU: "logU",
-    i_chiRho: "chiRho",
-    i_chiT: "chiT",
-    i_grad_ad: "grad_ad",
-    i_cp: "cp",
-    i_cv: "cv",
-    i_gamma1: "gamma1",
-    i_gamma3: "gamma3",
-    i_dS_dT: "dS_dT",
-    i_dS_dRho: "dS_dRho",
-    i_dE_dRho: "dE_dRho",
-    i_mu: "mu",
-    i_eta: "eta",
-    i_lfe: "lfe",
-    i_csound: "c_sound"
+    "logT": i_logT,
+    "logRho": i_logRho,
+    "logP": i_logP,
+    "logS": i_logS,
+    "logU": i_logU,
+    "chiRho": i_chiRho,
+    "chiT": i_chiT,
+    "grad_ad": i_grad_ad,
+    "c_p": i_cp,
+    "c_v": i_cv,
+    "gamma1": i_gamma1,
+    "gamma3": i_gamma3,
+    "dS_dT": i_dS_dT,
+    "dS_dRho": i_dS_dRho,
+    "dE_dRho": i_dE_dRho,
+    "mu": i_mu,
+    "eta": i_eta,
+    "lfe": i_lfe,
+    "c_sound": i_csound,
 }
 
 # num_derivs = 3

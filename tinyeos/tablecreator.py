@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 from numpy.typing import ArrayLike, NDArray
 
 from tinyeos.definitions import (
+    eos_num_vals,
     i_chiRho,
     i_chiT,
     i_cp,
@@ -26,7 +27,6 @@ from tinyeos.definitions import (
     i_logT,
     i_logU,
     i_mu,
-    num_vals,
 )
 from tinyeos.support import NearestND
 from tinyeos.tinydteos import TinyDT
@@ -152,7 +152,7 @@ def createTablesDT(
     )
     num_logQs = TC.num_logQs
     num_logTs = TC.num_logTs
-    num_vals = TC.num_vals
+    num_vals = TC.eos_num_vals
 
     def parallelWrapper(X: float, Z: float) -> NDArray:
         return TC.create_tables(X, Z)
@@ -353,7 +353,7 @@ class TableCreatorDT:
             Tuple[int, NDArray, NDarray]: number of tables and
                 mass fractions.
         """
-        self.num_vals = num_vals
+        self.eos_num_vals = eos_num_vals
         self.logT_min = logT_min
         self.logT_max = logT_max
         self.logQ_min = logQ_min
@@ -463,9 +463,11 @@ class TableCreatorDT:
         fname = "".join([self.fname_prefix, ztext, xtext])
         dst = os.path.join(self.output_path, fname)
 
-        results = np.zeros((self.num_logQs, self.num_logTs, num_vals), dtype=np.float32)
+        results = np.zeros(
+            (self.num_logQs, self.num_logTs, eos_num_vals), dtype=np.float32
+        )
         if self.debug:
-            dbg_arr = np.zeros((self.num_logQs, self.num_logTs, num_vals))
+            dbg_arr = np.zeros((self.num_logQs, self.num_logTs, eos_num_vals))
 
         for i in range(self.num_logQs):
             logQ = self.logQ_min + i * self.del_logQ
@@ -508,7 +510,7 @@ class TableCreatorDT:
         if self.fix_bad_values:
             x = results[:, :, i_logT].reshape(-1)
             y = results[:, :, i_logRho].reshape(-1)
-            z = results[:, :, i_logRho + 1 :].reshape((-1, num_vals - 2))
+            z = results[:, :, i_logRho + 1 :].reshape((-1, eos_num_vals - 2))
             idcs = np.where(np.isfinite(z))[0]
 
             if self.debug:
@@ -608,7 +610,6 @@ class TableCreatorPT(TinyPT):
         build_interpolants: bool = False,
         debug: bool = False,
     ) -> None:
-
         super().__init__(
             which_heavy=which_heavy,
             which_hhe=which_hhe,
@@ -682,7 +683,6 @@ class TableCreatorPT(TinyPT):
         del_Z: float,
         fname_prefix: str,
     ) -> None:
-
         self.logT_min = logT_min
         self.logT_max = logT_max
         self.logW_min = logW_min
@@ -773,11 +773,11 @@ class TableCreatorPT(TinyPT):
             return
 
         results = np.zeros(
-            (self.num_logWs, self.num_logTs, self.num_vals), dtype=np.float32
+            (self.num_logWs, self.num_logTs, self.eos_num_vals), dtype=np.float32
         )
         if self.debug:
-            dbg_arr = np.zeros((self.num_logWs, self.num_logTs, self.num_vals))
-        target_idcs = list(range(self.i_logRho, self.num_vals))
+            dbg_arr = np.zeros((self.num_logWs, self.num_logTs, self.eos_num_vals))
+        target_idcs = list(range(self.i_logRho, self.eos_num_vals))
         target_idcs.remove(self.i_logP)
 
         for i in range(self.num_logWs):
@@ -817,7 +817,7 @@ class TableCreatorPT(TinyPT):
         if self.fix_vals:
             x = results[:, :, self.i_logT].reshape(-1)
             y = results[:, :, self.i_logP].reshape(-1)
-            z = results[:, :, target_idcs].reshape((-1, self.num_vals - 2))
+            z = results[:, :, target_idcs].reshape((-1, self.eos_num_vals - 2))
             idcs = np.where(np.isfinite(z))[0]
 
             nnd_interp = NearestND((x[idcs], y[idcs]), z[idcs], rescale=True)

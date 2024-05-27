@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import root_scalar
 
-from tinyeos.definitions import i_logRho, i_logT, num_vals
+from tinyeos.definitions import eos_num_vals, i_logRho, i_logT
 from tinyeos.tinypteos import TinyPT
 
 
@@ -179,12 +179,10 @@ class TinyDTWrapper:
                 individual quantities are defined in definitions.py.
 
         """
-        _, _, X, Y, Z, _ = self.tpt._TinyPT__prepare(
-            logT=logT, logP=6, X=X, Z=Z
-        )
+        _, _, X, Y, Z, _ = self.tpt._TinyPT__prepare(logT=logT, logP=6, X=X, Z=Z)
         converged, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
         if not converged:
-            res = np.zeros(num_vals)
+            res = np.zeros(eos_num_vals)
             res[i_logT] = logT
             res[i_logRho] = logRho
             res[i_logRho + 1 :] = np.nan
