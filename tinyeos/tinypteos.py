@@ -742,22 +742,22 @@ class TinyPT(InterpolantsBuilder):
         grad_ad = -dlS_dlP_T / dlS_dlT_P
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
+        check_grad_ad = np.isnan(grad_ad)
+        if np.any(check_grad_ad):
+            if self.input_ndim > 0:
+                grad_ad[check_grad_ad] = self.lower_grad_ad
+            else:
+                grad_ad = self.lower_grad_ad
+        grad_ad = np.clip(a=grad_ad, a_min=self.lower_grad_ad, a_max=self.upper_grad_ad)
+        chiRho = np.clip(a=chiRho, a_min=self.lower_chiRho, a_max=self.upper_chiRho)
+        chiT = np.clip(a=chiT, a_min=self.lower_chiT, a_max=self.upper_chiT)
+        gamma1 = chiRho / (1 - chiT * grad_ad)
+        gamma3 = 1 + gamma1 * grad_ad
+        # from the definition of the specific heat
+        # cp = S * dlS_dlT_P
+        # Alternatively from Stellar Interiors pp. 176
+        cp = P * chiT / (rho * T * chiRho * grad_ad)
         if self.input_ndim > 0:
-            grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
-            grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
-            grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
-            chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
-            chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
-            chiT[chiT < self.lower_chiT] = self.lower_chiT
-            chiT[chiT > self.upper_chiT] = self.upper_chiT
-
-            gamma1 = chiRho / (1 - chiT * grad_ad)
-            gamma3 = 1 + gamma1 * grad_ad
-            # from the definition of the specific heat
-            # cp = S * dlS_dlT_P
-            # Alternatively from Stellar Interiors pp. 176
-            cp = P * chiT / (rho * T * chiRho * grad_ad)
-
             i = gamma1 >= tiny_val
             cv = np.zeros_like(logT)
             cv[i] = cp[i] * chiRho[i] / gamma1[i]
@@ -767,20 +767,6 @@ class TinyPT(InterpolantsBuilder):
             c_sound = tiny_val * np.ones_like(logT)
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
-            if np.isnan(grad_ad):
-                grad_ad = self.lower_grad_ad
-            grad_ad = np.max([grad_ad, self.lower_grad_ad])
-            grad_ad = np.min([grad_ad, self.upper_grad_ad])
-            chiRho = np.max([chiRho, self.lower_chiRho])
-            chiRho = np.min([chiRho, self.upper_chiRho])
-            chiT = np.max([chiT, self.lower_chiT])
-            chiT = np.min([chiT, self.upper_chiT])
-
-            gamma1 = chiRho / (1 - chiT * grad_ad)
-            gamma3 = 1 + gamma1 * grad_ad
-            # cp = S * dlS_dlT_P
-            cp = P * chiT / (rho * T * chiRho * grad_ad)
-
             if gamma1 >= tiny_val:
                 cv = cp * chiRho / gamma1
                 c_sound = np.sqrt(P / rho * gamma1)
@@ -795,10 +781,7 @@ class TinyPT(InterpolantsBuilder):
 
         # only hydrogen and helium contribute to free electrons
         lfe = np.log10(X * 10 ** res_x[self.i_lfe] + Y * 10 ** res_y[self.i_lfe])
-        if self.input_ndim > 0:
-            lfe[lfe < -99] = -99
-        else:
-            lfe = np.max([lfe, -99])
+        lfe = np.clip(a=lfe, a_min=-99, a_max=None)
         eta = get_eta(logT, logRho, lfe)
 
         res[self.i_logT] = logT

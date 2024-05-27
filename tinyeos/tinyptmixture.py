@@ -635,30 +635,24 @@ class TinyPTMixture:
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         if self.limit_bad_values:
-            if self.input_ndim > 0:
-                logS[np.isnan(logS)] = -10
-                logS[logS < -10] = -10
-                logS[logS > 12] = 12
-                grad_ad[np.isnan(grad_ad)] = self.lower_grad_ad
-                grad_ad[grad_ad < self.lower_grad_ad] = self.lower_grad_ad
-                grad_ad[grad_ad > self.upper_grad_ad] = self.upper_grad_ad
-                chiRho[chiRho < self.lower_chiRho] = self.lower_chiRho
-                chiRho[chiRho > self.upper_chiRho] = self.upper_chiRho
-                chiT[chiT < self.lower_chiT] = self.lower_chiT
-                chiT[chiT > self.upper_chiT] = self.upper_chiT
-            else:
-                if np.isnan(logS):
+            check_logS = np.isnan(logS)
+            check_grad_ad = np.isnan(grad_ad)
+            if np.any(check_logS):
+                if self.input_ndim > 0:
+                    logS[check_logS] = -10
+                else:
                     logS = -10
-                logS = np.max([logS, -10])
-                logS = np.min([logS, 12])
-                if np.isnan(grad_ad):
+            if np.any(check_grad_ad):
+                if self.input_ndim > 0:
+                    grad_ad[check_grad_ad] = self.lower_grad_ad
+                else:
                     grad_ad = self.lower_grad_ad
-                grad_ad = np.max([grad_ad, self.lower_grad_ad])
-                grad_ad = np.min([grad_ad, self.upper_grad_ad])
-                chiRho = np.max([chiRho, self.lower_chiRho])
-                chiRho = np.min([chiRho, self.upper_chiRho])
-                chiT = np.max([chiT, self.lower_chiT])
-                chiT = np.min([chiT, self.upper_chiT])
+            logS = np.clip(a=logS, a_min=-10, a_max=12)
+            grad_ad = np.clip(
+                a=grad_ad, a_min=self.lower_grad_ad, a_max=self.upper_grad_ad
+            )
+            chiRho = np.clip(a=chiRho, a_min=self.lower_chiRho, a_max=self.upper_chiRho)
+            chiT = np.clip(a=chiT, a_min=self.lower_chiT, a_max=self.upper_chiT)
 
         gamma1 = chiRho / (1 - chiT * grad_ad)
         c_sound = np.sqrt(10**logP / 10**logRho * gamma1)
