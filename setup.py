@@ -1,8 +1,8 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="tinyeos",
-    version="1.5.0",
+    version="1.5.1",
     description="equations of state and opacities for planets",
     url="",
     author="Simon Müller",
