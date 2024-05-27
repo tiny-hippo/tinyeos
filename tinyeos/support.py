@@ -10,12 +10,12 @@ from sklearn.neighbors._base import _get_weights
 from tinyeos.definitions import eos_num_vals, eps1, eps2, tiny_val
 
 # constants (in cgs units)
-A_H = 1.0078  # atomic mass of hydrogen
-A_He = 4.0026  # atomic mass of helium
+A_h = 1.0078  # atomic mass of hydrogen
+A_he = 4.0026  # atomic mass of helium
 m_e = 9.10938e-28  # electron mass
 m_u = 1.66e-24  # atomic mass unit
-m_H = A_H * m_u  # hydrogen (atom) mass
-m_He = A_He * m_u  # helium  (atom) mass
+m_h = A_h * m_u  # hydrogen (atom) mass
+m_he = A_he * m_u  # helium  (atom) mass
 k_b = 1.3806503e-16  # boltzmann constant
 h = 6.260755e-27  # planck constant
 sigma_b = 5.6704e-5  # stefan-boltzmann constant
@@ -263,7 +263,7 @@ def ideal_mixing_law(
     return x_rho_x + y_rho_y + z_rho_z
 
 
-def get_h_he_number_fractions(
+def get_xy_number_fractions(
     Y: ArrayLike, ionized: bool = False
 ) -> Tuple[ArrayLike, ArrayLike]:
     """Calculates the hydrogen and helium number fractions
@@ -281,26 +281,83 @@ def get_h_he_number_fractions(
     if not isinstance(Y, np.ndarray):
         Y = np.array(Y)
     X = 1 - Y
-    if np.all(np.isclose(Y, 1, atol=eps1)):
-        x_H = tiny_val * np.ones_like(Y)
-        x_He = np.ones_like(Y)
-    elif np.all(np.isclose(X, 1, atol=eps1)):
-        x_H = np.ones_like(Y)
-        x_He = tiny_val * np.ones_like(Y)
-    else:
-        x_H2 = 0  # no molecular hydrogen
-        mu = 2 * X + 3 / 4 * Y if ionized else X / (1 + x_H2) + Y / 4
-        mu = 1 / mu
+    x_h2 = 0  # no molecular hydrogen
+    mu = 2 * X + 3 / 4 * Y if ionized else X / (1 + x_h2) + Y / 4
+    mu = 1 / mu
 
-        x_He = Y * mu * m_u / m_He
-        x_H = 1 - x_He
-        if Y.ndim > 0:
-            x_H[np.isclose(x_H, 0, eps1)] = tiny_val
-            x_He[np.isclose(x_He, 0, eps1)] = tiny_val
-        else:
-            x_H = np.max([x_H, tiny_val])
-            x_He = np.max([x_He, tiny_val])
-    return (x_H, x_He)
+    x_he = Y * mu / A_he
+    x_h = 1 - x_he
+    return (x_h, x_he)
+
+
+def get_xyz_number_fractions(
+    Y: ArrayLike, Z: ArrayLike, A_z: float
+) -> Tuple[ArrayLike, ArrayLike]:
+    """Calculates the hydrogen, helium and heavy-element number fractions.
+
+    Args:
+        Y (ArrayLike): helium mass fraction.
+        Z (ArrayLike): heavy-element mass fraction.
+
+    Returns:
+        Tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of the number fractions.
+    """
+    # Y_eff = Y / (1 - Z)
+    Y_eff = Y
+    N_tot = (1 - Y_eff) * (1 - Z) / A_h + (Y_eff * (1 - Z) / A_he) + Z / A_z
+
+    x_h = (1 - Y_eff) * (1 - Z) / (A_h * N_tot)
+    x_z = Z / (A_z * N_tot)
+    x_he = 1 - x_h - x_z
+    return (x_h, x_he, x_z)
+
+
+def xlogx(x: ArrayLike) -> ArrayLike:
+    """Calculates x * log(x).
+
+    Args:
+        x (ArrayLike): input array.
+
+    Returns:
+        ArrayLike: x * log(x).
+    """
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    if x.ndim > 0:
+        xlogx = np.zeros_like(x)
+        i = x > 0
+        xlogx[i] = x[i] * np.log(x[i])
+    else:
+        xlogx = 0 if x <= 0 else x * np.log(x)
+    return xlogx
+
+
+def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: float) -> ArrayLike:
+    """Calculates the ideal mixing entropy of the hydrogen, helium and
+    heavy-element mixture (see eq. 11 of Chabrier et al. (2019)).
+    Free-electron entropy neglected and the mean molecular weight
+    calculation is heavily simplified.
+
+    Args:
+        Y (ArrayLike): helium mass-fraction.
+        Z (ArrayLike): heavy-element mass-fraction.
+        A_z (float): atomic mass of the heavy element.
+
+    Returns:
+        ArrayLike: ideal mixing entropy.
+    """
+    if not isinstance(Y, np.ndarray):
+        Y = np.array(Y)
+    if not isinstance(Z, np.ndarray):
+        Z = np.array(Z)
+    x = np.zeros((3,) + Y.shape)  # number fractions
+    i = Z > 0
+    x[0, i], x[1, i], x[2, i] = get_xyz_number_fractions(Y=Y[i], Z=Z[i], A_z=A_z)
+    x[0, ~i], x[1, ~i] = get_xy_number_fractions(Y=Y[~i])
+
+    A_mean = x[0] * A_h + x[1] * A_he + x[2] * A_z
+    S_mix = -k_b * (xlogx(x[0]) + xlogx(x[1]) + xlogx(x[2])) / (A_mean * m_u)
+    return S_mix
 
 
 def get_eta(logT: ArrayLike, logRho: ArrayLike, log_free_e: ArrayLike) -> ArrayLike:

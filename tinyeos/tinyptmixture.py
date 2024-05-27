@@ -3,8 +3,16 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tinyeos.definitions import eps1, logP_max, logP_min, logT_max, logT_min, tiny_val
-from tinyeos.support import A_H, A_He, get_h_he_number_fractions, get_zeros, k_b, m_u
+from tinyeos.definitions import (
+    atomic_masses,
+    eps1,
+    logP_max,
+    logP_min,
+    logT_max,
+    logT_min,
+    tiny_val,
+)
+from tinyeos.support import get_mixing_entropy, get_zeros
 from tinyeos.tinypteos import TinyPT
 
 
@@ -83,6 +91,11 @@ class TinyPTMixture:
         self.upper_grad_ad = 2.5
         self.upper_chiT = 2.5
         self.upper_chiRho = 2.5
+
+        # atomic weights
+        self.A1 = atomic_masses[which_z1]
+        self.A2 = atomic_masses[which_z2]
+        self.A3 = atomic_masses[which_z3]
 
         self.tpt_z1 = TinyPT(
             which_hhe=which_xy,
@@ -238,52 +251,6 @@ class TinyPTMixture:
         dlS_dlT_P = res[self.i_dlS_dlT]
         grad_ad = res[self.i_grad_ad]
         return (logRho, logS, dlS_dlP_T, dlS_dlT_P, grad_ad)
-
-    def __get_mixing_entropy(
-        self,
-        Y: ArrayLike,
-        Z1: ArrayLike,
-        Z2: ArrayLike,
-        Z3: ArrayLike,
-    ) -> ArrayLike:
-        """Calculates the ideal mixing entropy of the H-He
-        partial mixture with free-electron entropy neglected;
-        see eq. 11 of Chabrier et al. (2019)
-
-        Args:
-            Y (ArrayLike): helium mass-fraction.
-            Z1 (ArrayLike): first heavy-element mass-fraction.
-            Z2 (ArrayLike): second heavy-element mass-fraction.
-            Z3 (ArrayLike): third heavy-element mass-fraction.
-
-        Returns:
-            ArrayLike: mixing entropy.
-        """
-        S_mix = np.zeros(Y.shape)
-        if not self.include_hhe_interactions:
-            x_H, x_He = get_h_he_number_fractions(Y)
-            Z_tot = Z1 + Z2 + Z3
-            Z_one = np.isclose(Z_tot, 1, atol=eps1)
-            if self.input_ndim > 0:
-                if not np.all(Z_one):
-                    iZ = ~Z_one
-                    x_H = x_H[iZ]
-                    x_He = x_He[iZ]
-                    mean_A = x_H * A_H + x_He * A_He
-                    S_mix[iZ] = (
-                        -k_b
-                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
-                        / (mean_A * m_u)
-                    )
-            else:
-                if not Z_one:
-                    mean_A = x_H * A_H + x_He * A_He
-                    S_mix = (
-                        -k_b
-                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
-                        / (mean_A * m_u)
-                    )
-        return S_mix
 
     def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
@@ -552,7 +519,11 @@ class TinyPTMixture:
         S_z2 = 10**logS_z2
         S_z3 = 10**logS_z3
         S = X * S_x + Y * S_y + Z1 * S_z1 + Z2 * S_z2 + Z3 * S_z3
-        S = S + self.__get_mixing_entropy(Y=Y, Z1=Z1, Z2=Z2, Z3=Z3)
+        Z_tot = Z1 + Z2 + Z3
+        A_z_mean = (
+            Z1 * self.A1 + Z2 * self.A2 + Z3 * self.A3
+        ) / Z_tot  # mean atomic weight of the three heavy elements
+        S = S + get_mixing_entropy(Y=Y, Z=Z_tot, A_z=A_z_mean)
         logS = np.log10(S)
 
         dlS_dlP = (

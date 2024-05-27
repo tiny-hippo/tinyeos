@@ -40,15 +40,11 @@ from tinyeos.definitions import (
 )
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
-    A_H,
-    A_He,
     check_composition,
     get_eta,
-    get_h_he_number_fractions,
+    get_mixing_entropy,
     get_zeros,
     ideal_mixing_law,
-    k_b,
-    m_u,
 )
 
 
@@ -363,41 +359,6 @@ class TinyPT(InterpolantsBuilder):
             logRho = np.log10(1 / iml)
         return logRho
 
-    def __get_mixing_entropy(self, Y: ArrayLike) -> ArrayLike:
-        """Calculates the ideal mixing entropy of the H-He
-        partial mixture with free-electron entropy neglected;
-        see eq. 11 of Chabrier et al. (2019)
-
-        Args:
-            Y (ArrayLike): helium mass-fraction.
-
-        Returns:
-            ArrayLike: mixing entropy.
-        """
-        S_mix = np.zeros(Y.shape)
-        if not self.include_hhe_interactions:
-            x_H, x_He = get_h_he_number_fractions(Y)
-            if self.input_ndim > 0:
-                if not np.all(self.Z_close):
-                    iZ = ~self.Z_close
-                    x_H = x_H[iZ]
-                    x_He = x_He[iZ]
-                    mean_A = x_H * A_H + x_He * A_He
-                    S_mix[iZ] = (
-                        -k_b
-                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
-                        / (mean_A * m_u)
-                    )
-            else:
-                if not self.Z_close:
-                    mean_A = x_H * A_H + x_He * A_He
-                    S_mix = (
-                        -k_b
-                        * (x_H * np.log(x_H) + x_He * np.log(x_He))
-                        / (mean_A * m_u)
-                    )
-        return S_mix
-
     def __evaluate_x(self, logT: ArrayLike, logP: ArrayLike) -> NDArray:
         """Calculates equation of state output for hydrogen.
 
@@ -622,7 +583,7 @@ class TinyPT(InterpolantsBuilder):
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
-        S = S + self.__get_mixing_entropy(Y)
+        S = S + get_mixing_entropy(Y=Y, Z=Z, A_z=self.A)
         logS = np.log10(S)
 
         logU_x = res_x[self.i_logU]
