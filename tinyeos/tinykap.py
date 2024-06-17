@@ -693,12 +693,33 @@ class TinyElectronConduction:
         kap = np.power(10, logkap)
         return kap
 
+    
+    def evaluate_conductivity(self, logT: float, logRho: float, logz: float) -> float:
+        """Evaluates the RegularGridInterpolator object for a given
+        (logT, logRho, logz) and returns the (electron) conductivity.
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            logz (float): log10 of the ion charge number.
+
+        Returns:
+            float: conductivity
+        """
+        if np.isscalar(logz):
+            logz = logz * np.ones_like(logT)
+        pts = (logT, logRho, logz)
+
+        # logK: log10 of the thermal conductivity
+        # conductive opacity: 16 * sigma_b * T^3 / (3 * rho * K)
+        logK = self.rgi(pts)
+        return logK
+
     def evaluate(
         self, logT: ArrayLike, logRho: ArrayLike, logz: ArrayLike
     ) -> ArrayLike:
         """Evaluates the RegularGridInterpolator object for a given
         (logT, logRho, logz) and returns the (electron) conductive opacity.
-        This works with ArrayLike inputs.
 
         Args:
             logT (ArrayLike): log10 of the temperature.
@@ -708,13 +729,7 @@ class TinyElectronConduction:
         Returns:
             ArrayLike: conductive opacity.
         """
-        if np.isscalar(logz):
-            logz = logz * np.ones_like(logT)
-        pts = [[logT[i], logRho[i], logz[i]] for i in range(logT.size)]
-
-        # logK: log10 of the thermal conductivity
-        # conductive opacity: 16 * sigma_b * T^3 / (3 * rho * K)
-        logK = self.rgi(pts)
+        logK = self.evaluate_conductivity(logT, logRho, logz)
         logkap = 3 * logT - logRho - logK + np.log10(16 * sigma_b / 3)
         kap = np.power(10, logkap)
         return kap
