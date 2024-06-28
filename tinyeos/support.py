@@ -291,13 +291,14 @@ def get_xy_number_fractions(
 
 
 def get_xyz_number_fractions(
-    Y: ArrayLike, Z: ArrayLike, A_z: float
-) -> Tuple[ArrayLike, ArrayLike]:
+    Y: ArrayLike, Z: ArrayLike, A_z: ArrayLike
+) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Calculates the hydrogen, helium and heavy-element number fractions.
 
     Args:
         Y (ArrayLike): helium mass fraction.
         Z (ArrayLike): heavy-element mass fraction.
+        A_z (ArrayLike): atomic mass of the heavy element.
 
     Returns:
         Tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of the number fractions.
@@ -332,7 +333,7 @@ def xlogx(x: ArrayLike) -> ArrayLike:
     return xlogx
 
 
-def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: float) -> ArrayLike:
+def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: ArrayLike) -> ArrayLike:
     """Calculates the ideal mixing entropy of the hydrogen, helium and
     heavy-element mixture (see eq. 11 of Chabrier et al. (2019)).
     Free-electron entropy neglected and the mean molecular weight
@@ -341,7 +342,7 @@ def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: float) -> ArrayLike:
     Args:
         Y (ArrayLike): helium mass-fraction.
         Z (ArrayLike): heavy-element mass-fraction.
-        A_z (float): atomic mass of the heavy element.
+        A_z (ArrayLike): atomic mass of the heavy element.
 
     Returns:
         ArrayLike: ideal mixing entropy.
@@ -350,9 +351,11 @@ def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: float) -> ArrayLike:
         Y = np.array(Y)
     if not isinstance(Z, np.ndarray):
         Z = np.array(Z)
+    if not isinstance(A_z, np.ndarray):
+        A_z = np.array(A_z)
     x = np.zeros((3,) + Y.shape)  # number fractions
     i = Z > 0
-    x[0, i], x[1, i], x[2, i] = get_xyz_number_fractions(Y=Y[i], Z=Z[i], A_z=A_z)
+    x[0, i], x[1, i], x[2, i] = get_xyz_number_fractions(Y=Y[i], Z=Z[i], A_z=A_z[i])
     x[0, ~i], x[1, ~i] = get_xy_number_fractions(Y=Y[~i])
 
     A_mean = x[0] * A_h + x[1] * A_he + x[2] * A_z
