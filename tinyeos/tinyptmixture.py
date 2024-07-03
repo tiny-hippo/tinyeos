@@ -58,7 +58,7 @@ class TinyPTMixture:
             which_z3 (str, optional): which heavy-element equation of state
                 to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
                 or "co". Defaults to "fe".
-            include_hhe_interactions (bool, optional): wether to include
+            include_hhe_interactions (bool, optional): whether to include
                 hydrogen-helium interactions. Defaults to True.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed
                 hydrogen and helium tables. Defaults to False.
