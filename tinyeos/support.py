@@ -353,6 +353,8 @@ def get_mixing_entropy(Y: ArrayLike, Z: ArrayLike, A_z: ArrayLike) -> ArrayLike:
         Z = np.array(Z)
     if not isinstance(A_z, np.ndarray):
         A_z = np.array(A_z)
+    if A_z.shape != Y.shape:
+        A_z = A_z * np.ones_like(Y)
     x = np.zeros((3,) + Y.shape)  # number fractions
     i = tiny_val < Z
     if np.any(i):
