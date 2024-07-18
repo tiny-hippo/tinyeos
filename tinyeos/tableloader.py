@@ -67,10 +67,10 @@ class TableLoader:
         self.use_smoothed_xy_tables = use_smoothed_xy_tables
         self.use_smoothed_z_tables = use_smoothed_z_tables
         self.tables_path = Path(__file__).parent / "data/eos/tables"
-        self.z_DT_header = (
+        self.z_dt_header = (
             "logT [K] logRho [g/cc] logP [Ba] logU [erg/g] logS [erg/g/K] grad_ad"
         )
-        self.z_PT_header = (
+        self.z_pt_header = (
             "logT [K] logP [Ba] logRho [g/cc] logU [erg/g] logS [erg/g/K] grad_ad"
         )
 
@@ -78,13 +78,13 @@ class TableLoader:
             msg = "Mass fractions of the heavy elements must sum to one."
             raise ValueError(msg)
 
-        _, _ = self.__load_xy_DT_tables(which_hhe=which_hhe)
-        _, _ = self.__load_xy_PT_tables(which_hhe=which_hhe)
-        _ = self.__load_xy_PT_interaction_tables()
-        _ = self.__load_z_DT_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
-        _ = self.__load_z_PT_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
+        _, _ = self.__load_xy_dt_tables(which_hhe=which_hhe)
+        _, _ = self.__load_xy_pt_tables(which_hhe=which_hhe)
+        _ = self.__load_xy_pt_interaction_tables()
+        _ = self.__load_z_dt_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
+        _ = self.__load_z_pt_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
 
-    def __load_xy_DT_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
+    def __load_xy_dt_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
@@ -128,7 +128,7 @@ class TableLoader:
         self.y_DT_table = data
         return (self.x_DT_table, self.y_DT_table)
 
-    def __load_xy_PT_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
+    def __load_xy_pt_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
@@ -176,7 +176,7 @@ class TableLoader:
         self.y_PT_table = data
         return (self.x_PT_table, self.y_PT_table)
 
-    def __load_xy_PT_interaction_tables(self) -> NDArray:
+    def __load_xy_pt_interaction_tables(self) -> NDArray:
         """Loads the hydrogen-helium non-ideal interaction table
         from Howard & Guillot (2023).
 
@@ -190,7 +190,7 @@ class TableLoader:
         self.xy_interaction_PT_table = data
         return self.xy_interaction_PT_table
 
-    def __load_z_DT_table(
+    def __load_z_dt_table(
         self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
     ) -> NDArray:
         """Loads the heavy-element (logRho, logT) tables.
@@ -261,7 +261,7 @@ class TableLoader:
         self.z_DT_table = data
         return self.z_DT_table
 
-    def __load_z_PT_table(
+    def __load_z_pt_table(
         self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
     ) -> NDArray:
         """Loads the heavy-element (logP, logT) tables.
@@ -363,14 +363,14 @@ class TableLoader:
         """
         if which_variables == "pt":
             # indices: 0: logT, 1: logRho, 2: logP, 3: logU, 4: logS
-            z_in_table = self.__load_z_DT_table(
+            z_in_table = self.__load_z_dt_table(
                 which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
             )
             dlogP = 0.05
             y = np.arange(-3.8, 15.8 + dlogP, dlogP)
         elif which_variables == "dt":
             # indices: 0: logT, 1: logP, 2: logRho, 3: logU, 4: logS
-            z_in_table = self.__load_z_PT_table(
+            z_in_table = self.__load_z_pt_table(
                 which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
             )
             dlogRho = 0.05
@@ -467,12 +467,12 @@ class TableLoader:
         else:
             fname = f"qeos_{which_variables}_{which_heavy}.data"
         if store_table:
-            header = self.z_DT_header if which_variables == "dt" else self.z_PT_header
+            header = self.z_dt_header if which_variables == "dt" else self.z_pt_header
             dst = os.path.join(self.tables_path, fname)
             np.savetxt(dst, out_table, fmt="%.8e", header=header)
         return out_table
 
-    def invert_xeff_PT_table(
+    def invert_xeff_pt_table(
         self,
         kind: str = "linear",
         extrapolate: bool = True,
@@ -625,9 +625,9 @@ class TableLoader:
         if not np.isclose(Z1 + Z2 + Z3, 1, atol=1e-5):
             msg = "Mass fractions of the heavy elements must sum to one."
             raise ValueError(msg)
-        Z1_table = self.__load_z_PT_table(which_Z1)
-        Z2_table = self.__load_z_PT_table(which_Z2)
-        Z3_table = self.__load_z_PT_table(which_Z3)
+        Z1_table = self.__load_z_pt_table(which_Z1)
+        Z2_table = self.__load_z_pt_table(which_Z2)
+        Z3_table = self.__load_z_pt_table(which_Z3)
 
         logT = Z1_table[:, 0]
         logP = Z1_table[:, 1]
@@ -669,7 +669,7 @@ class TableLoader:
             fname = fname + f"_{which_Z2}_{Z2:02.0f}"
             fname = fname + f"_{which_Z3}_{Z3:02.0f}.data"
             dst = os.path.join(self.tables_path, fname)
-            np.savetxt(dst, Z_table, header=self.z_PT_header, fmt="%.8e")
+            np.savetxt(dst, Z_table, header=self.z_pt_header, fmt="%.8e")
         return Z_table
 
     @staticmethod
@@ -837,7 +837,7 @@ if __name__ == "__main__":
     T = TableLoader(which_hhe="cms")
     # convert effective hydrogen table
     # from (logT, logP) to (logT, logRho)
-    T.invert_xeff_PT_table(
+    T.invert_xeff_pt_table(
         kind="linear",
         extrapolate=True,
         smooth_table=False,
@@ -884,7 +884,7 @@ if __name__ == "__main__":
             element = "h2o_50_sio2_50_fe_00"
         fname = f"qeos_smoothed_dt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
-        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
+        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_dt_header)
 
     # create smoothed pt tables
     for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
@@ -900,4 +900,4 @@ if __name__ == "__main__":
         else:
             fname = f"qeos_smoothed_pt_{element}.data"
         dst = os.path.join(T.tables_path, fname)
-        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_DT_header)
+        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_dt_header)
