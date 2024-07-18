@@ -160,61 +160,61 @@ class TinyPT(InterpolantsBuilder):
         #     which_hhe = which_hhe + "_smoothed"
         if use_smoothed_z_tables:
             which_heavy = which_heavy + "_smoothed"
-        self.interpPT_x = self.__load_interp("interpPT_x_" + which_hhe + ".npy")
-        self.interpPT_y = self.__load_interp("interpPT_y_" + which_hhe + ".npy")
-        self.interpPT_z = self.__load_interp("interpPT_z_" + which_heavy + ".npy")
+        self.interp_pt_x = self.__load_interp("interp_pt_x_" + which_hhe + ".npy")
+        self.interp_pt_y = self.__load_interp("interp_pt_y_" + which_hhe + ".npy")
+        self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
         if self.include_hhe_interactions:
-            self.interpPT_x_eff = self.__load_interp(
-                "interpPT_x_eff_" + which_hhe + ".npy"
+            self.interp_pt_x_eff = self.__load_interp(
+                "interp_pt_x_eff_" + which_hhe + ".npy"
             )
-            self.interpPT_xy = self.__load_interp("interpPT_xy_int.npy")
+            self.interp_pt_xy = self.__load_interp("interp_pt_xy_int.npy")
 
-        self.interpDT_z = self.__load_interp("interpDT_z_" + which_heavy + ".npy")
+        self.interp_dt_z = self.__load_interp("interp_dt_z_" + which_heavy + ".npy")
 
-        self.interpPT_logRho_x = self.interpPT_x[0]
-        self.interpPT_logS_x = self.interpPT_x[1]
-        self.interpPT_logU_x = self.interpPT_x[2]
-        self.interpPT_dlRho_dlT_P_x = self.interpPT_x[3]
-        self.interpPT_dlRho_dlP_T_x = self.interpPT_x[4]
-        self.interpPT_dlS_dlT_P_x = self.interpPT_x[5]
-        self.interpPT_dlS_dlP_T_x = self.interpPT_x[6]
-        self.interpPT_grad_ad_x = self.interpPT_x[7]
-        self.interpPT_lfe_x = self.interpPT_x[8]
-        self.interpPT_mu_x = self.interpPT_x[9]
+        self.interp_pt_logRho_x = self.interp_pt_x[0]
+        self.interp_pt_logS_x = self.interp_pt_x[1]
+        self.interp_pt_logU_x = self.interp_pt_x[2]
+        self.interp_pt_dlRho_dlT_P_x = self.interp_pt_x[3]
+        self.interp_pt_dlRho_dlP_T_x = self.interp_pt_x[4]
+        self.interp_pt_dlS_dlT_P_x = self.interp_pt_x[5]
+        self.interp_pt_dlS_dlP_T_x = self.interp_pt_x[6]
+        self.interp_pt_grad_ad_x = self.interp_pt_x[7]
+        self.interp_pt_lfe_x = self.interp_pt_x[8]
+        self.interp_pt_mu_x = self.interp_pt_x[9]
 
         if self.include_hhe_interactions:
-            self.interpPT_logRho_x_eff = self.interpPT_x_eff[0]
-            self.interpPT_logS_x_eff = self.interpPT_x_eff[1]
-            self.interpPT_logU_x_eff = self.interpPT_x_eff[2]
-            self.interpPT_dlRho_dlT_P_x_eff = self.interpPT_x_eff[3]
-            self.interpPT_dlRho_dlP_T_x_eff = self.interpPT_x_eff[4]
-            self.interpPT_dlS_dlT_P_x_eff = self.interpPT_x_eff[5]
-            self.interpPT_dlS_dlP_T_x_eff = self.interpPT_x_eff[6]
-            self.interpPT_grad_ad_x_eff = self.interpPT_x_eff[7]
-            self.interpPT_lfe_x_eff = self.interpPT_x_eff[8]
-            self.interpPT_mu_x_eff = self.interpPT_x_eff[9]
-            self.interpPT_V_mix_xy = self.interpPT_xy[0]
-            self.interpPT_S_mix_xy = self.interpPT_xy[1]
+            self.interp_pt_logRho_x_eff = self.interp_pt_x_eff[0]
+            self.interp_pt_logS_x_eff = self.interp_pt_x_eff[1]
+            self.interp_pt_logU_x_eff = self.interp_pt_x_eff[2]
+            self.interp_pt_dlRho_dlT_P_x_eff = self.interp_pt_x_eff[3]
+            self.interp_pt_dlRho_dlP_T_x_eff = self.interp_pt_x_eff[4]
+            self.interp_pt_dlS_dlT_P_x_eff = self.interp_pt_x_eff[5]
+            self.interp_pt_dlS_dlP_T_x_eff = self.interp_pt_x_eff[6]
+            self.interp_pt_grad_ad_x_eff = self.interp_pt_x_eff[7]
+            self.interp_pt_lfe_x_eff = self.interp_pt_x_eff[8]
+            self.interp_pt_mu_x_eff = self.interp_pt_x_eff[9]
+            self.interp_pt_V_mix_xy = self.interp_pt_xy[0]
+            self.interp_pt_S_mix_xy = self.interp_pt_xy[1]
 
-        self.interpPT_logRho_y = self.interpPT_y[0]
-        self.interpPT_logS_y = self.interpPT_y[1]
-        self.interpPT_logU_y = self.interpPT_y[2]
-        self.interpPT_dlRho_dlT_P_y = self.interpPT_y[3]
-        self.interpPT_dlRho_dlP_T_y = self.interpPT_y[4]
-        self.interpPT_dlS_dlT_P_y = self.interpPT_y[5]
-        self.interpPT_dlS_dlP_T_y = self.interpPT_y[6]
-        self.interpPT_grad_ad_y = self.interpPT_y[7]
-        self.interpPT_lfe_y = self.interpPT_y[8]
-        self.interpPT_mu_y = self.interpPT_y[9]
+        self.interp_pt_logRho_y = self.interp_pt_y[0]
+        self.interp_pt_logS_y = self.interp_pt_y[1]
+        self.interp_pt_logU_y = self.interp_pt_y[2]
+        self.interp_pt_dlRho_dlT_P_y = self.interp_pt_y[3]
+        self.interp_pt_dlRho_dlP_T_y = self.interp_pt_y[4]
+        self.interp_pt_dlS_dlT_P_y = self.interp_pt_y[5]
+        self.interp_pt_dlS_dlP_T_y = self.interp_pt_y[6]
+        self.interp_pt_grad_ad_y = self.interp_pt_y[7]
+        self.interp_pt_lfe_y = self.interp_pt_y[8]
+        self.interp_pt_mu_y = self.interp_pt_y[9]
 
-        self.interpPT_logRho_z = self.interpPT_z[0]
-        self.interpPT_logS_z = self.interpPT_z[1]
-        self.interpPT_logU_z = self.interpPT_z[2]
+        self.interp_pt_logRho_z = self.interp_pt_z[0]
+        self.interp_pt_logS_z = self.interp_pt_z[1]
+        self.interp_pt_logU_z = self.interp_pt_z[2]
         if self.heavy_element == "aqua":
-            self.interpPT_grad_ad_z = self.interpPT_z[3]
+            self.interp_pt_grad_ad_z = self.interp_pt_z[3]
 
-        self.interpDT_logP_z = self.interpDT_z[0]
-        self.interpDT_logS_z = self.interpDT_z[1]
+        self.interp_dt_logP_z = self.interp_dt_z[0]
+        self.interp_dt_logS_z = self.interp_dt_z[1]
 
     def __call__(
         self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
@@ -248,7 +248,7 @@ class TinyPT(InterpolantsBuilder):
         Returns:
             Tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
         """
-        logT, logP = self.__check_PT(logT, logP)
+        logT, logP = self.__check_pt(logT, logP)
         X, Y, Z = check_composition(X, Z)
         if logT.ndim > X.ndim:
             X = X * np.ones_like(logT)
@@ -283,7 +283,7 @@ class TinyPT(InterpolantsBuilder):
             raise FileNotFoundError("missing interpolant cache " + src)
         return np.load(src, allow_pickle=True)
 
-    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
+    def __check_pt(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
@@ -335,25 +335,25 @@ class TinyPT(InterpolantsBuilder):
         """
 
         if np.all(self.X_close):
-            logRho = self.interpPT_logRho_x(logT, logP, grid=False)
+            logRho = self.interp_pt_logRho_x(logT, logP, grid=False)
         elif np.all(self.Y_close):
-            logRho = self.interpPT_logRho_y(logT, logP, grid=False)
+            logRho = self.interp_pt_logRho_y(logT, logP, grid=False)
         elif np.all(self.Z_close):
-            logRho = self.interpPT_logRho_z(logT, logP, grid=False)
+            logRho = self.interp_pt_logRho_z(logT, logP, grid=False)
         else:
             if np.any(self.X_close) and self.include_hhe_interactions:
-                logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
-                logRho_x_eff = self.interpPT_logRho_x_eff(logT, logP, grid=False)
+                logRho_x = self.interp_pt_logRho_x(logT, logP, grid=False)
+                logRho_x_eff = self.interp_pt_logRho_x_eff(logT, logP, grid=False)
                 i = X < 1
                 logRho_x[i] = logRho_x_eff[i]
-                logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
-                logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
+                logRho_y = self.interp_pt_logRho_y(logT, logP, grid=False)
+                logRho_z = self.interp_pt_logRho_z(logT, logP, grid=False)
             elif self.include_hhe_interactions:
-                logRho_x = self.interpPT_logRho_x_eff(logT, logP, grid=False)
+                logRho_x = self.interp_pt_logRho_x_eff(logT, logP, grid=False)
             else:
-                logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
-            logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
-            logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
+                logRho_x = self.interp_pt_logRho_x(logT, logP, grid=False)
+            logRho_y = self.interp_pt_logRho_y(logT, logP, grid=False)
+            logRho_z = self.interp_pt_logRho_z(logT, logP, grid=False)
 
             iml = ideal_mixing_law(10**logRho_x, 10**logRho_y, 10**logRho_z, X, Y, Z)
             logRho = np.log10(1 / iml)
@@ -370,18 +370,18 @@ class TinyPT(InterpolantsBuilder):
             NDArray: equation of state output.
         """
 
-        logRho = self.interpPT_logRho_x(logT, logP, **self.kwargs)
-        logS = self.interpPT_logS_x(logT, logP, **self.kwargs)
-        logU = self.interpPT_logU_x(logT, logP, **self.kwargs)
+        logRho = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
+        logS = self.interp_pt_logS_x(logT, logP, **self.kwargs)
+        logU = self.interp_pt_logU_x(logT, logP, **self.kwargs)
 
-        dlRho_dlP_T = self.interpPT_dlRho_dlP_T_x(logT, logP, **self.kwargs)
-        dlRho_dlT_P = self.interpPT_dlRho_dlT_P_x(logT, logP, **self.kwargs)
+        dlRho_dlP_T = self.interp_pt_dlRho_dlP_T_x(logT, logP, **self.kwargs)
+        dlRho_dlT_P = self.interp_pt_dlRho_dlT_P_x(logT, logP, **self.kwargs)
 
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interpPT_grad_ad_x(logT, logP, **self.kwargs)
-        lfe = self.interpPT_lfe_x(logT, logP, **self.kwargs)
-        mu = self.interpPT_mu_x(logT, logP, **self.kwargs)
+        grad_ad = self.interp_pt_grad_ad_x(logT, logP, **self.kwargs)
+        lfe = self.interp_pt_lfe_x(logT, logP, **self.kwargs)
+        mu = self.interp_pt_mu_x(logT, logP, **self.kwargs)
 
         input_shape = logT.shape
         res_x = get_zeros(input_shape)
@@ -408,18 +408,18 @@ class TinyPT(InterpolantsBuilder):
             NDArray: equation of state output.
         """
 
-        logRho = self.interpPT_logRho_x_eff(logT, logP, **self.kwargs)
-        logS = self.interpPT_logS_x_eff(logT, logP, **self.kwargs)
-        logU = self.interpPT_logU_x_eff(logT, logP, **self.kwargs)
+        logRho = self.interp_pt_logRho_x_eff(logT, logP, **self.kwargs)
+        logS = self.interp_pt_logS_x_eff(logT, logP, **self.kwargs)
+        logU = self.interp_pt_logU_x_eff(logT, logP, **self.kwargs)
 
-        dlRho_dlP_T = self.interpPT_dlRho_dlP_T_x_eff(logT, logP, **self.kwargs)
-        dlRho_dlT_P = self.interpPT_dlRho_dlT_P_x_eff(logT, logP, **self.kwargs)
+        dlRho_dlP_T = self.interp_pt_dlRho_dlP_T_x_eff(logT, logP, **self.kwargs)
+        dlRho_dlT_P = self.interp_pt_dlRho_dlT_P_x_eff(logT, logP, **self.kwargs)
 
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interpPT_grad_ad_x_eff(logT, logP, **self.kwargs)
-        lfe = self.interpPT_lfe_x_eff(logT, logP, **self.kwargs)
-        mu = self.interpPT_mu_x_eff(logT, logP, **self.kwargs)
+        grad_ad = self.interp_pt_grad_ad_x_eff(logT, logP, **self.kwargs)
+        lfe = self.interp_pt_lfe_x_eff(logT, logP, **self.kwargs)
+        mu = self.interp_pt_mu_x_eff(logT, logP, **self.kwargs)
 
         input_shape = logT.shape
         res_x_eff = get_zeros(input_shape)
@@ -446,18 +446,18 @@ class TinyPT(InterpolantsBuilder):
             NDArray: equation of state output.
         """
 
-        logRho = self.interpPT_logRho_y(logT, logP, **self.kwargs)
-        logS = self.interpPT_logS_y(logT, logP, **self.kwargs)
-        logU = self.interpPT_logU_y(logT, logP, **self.kwargs)
+        logRho = self.interp_pt_logRho_y(logT, logP, **self.kwargs)
+        logS = self.interp_pt_logS_y(logT, logP, **self.kwargs)
+        logU = self.interp_pt_logU_y(logT, logP, **self.kwargs)
 
-        dlRho_dlP_T = self.interpPT_dlRho_dlP_T_y(logT, logP, **self.kwargs)
-        dlRho_dlT_P = self.interpPT_dlRho_dlT_P_y(logT, logP, **self.kwargs)
+        dlRho_dlP_T = self.interp_pt_dlRho_dlP_T_y(logT, logP, **self.kwargs)
+        dlRho_dlT_P = self.interp_pt_dlRho_dlT_P_y(logT, logP, **self.kwargs)
 
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interpPT_grad_ad_y(logT, logP, **self.kwargs)
-        lfe = self.interpPT_lfe_y(logT, logP, **self.kwargs)
-        mu = self.interpPT_mu_y(logT, logP, **self.kwargs)
+        grad_ad = self.interp_pt_grad_ad_y(logT, logP, **self.kwargs)
+        lfe = self.interp_pt_lfe_y(logT, logP, **self.kwargs)
+        mu = self.interp_pt_mu_y(logT, logP, **self.kwargs)
 
         input_shape = logT.shape
         res_y = get_zeros(input_shape)
@@ -483,28 +483,28 @@ class TinyPT(InterpolantsBuilder):
         Returns:
             NDArray: equation of state output.
         """
-        logRho = self.interpPT_logRho_z(logT, logP, **self.kwargs)
-        logS = self.interpPT_logS_z(logT, logP, **self.kwargs)
-        logU = self.interpPT_logU_z(logT, logP, **self.kwargs)
+        logRho = self.interp_pt_logRho_z(logT, logP, **self.kwargs)
+        logS = self.interp_pt_logS_z(logT, logP, **self.kwargs)
+        logU = self.interp_pt_logU_z(logT, logP, **self.kwargs)
 
         # new method with (logT, logP)
-        dlRho_dlP_T = self.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
-        dlRho_dlT_P = self.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
+        dlRho_dlP_T = self.interp_pt_logRho_z(logT, logP, dy=1, **self.kwargs)
+        dlRho_dlT_P = self.interp_pt_logRho_z(logT, logP, dx=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
         if self.heavy_element == "aqua":
-            grad_ad = self.interpPT_grad_ad_z(logT, logP, **self.kwargs)
+            grad_ad = self.interp_pt_grad_ad_z(logT, logP, **self.kwargs)
         else:
-            dlS_dlP_T = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
-            dlS_dlT_P = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+            dlS_dlP_T = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
+            dlS_dlT_P = self.interp_pt_logS_z(logT, logP, dx=1, **self.kwargs)
             grad_ad = -dlS_dlP_T / dlS_dlT_P
 
         # old method with (logT, logRho)
-        # chiRho = self.interpDT_logP_z(logT, logRho, dy=1, **self.kwargs)
-        # chiT = self.interpDT_logP_z(logT, logRho, dx=1, **self.kwargs)
-        # dlS_dlT_rho = self.interpDT_logS_z(logT, logRho, dx=1, **self.kwargs)
-        # dlS_dlRho_T = self.interpDT_logS_z(logT, logRho, dy=1, **self.kwargs)
+        # chiRho = self.interp_dt_logP_z(logT, logRho, dy=1, **self.kwargs)
+        # chiT = self.interp_dt_logP_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlT_rho = self.interp_dt_logS_z(logT, logRho, dx=1, **self.kwargs)
+        # dlS_dlRho_T = self.interp_dt_logS_z(logT, logRho, dy=1, **self.kwargs)
         # dlS_dlRho_P = dlS_dlRho_T + dlS_dlT_rho * (- chiRho / chiT)
         # dlS_dlP_rho = dlS_dlT_rho / chiT
         # gamma1 = - dlS_dlRho_P / dlS_dlP_rho
@@ -593,28 +593,28 @@ class TinyPT(InterpolantsBuilder):
         logU = np.log10(U)
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
-            dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
-            dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
+            dlS_dlP_T_x = self.interp_pt_dlS_dlP_T_x(logT, logP, **self.kwargs)
+            dlS_dlT_P_x = self.interp_pt_dlS_dlT_P_x(logT, logP, **self.kwargs)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
-            dlS_dlP_T_x[i_x] = self.interpPT_dlS_dlP_T_x(logT_x, logP_x, **self.kwargs)
-            dlS_dlP_T_x[i_xeff] = self.interpPT_dlS_dlP_T_x(
+            dlS_dlP_T_x[i_x] = self.interp_pt_dlS_dlP_T_x(logT_x, logP_x, **self.kwargs)
+            dlS_dlP_T_x[i_xeff] = self.interp_pt_dlS_dlP_T_x(
                 logT_xeff, logP_xeff, **self.kwargs
             )
 
             dlS_dlT_P_x = np.zeros_like(logS)
-            dlS_dlT_P_x[i_x] = self.interpPT_dlS_dlT_P_x(logT_x, logP_x, **self.kwargs)
-            dlS_dlT_P_x[i_xeff] = self.interpPT_dlS_dlT_P_x(
+            dlS_dlT_P_x[i_x] = self.interp_pt_dlS_dlT_P_x(logT_x, logP_x, **self.kwargs)
+            dlS_dlT_P_x[i_xeff] = self.interp_pt_dlS_dlT_P_x(
                 logT_xeff, logP_xeff, **self.kwargs
             )
         else:
-            dlS_dlP_T_x = self.interpPT_dlS_dlP_T_x_eff(logT, logP, **self.kwargs)
-            dlS_dlT_P_x = self.interpPT_dlS_dlT_P_x_eff(logT, logP, **self.kwargs)
+            dlS_dlP_T_x = self.interp_pt_dlS_dlP_T_x_eff(logT, logP, **self.kwargs)
+            dlS_dlT_P_x = self.interp_pt_dlS_dlT_P_x_eff(logT, logP, **self.kwargs)
 
-        dlS_dlP_T_y = self.interpPT_dlS_dlP_T_y(logT, logP, **self.kwargs)
-        dlS_dlT_P_y = self.interpPT_dlS_dlT_P_y(logT, logP, **self.kwargs)
-        dlS_dlP_T_z = self.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
-        dlS_dlT_P_z = self.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T_y = self.interp_pt_dlS_dlP_T_y(logT, logP, **self.kwargs)
+        dlS_dlT_P_y = self.interp_pt_dlS_dlT_P_y(logT, logP, **self.kwargs)
+        dlS_dlP_T_z = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P_z = self.interp_pt_logS_z(logT, logP, dx=1, **self.kwargs)
 
         dlS_dlP_T = (
             X * S_x * dlS_dlP_T_x + Y * S_y * dlS_dlP_T_y + Z * S_z * dlS_dlP_T_z

@@ -26,13 +26,13 @@ class TableLoader:
             ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
 
     Attributes:
-        x_DT_table (ndarray): hydrogen (logRho, logT) table
-        x_PT_table (ndarray): hydrogen (logP, logT) table
-        x_eff_PT_table (ndarray): (logP, logT) table
-        y_DT_table (ndarray): helium (logRho, logT) table
-        y_PT_table (ndarray): helium (logP, logT) table
-        z_DT_table (ndarray): heavy-element (logRho, logT) table
-        z_PT_table (ndarray): heavy-element (logP, logT) table
+        x_dt_table (ndarray): hydrogen (logRho, logT) table
+        x_pt_table (ndarray): hydrogen (logP, logT) table
+        x_eff_pt_table (ndarray): (logP, logT) table
+        y_dt_table (ndarray): helium (logRho, logT) table
+        y_pt_table (ndarray): helium (logP, logT) table
+        z_dt_table (ndarray): heavy-element (logRho, logT) table
+        z_pt_table (ndarray): heavy-element (logP, logT) table
     """
 
     def __init__(
@@ -109,7 +109,7 @@ class TableLoader:
         # columns = ["logT", "logP", "logRho", "logU", "logS", "dlnRho/dlnT",
         #          "dlnRho/dlnP", "dlnS/dlnT", "dlnS/dlnP", "grad_ad",
         #          "log_free_e", "mu"]
-        self.x_DT_table = data
+        self.x_dt_table = data
 
         # load the "effective" hydrogen table from Chabrier et al. 2021
         # that can be used to account for hydrogen-helium interactions
@@ -117,7 +117,7 @@ class TableLoader:
             src = os.path.join(self.tables_path, "cms_dt_effective_hydrogen.pkl")
             with open(src, "rb") as file:
                 data = pickle.load(file)
-            self.x_eff_DT_table = data
+            self.x_eff_dt_table = data
 
         if which_hhe == "cms":
             src = os.path.join(self.tables_path, "cms_dt_helium.pkl")
@@ -125,8 +125,8 @@ class TableLoader:
             src = os.path.join(self.tables_path, "scvh_extended_dt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
-        self.y_DT_table = data
-        return (self.x_DT_table, self.y_DT_table)
+        self.y_dt_table = data
+        return (self.x_dt_table, self.y_dt_table)
 
     def __load_xy_pt_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logP, logT) tables.
@@ -155,7 +155,7 @@ class TableLoader:
         # columns = ["logT", "logP", "logRho", "logU", "logS", "dlnRho/dlnT",
         #          "dlnRho/dlnP", "dlnS/dlnT", "dlnS/dlnP", "grad_ad",
         #          "log_free_e", "mu"]
-        self.x_PT_table = data
+        self.x_pt_table = data
 
         # load the "effective" hydrogen table from Chabrier et al. 2021
         # that can be used to account for hydrogen-helium interactions
@@ -163,7 +163,7 @@ class TableLoader:
             src = os.path.join(self.tables_path, "cms_pt_effective_hydrogen.pkl")
             with open(src, "rb") as file:
                 data = pickle.load(file)
-            self.x_eff_PT_table = data
+            self.x_eff_pt_table = data
 
         if which_hhe == "cms":
             src = os.path.join(self.tables_path, "cms_pt_helium.pkl")
@@ -173,8 +173,8 @@ class TableLoader:
             src = os.path.join(self.tables_path, "scvh_extended_pt_helium.pkl")
         with open(src, "rb") as file:
             data = pickle.load(file)
-        self.y_PT_table = data
-        return (self.x_PT_table, self.y_PT_table)
+        self.y_pt_table = data
+        return (self.x_pt_table, self.y_pt_table)
 
     def __load_xy_pt_interaction_tables(self) -> NDArray:
         """Loads the hydrogen-helium non-ideal interaction table
@@ -187,8 +187,8 @@ class TableLoader:
         src = os.path.join(self.tables_path, fname)
         # columns = ["logP", "logT", "V_mix", "S_mix"]
         data = np.loadtxt(src)
-        self.xy_interaction_PT_table = data
-        return self.xy_interaction_PT_table
+        self.xy_interaction_pt_table = data
+        return self.xy_interaction_pt_table
 
     def __load_z_dt_table(
         self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
@@ -258,8 +258,8 @@ class TableLoader:
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         # columns = ["logT", "logRho", "logP", "logU", "logS", "grad_ad"]
-        self.z_DT_table = data
-        return self.z_DT_table
+        self.z_dt_table = data
+        return self.z_dt_table
 
     def __load_z_pt_table(
         self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
@@ -315,8 +315,8 @@ class TableLoader:
         src = os.path.join(self.tables_path, fname)
         data = np.loadtxt(src, skiprows=1, dtype=np.float64)
         # columns = ["logT", "logP", "logRho", "logU", "logS", "grad_ad"]
-        self.z_PT_table = data
-        return self.z_PT_table
+        self.z_pt_table = data
+        return self.z_pt_table
 
     def invert_z_table(
         self,
@@ -501,9 +501,9 @@ class TableLoader:
         Returns:
             NDArray: inverted effective hydrogen table
         """
-        x_eff_PT_table = self.x_eff_PT_table
-        logT = x_eff_PT_table[:, 0]
-        logRho = x_eff_PT_table[:, 2]
+        x_eff_pt_table = self.x_eff_pt_table
+        logT = x_eff_pt_table[:, 0]
+        logRho = x_eff_pt_table[:, 2]
 
         # (logT, logRho) grid
         x = np.unique(logT)
@@ -513,20 +513,20 @@ class TableLoader:
         y = np.arange(-9, 6 + dlogRho, dlogRho)
         num_xs = x.size
         num_ys = y.size
-        num_vals = x_eff_PT_table.shape[1]
+        num_vals = x_eff_pt_table.shape[1]
 
         # indices for the dependent variables of the new table
         which_values = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         # get the upper and lower bounds
-        min_vals = np.min(x_eff_PT_table, axis=0)
-        max_vals = np.max(x_eff_PT_table, axis=0)
+        min_vals = np.min(x_eff_pt_table, axis=0)
+        max_vals = np.max(x_eff_pt_table, axis=0)
 
-        x_eff_DT_table = np.zeros((num_xs, num_ys, num_vals))
+        x_eff_dt_table = np.zeros((num_xs, num_ys, num_vals))
         for i, logT_isotherm in enumerate(x):
             # look for the points on the current isotherm
             k = logT == logT_isotherm
             logRho_isotherm = logRho[k]
-            vals = x_eff_PT_table[k, :]
+            vals = x_eff_pt_table[k, :]
             # look for unique logRho points and select those values
             logRho_isotherm, n = np.unique(logRho_isotherm, return_index=True)
             vals = vals[n, :]
@@ -544,7 +544,7 @@ class TableLoader:
             )
             res = f(y)
 
-            sub_table = np.zeros((x_eff_DT_table.shape[1], x_eff_DT_table.shape[2]))
+            sub_table = np.zeros((x_eff_dt_table.shape[1], x_eff_dt_table.shape[2]))
             sub_table[:, 0] = logT_isotherm * np.ones_like(y)
             sub_table[:, 1] = y
             sub_table[:, 2:] = np.transpose(res)
@@ -554,15 +554,15 @@ class TableLoader:
                 check_max = sub_table[:, n + 2] > max_vals[k]
                 sub_table[check_min, n + 2] = min_vals[k]
                 sub_table[check_max, n + 2] = max_vals[k]
-            x_eff_DT_table[i] = sub_table
+            x_eff_dt_table[i] = sub_table
 
         fname = "cms_dt_effective_hydrogen.pkl"
         if smooth_table:
             fname = fname.replace("dt", "dt_smoothed")
-            x_eff_DT_table = self.smooth_xy_table(
-                x_eff_DT_table, "logRho", num_smoothing_rounds=num_smoothing_rounds
+            x_eff_dt_table = self.smooth_xy_table(
+                x_eff_dt_table, "logRho", num_smoothing_rounds=num_smoothing_rounds
             )
-        out_table = x_eff_DT_table.reshape((-1, num_vals))
+        out_table = x_eff_dt_table.reshape((-1, num_vals))
 
         # fill missing values with a 2d nearest neighbour extrapolation
         if not extrapolate:
@@ -792,19 +792,19 @@ class TableLoader:
         return out_table
 
     @staticmethod
-    def make_monotonic(data: ArrayLike, element: str, DT: bool) -> NDArray:
+    def make_monotonic(data: ArrayLike, element: str, dt: bool) -> NDArray:
         """Makes the data monotonic with respect to logT.
 
         Args:
             data (ArrayLike): The input data.
                 element (str): Which table to load.
-            DT (bool): whether to do (logRho, logT) or (logP, logT)
+            dt (bool): whether to do (logRho, logT) or (logP, logT)
 
         Returns:
             NDArray: Monotonic version of the data.
         """
         if element in ["hydrogen", "helium"]:
-            if DT:
+            if dt:
                 y = data[:, 2]  # logRho
                 d = {"logP": 1, "logU": 3, "logS": 4}
             else:
@@ -812,7 +812,7 @@ class TableLoader:
                 d = {"logRho": 2, "logU": 3, "logS": 4}
         else:
             y = data[:, 1]  # logRho or logP
-            if DT:
+            if dt:
                 d = {"logP": 2, "logU": 3, "logS": 4}
             else:
                 d = {"logRho": 2, "logU": 3, "logS": 4}
@@ -876,7 +876,7 @@ if __name__ == "__main__":
     num_smoothing_rounds = 2
     for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
-        table = T.z_DT_table
+        table = T.z_dt_table
         smoothed_table = T.smooth_z_table(
             table, num_smoothing_rounds=num_smoothing_rounds
         )
@@ -889,7 +889,7 @@ if __name__ == "__main__":
     # create smoothed pt tables
     for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
         T = TableLoader(which_heavy=element)
-        table = T.z_PT_table
+        table = T.z_pt_table
         smoothed_table = T.smooth_z_table(
             table, num_smoothing_rounds=num_smoothing_rounds
         )
