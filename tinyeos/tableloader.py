@@ -37,8 +37,11 @@ class TableLoader:
 
     def __init__(
         self,
-        which_heavy: str = "h2o",
         which_hhe: str = "cms",
+        which_heavy: str = "h2o",
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
     ) -> None:
@@ -46,10 +49,16 @@ class TableLoader:
         boundaries and loads the tables.
 
         Args:
-            which_heavy (str, optional): which heavy-element equation of state
-                to use. Defaults to "h2o".
             which_hhe (str, optional): which hydrogen-helium equation of state
                 to use. Defaults to "cms".
+            which_heavy (str, optional): which heavy-element equation of state
+                to use. Defaults to "h2o".
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed
                 hydrogen and helium tables. Defaults to False.
             use_smoothed_z_tables (bool, optional): whether to use smoothed
@@ -65,11 +74,15 @@ class TableLoader:
             "logT [K] logP [Ba] logRho [g/cc] logU [erg/g] logS [erg/g/K] grad_ad"
         )
 
-        _, _ = self.__load_xy_DT_tables(which_hhe)
-        _, _ = self.__load_xy_PT_tables(which_hhe)
+        if which_heavy == "mixture" and not np.isclose(Z1 + Z2 + Z3, 1, atol=1e-5):
+            msg = "Mass fractions of the heavy elements must sum to one."
+            raise ValueError(msg)
+
+        _, _ = self.__load_xy_DT_tables(which_hhe=which_hhe)
+        _, _ = self.__load_xy_PT_tables(which_hhe=which_hhe)
         _ = self.__load_xy_PT_interaction_tables()
-        _ = self.__load_z_DT_table(which_heavy)
-        _ = self.__load_z_PT_table(which_heavy)
+        _ = self.__load_z_DT_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
+        _ = self.__load_z_PT_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
 
     def __load_xy_DT_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logRho, logT) tables.
@@ -177,13 +190,21 @@ class TableLoader:
         self.xy_interaction_PT_table = data
         return self.xy_interaction_PT_table
 
-    def __load_z_DT_table(self, which_heavy: str) -> NDArray:
+    def __load_z_DT_table(
+        self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
+    ) -> NDArray:
         """Loads the heavy-element (logRho, logT) tables.
         For the qeos heavy-element tables, the adiabatic gradient
         column is filled with dummy values that are not used.
 
         Args:
             which_heavy (str): which heavy-element equation of state to use.
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
@@ -199,7 +220,33 @@ class TableLoader:
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}dt_sio2.data"
         elif which_heavy == "mixture":
-            fname = f"qeos_{extra}dt_h2o_50_sio2_50_fe_00.data"
+            fname = (
+                f"qeos_{extra}dt_h2o_{100 * Z1:02.0f}"
+                + f"_sio2_{100 * Z2:02.0f}"
+                + f"_fe_{100 * Z3:02.0f}.data"
+            )
+            if not os.path.exists(os.path.join(self.tables_path, fname)):
+                self.mix_heavy_elements(
+                    which_Z1="h2o",
+                    Z1=Z1,
+                    which_Z2="sio2",
+                    Z2=Z2,
+                    which_Z3="fe",
+                    Z3=Z3,
+                    store_table=True,
+                )
+                self.invert_z_table(
+                    which_variables="dt",
+                    which_heavy="mixture",
+                    Z1=Z1,
+                    Z2=Z2,
+                    Z3=Z3,
+                    kind="pchip",
+                    extrapolate=True,
+                    smooth_table=True,
+                    num_smoothing_rounds=1,
+                    store_table=True,
+                )
         elif which_heavy == "fe":
             fname = f"qeos_{extra}dt_fe.data"
         elif which_heavy == "co":
@@ -214,13 +261,21 @@ class TableLoader:
         self.z_DT_table = data
         return self.z_DT_table
 
-    def __load_z_PT_table(self, which_heavy: str) -> NDArray:
+    def __load_z_PT_table(
+        self, which_heavy: str, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
+    ) -> NDArray:
         """Loads the heavy-element (logP, logT) tables.
         For the qeos heavy-element tables, the adiabatic gradient
         column is filled with dummy values that are not used.
 
         Args:
             which_heavy (str): which heavy-element equation of state to use.
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
 
         Raises:
             NotImplementedError: raised if which_heavy option is unavailable.
@@ -236,7 +291,21 @@ class TableLoader:
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}pt_sio2.data"
         elif which_heavy == "mixture":
-            fname = f"qeos_{extra}pt_h2o_50_sio2_50_fe_00.data"
+            fname = (
+                f"qeos_{extra}pt_h2o_{100 * Z1:02.0f}"
+                + f"_sio2_{100 * Z2:02.0f}"
+                + f"_fe_{100 * Z3:02.0f}.data"
+            )
+            if not os.path.exists(os.path.join(self.tables_path, fname)):
+                self.mix_heavy_elements(
+                    which_Z1="h2o",
+                    Z1=Z1,
+                    which_Z2="sio2",
+                    Z2=Z2,
+                    which_Z3="fe",
+                    Z3=Z3,
+                    store_table=True,
+                )
         elif which_heavy == "fe":
             fname = f"qeos_{extra}pt_fe.data"
         elif which_heavy == "co":
@@ -249,9 +318,13 @@ class TableLoader:
         self.z_PT_table = data
         return self.z_PT_table
 
-    def invert_z_DT_table(
+    def invert_z_table(
         self,
+        which_variables: str,
         which_heavy: str,
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0,
         kind: str = "pchip",
         extrapolate: bool = True,
         smooth_table: bool = False,
@@ -263,8 +336,15 @@ class TableLoader:
         Assumes that the qeos table is organised along isotherms.
 
         Args:
+            which_variables (str): to which variables to convert.
             which_heavy (str): name of the heavy element.
                 Current options are "h2o", "sio2", "fe" and "co".
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
             kind (str, optional): interpolation method to use. Options
                 are linear and cubic, and pchip. Defaults to pchip.
             extrapolate (bool, optional): whether to extrapolate for missing
@@ -281,45 +361,54 @@ class TableLoader:
         Returns:
             NDArray: inverted heavy-element table
         """
-        fname = f"qeos_dt_{which_heavy}.data"
-        z_DT_table = self.__load_z_DT_table(which_heavy)
-        # indices: 0: logT, 1: logRho, 2: logP, 3: logU, 4: logS
-        logT = z_DT_table[:, 0]
-        logP = z_DT_table[:, 2]
+        if which_variables == "pt":
+            # indices: 0: logT, 1: logRho, 2: logP, 3: logU, 4: logS
+            z_in_table = self.__load_z_DT_table(
+                which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
+            )
+            dlogP = 0.05
+            y = np.arange(-3.8, 15.8 + dlogP, dlogP)
+        elif which_variables == "dt":
+            # indices: 0: logT, 1: logP, 2: logRho, 3: logU, 4: logS
+            z_in_table = self.__load_z_PT_table(
+                which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
+            )
+            dlogRho = 0.05
+            y = np.arange(-12, 2 + dlogRho, dlogRho)
+        else:
+            raise ValueError("Invalid which_variables option.")
 
-        # (logT, logP) grid
+        # (logT, var2) grid
+        logT = z_in_table[:, 0]
+        var2 = z_in_table[:, 2]  # logRho or logP
         x = np.unique(logT)
-        dlogP = 0.05
-        # boundaries are close to min/max logP
-        # in the density-temperature tables
-        y = np.arange(-3.8, 15.8 + dlogP, dlogP)
         num_xs = x.size
         num_ys = y.size
-        num_vals = z_DT_table.shape[1]
+        num_vals = z_in_table.shape[1]
 
         # indices for the dependent variables of the new table
         which_values = [1, 3, 4, 5]
         # get the upper and lower bounds
-        min_vals = np.min(z_DT_table, axis=0)
-        max_vals = np.max(z_DT_table, axis=0)
+        min_vals = np.min(z_in_table, axis=0)
+        max_vals = np.max(z_in_table, axis=0)
 
-        z_PT_table = np.zeros((num_xs, num_ys, num_vals))
+        z_out_table = np.zeros((num_xs, num_ys, num_vals))
         for i, logT_isotherm in enumerate(x):
             # look for the points on the current isotherm
             k = logT == logT_isotherm
-            logP_isotherm = logP[k]
-            vals = z_DT_table[k, :]
-            # look for unique logP points and select those values
-            logP_isotherm, n = np.unique(logP_isotherm, return_index=True)
+            var2_isotherm = var2[k]
+            vals = z_in_table[k, :]
+            # look for unique pressure or density points and select those values
+            var2_isotherm, n = np.unique(var2_isotherm, return_index=True)
             vals = vals[n, :]
-            # get rid of logT and logP
+            # get rid of the independent variables
             vals = vals[:, which_values]
 
-            # interpolate on the unique logPs of the isotherm
+            # interpolate on the unique pressure or densities of the isotherm
             if kind == "linear" or kind == "cubic":
                 fill_value = "extrapolate" if extrapolate else np.nan
                 f = interp1d(
-                    x=logP_isotherm,
+                    x=var2_isotherm,
                     y=np.transpose(vals),
                     kind=kind,
                     fill_value=fill_value,
@@ -332,15 +421,15 @@ class TableLoader:
                 for k in range(vals.shape[1]):
                     which_val = vals[:, k]
                     f = PchipInterpolator(
-                        x=logP_isotherm,
+                        x=var2_isotherm,
                         y=which_val,
                         extrapolate=extrapolate,
                     )
                     res[k, :] = f(y)
             else:
-                raise ValueError("invalid interpolation method")
+                raise ValueError("invalid interpolation method.")
 
-            sub_table = np.zeros((z_PT_table.shape[1], z_PT_table.shape[2]))
+            sub_table = np.zeros((z_out_table.shape[1], z_out_table.shape[2]))
             sub_table[:, 0] = logT_isotherm * np.ones_like(y)
             sub_table[:, 1] = y
             sub_table[:, 2:] = np.transpose(res)
@@ -350,12 +439,11 @@ class TableLoader:
                 check_max = sub_table[:, n + 2] > max_vals[k]
                 sub_table[check_min, n + 2] = min_vals[k]
                 sub_table[check_max, n + 2] = max_vals[k]
-            z_PT_table[i] = sub_table
+            z_out_table[i] = sub_table
 
-        fname = fname.replace("dt", "pt")
         if smooth_table:
-            z_PT_table = self.smooth_z_table(z_PT_table, num_smoothing_rounds)
-        out_table = z_PT_table.reshape((-1, num_vals))
+            z_out_table = self.smooth_z_table(z_out_table, num_smoothing_rounds)
+        out_table = z_out_table.reshape((-1, num_vals))
 
         # fill missing values with a 2d nearest neighbour extrapolation
         if not extrapolate:
@@ -370,9 +458,18 @@ class TableLoader:
                 z[mask] = res[mask]
                 out_table[:, i] = z
 
+        if which_heavy == "mixture":
+            fname = (
+                f"qeos_{which_variables}_h2o_{100 * Z1:02.0f}"
+                + f"_sio2_{100 * Z2:02.0f}"
+                + f"_fe_{100 * Z3:02.0f}.data"
+            )
+        else:
+            fname = f"qeos_{which_variables}_{which_heavy}.data"
         if store_table:
+            header = self.z_DT_header if which_variables == "dt" else self.z_PT_header
             dst = os.path.join(self.tables_path, fname)
-            np.savetxt(dst, out_table, fmt="%.8e", header=self.z_PT_header)
+            np.savetxt(dst, out_table, fmt="%.8e", header=header)
         return out_table
 
     def invert_xeff_PT_table(
@@ -526,7 +623,7 @@ class TableLoader:
                 Columns are: logT, logP, logRho, logU, and logS.
         """
         if not np.isclose(Z1 + Z2 + Z3, 1, atol=1e-5):
-            msg = "The sum of the mass fractions must equal one."
+            msg = "Mass fractions of the heavy elements must sum to one."
             raise ValueError(msg)
         Z1_table = self.__load_z_PT_table(which_Z1)
         Z2_table = self.__load_z_PT_table(which_Z2)
@@ -751,8 +848,9 @@ if __name__ == "__main__":
     # convert h2o, sio2 and fe tables from
     # (logT, logRho) to (logT, logP)
     for element in ["h2o", "sio2", "fe", "co"]:
-        T.invert_z_DT_table(
-            element,
+        T.invert_z_table(
+            which_variables="pt",
+            which_heavy=element,
             kind="pchip",
             extrapolate=True,
             smooth_table=True,
@@ -770,6 +868,9 @@ if __name__ == "__main__":
         Z3=0,
         store_table=True,
     )
+
+    # create a 67-33 h2o-sio2 mixture pt table
+    T = TableLoader(which_heavy="mixture", Z1=0.67, Z2=0.33, Z3=0)
 
     # create smoothed dt tables
     num_smoothing_rounds = 2
