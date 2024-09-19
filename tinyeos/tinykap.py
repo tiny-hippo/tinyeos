@@ -11,7 +11,7 @@ from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator, inte
 from tinyeos.support import Z_sun, get_FeH_from_Z, get_Z_from_FeH, sigma_b
 
 
-class TinyKap:
+class TinyOpacity:
     def __init__(
         self,
         build_interpolants: bool = False,
