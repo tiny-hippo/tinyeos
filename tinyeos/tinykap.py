@@ -18,7 +18,7 @@ class TinyOpacity:
         use_kap_rad_fit: bool = False,
         reload_kap_ec_tables: bool = False,
     ) -> None:
-        self.tfk = TinyFreedmanKap(
+        self.tfk = TinyFreedmanOpacity(
             use_fit=use_kap_rad_fit, build_interpolants=build_interpolants
         )
         self.tec = TinyElectronConduction(
@@ -122,7 +122,7 @@ class TinyOpacity:
         return kap
 
 
-class TinyFreedmanKap:
+class TinyFreedmanOpacity:
     """Temperature-pressure opacity for a gaseous mixture from
     Freedman et al. (2014). Units are cgs everywhere.
     """
