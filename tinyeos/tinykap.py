@@ -65,14 +65,14 @@ class TinyOpacity:
         logR_bar = np.log10(10**logRho / T_6**3)
         logT1_star = 0.0245 * logR_bar + 3.096
         logT2_star = 0.0245 * logR_bar + 3.221
-        if logT > logT1_star:
+        if logT > logT2_star:
             kap_grains = 0
-        elif logT < logT2_star:
+        elif logT < logT1_star:
             kap_grains = self.__get_grain_opacity(logT=logT, f_grains=f_grains)
         else:
             # linear interpolation
             kap_grains_T1 = self.__get_grain_opacity(logT=logT1_star, f_grains=f_grains)
-            kap_grains_T2 = self.__get_grain_opacity(logT=logT2_star, f_grains=f_grains)
+            kap_grains_T2 = 0
             kap_grains = kap_grains_T1 + (kap_grains_T2 - kap_grains_T1) / (
                 logT2_star - logT1_star
             ) * (logT - logT1_star)
