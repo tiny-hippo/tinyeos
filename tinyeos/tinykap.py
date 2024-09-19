@@ -34,8 +34,55 @@ class TinyKap:
         logP: ArrayLike,
         Z: ArrayLike,
         logz: ArrayLike,
+        add_grain_opacity: bool = False,
+        f_grains: float = 1.0,
     ) -> ArrayLike:
-        return self.evaluate(logT, logRho, logP, Z, logz)
+        return self.evaluate(
+            logT=logT,
+            logRho=logRho,
+            logP=logP,
+            Z=Z,
+            logz=logz,
+            add_grain_opacity=add_grain_opacity,
+            f_grains=f_grains,
+        )
+
+    def __get_ism_grain_opacity(
+        self, logT: float, logRho: float, f_grains: float
+    ) -> float:
+        """Calculates the grain opacity for the ISM following the fit
+        from Valencia et al. (2013).
+
+        Args:
+            logT (float): log10 of the temperature.
+            logRho (float): log10 of the density.
+            f_grains (float): grain opacity factor.
+
+        Returns:
+            float: grain opacity.
+        """
+        T_6 = 10**logT / 1e6
+        logR_bar = np.log10(10**logRho / T_6**3)
+        logT1_star = 0.0245 * logR_bar + 3.096
+        logT2_star = 0.0245 * logR_bar + 3.221
+        if logT > logT1_star:
+            kap_grains = 0
+        elif logT < logT2_star:
+            kap_grains = self.__get_grain_opacity(logT=logT, f_grains=f_grains)
+        else:
+            # linear interpolation
+            kap_grains_T1 = self.__get_grain_opacity(logT=logT1_star, f_grains=f_grains)
+            kap_grains_T2 = self.__get_grain_opacity(logT=logT2_star, f_grains=f_grains)
+            kap_grains = kap_grains_T1 + (kap_grains_T2 - kap_grains_T1) / (
+                logT2_star - logT1_star
+            ) * (logT - logT1_star)
+        return kap_grains
+
+    @staticmethod
+    def __get_grain_opacity(logT: ArrayLike, f_grains: ArrayLike) -> ArrayLike:
+        log_kap_grains = 0.430 + 1.3143 * (logT - 2.85)
+        kap_grains = f_grains * 10**log_kap_grains
+        return kap_grains
 
     def evaluate_kap_rad(self, logT: float, logP: float, Z: float) -> float:
         return self.tfk(logT, logP, Z)
@@ -52,13 +99,24 @@ class TinyKap:
         logP: ArrayLike,
         Z: ArrayLike,
         logz: ArrayLike,
+        add_grain_opacity: bool = False,
+        f_grains: float = 1.0,
     ) -> ArrayLike:
         if not self.use_kap_rad_fit:
             kap_rad_func = np.vectorize(self.evaluate_kap_rad)
             kap_rad = kap_rad_func(logT, logP, Z)
         else:
             kap_rad = self.evaluate_kap_rad(logT, logP, Z)
-        kap_ec = self.evaluate_kap_ec(logT, logRho, logz)
+        if add_grain_opacity:
+            kap_grains = self.__get_ism_grain_opacity(
+                logT=logT, logRho=logRho, f_grains=f_grains
+            )
+            kap_rad = kap_rad + kap_grains
+        if logT < 3 or logRho < -6:
+            # no electron conduction in this regime
+            kap_ec = 1e99
+        else:
+            kap_ec = self.evaluate_kap_ec(logT, logRho, logz)
         # combine radiative and conductive opacities
         kap = 1 / (1 / kap_rad + 1 / kap_ec)
         return kap
@@ -287,11 +345,7 @@ class TinyFreedmanKap:
 
         kap_fixed = np.copy(kap)
         if np.any(np.isnan(kap)):
-            fn = RegularGridInterpolator(
-                (unique_Ts, unique_Ps),
-                kap,
-                method="nearest"
-            )
+            fn = RegularGridInterpolator((unique_Ts, unique_Ps), kap, method="nearest")
             idcs = np.where(np.isnan(kap))
             i_nan = idcs[0]
             j_nan = idcs[1]
@@ -693,7 +747,6 @@ class TinyElectronConduction:
         kap = np.power(10, logkap)
         return kap
 
-    
     def evaluate_conductivity(self, logT: float, logRho: float, logz: float) -> float:
         """Evaluates the RegularGridInterpolator object for a given
         (logT, logRho, logz) and returns the (electron) conductivity.
