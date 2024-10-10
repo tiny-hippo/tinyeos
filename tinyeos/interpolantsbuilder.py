@@ -90,14 +90,19 @@ class InterpolantsBuilder(TableLoader):
             self.__build_pt_z_interpolants()
             self.__cache_z_interpolants(heavy_element + "_smoothed")
 
-    def __build_z_mixture_interpolants(self, Z1: float, Z2: float, Z3: float) -> None:
+    def __build_z_mixture_interpolants(
+        self, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
+    ) -> None:
         """Builds (logT, logRho) and (logT, logP) interpolants for
         heavy-element mixtures of H2O, SiO2, and Fe.
 
         Args:
-            Z1 (float): mass-fraction of the first heavy element.
-            Z2 (float): mass-fraction of the second heavy element.
-            Z3 (float): mass-fraction of the third heavy element.
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
 
         """
         super().__init__(which_heavy="mixture", Z1=Z1, Z2=Z2, Z3=Z3)
