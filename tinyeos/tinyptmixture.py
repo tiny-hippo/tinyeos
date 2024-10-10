@@ -71,6 +71,10 @@ class TinyPTMixture:
         self.logP_min = logP_min
         self.logT_max = logT_max
         self.logT_min = logT_min
+        if which_xy == "scvh_extended":
+            self.logP_min = -6.00
+            self.logT_min = 1.10
+        
         self.num_vals_for_evaluate = 7
         self.num_vals_for_return = 6
         self.i_logRho = 0
