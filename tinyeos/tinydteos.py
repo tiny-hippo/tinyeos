@@ -46,7 +46,7 @@ from tinyeos.support import (
     get_eta,
     get_zeros,
     ideal_mixing_law,
-    get_mixing_entropy
+    get_mixing_entropy,
 )
 from tinyeos.tinypteos import TinyPT
 
@@ -71,8 +71,11 @@ class TinyDT(InterpolantsBuilder):
 
     def __init__(
         self,
-        which_heavy: str = "h2o",
         which_hhe: str = "cms",
+        which_heavy: str = "h2o",
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0,
         include_hhe_interactions: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
@@ -82,11 +85,17 @@ class TinyDT(InterpolantsBuilder):
         builds the interpolants.
 
         Args:
+            which_hhe (str, optional): hydrogen-helium equation of state
+                to use. Defaults to "cms". Options are "cms" or "scvh".
             which_heavy (str, optional): heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
-            which_hhe (str, optional): hydrogen-helium equation of state
-                to use. Defaults to "cms". Options are "cms" or "scvh".
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed
@@ -169,8 +178,25 @@ class TinyDT(InterpolantsBuilder):
 
         # heavy-element atomic mass and ionic charge
         self.heavy_element = which_heavy
-        self.A = atomic_masses[which_heavy]
-        self.z = ionic_charges[which_heavy]
+        if which_heavy == "mixture":
+            which_heavy = (
+                f"h2o_{100 * Z1:02.0f}"
+                + f"_sio2_{100 * Z2:02.0f}"
+                + f"_fe_{100 * Z3:02.0f}"
+            )
+            self.A = (
+                Z1 * atomic_masses["h2o"]
+                + Z2 * atomic_masses["sio2"]
+                + Z3 * atomic_masses["fe"]
+            )
+            self.z = (
+                Z1 * ionic_charges["h2o"]
+                + Z2 * ionic_charges["sio2"]
+                + Z3 * ionic_charges["fe"]
+            )
+        else:
+            self.A = atomic_masses[which_heavy]
+            self.z = ionic_charges[which_heavy]
 
         # if use_smoothed_xy_tables:
         #     which_hhe = which_hhe + "_smoothed"
@@ -178,7 +204,11 @@ class TinyDT(InterpolantsBuilder):
             which_heavy = which_heavy + "_smoothed"
         self.interp_pt_x = self.__load_interp("interp_pt_x_" + which_hhe + ".npy")
         self.interp_pt_y = self.__load_interp("interp_pt_y_" + which_hhe + ".npy")
-        self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
+        try:
+            self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
+        except FileNotFoundError:
+            self.__build_z_mixture_interpolants(Z1=Z1, Z2=Z2, Z3=Z3)
+            self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
 
         self.interp_dt_x = self.__load_interp("interp_dt_x_" + which_hhe + ".npy")
         self.interp_dt_y = self.__load_interp("interp_dt_y_" + which_hhe + ".npy")
@@ -232,7 +262,7 @@ class TinyDT(InterpolantsBuilder):
         self.interp_dt_logP_z = self.interp_dt_z[0]
         self.interp_dt_logS_z = self.interp_dt_z[1]
         self.interp_dt_logU_z = self.interp_dt_z[2]
-        if which_heavy == "aqua":
+        if self.heavy_element == "aqua":
             self.interp_dt_grad_ad_z = self.interp_dt_z[3]
 
         self.interp_pt_logRho_x = self.interp_pt_x[0]
