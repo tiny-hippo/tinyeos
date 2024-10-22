@@ -19,7 +19,8 @@ class TableLoader:
             SCvH extended version (R. Helled, priv. comm.).
 
         Heavy element:
-            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
+            H2O (QEOS, More et al. 1988, SESAME (Lyon & Johnson 1992), 
+            and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
             CO (QEOS, Podolak et al. 2022),
@@ -194,6 +195,8 @@ class TableLoader:
         extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}dt_h2o.data"
+        elif which_heavy == "sesame_h2o":
+            fname = f"qeos_{extra}dt_h2o.data"  # placeholder
         elif which_heavy == "aqua":
             fname = "aqua_dt_h2o.data"
         elif which_heavy == "sio2":
@@ -231,6 +234,8 @@ class TableLoader:
         extra = "smoothed_" if self.use_smoothed_z_tables else ""
         if which_heavy == "h2o":
             fname = f"qeos_{extra}pt_h2o.data"
+        elif which_heavy == "sesame_h2o":
+            fname = "sesame_pt_h2o.data"
         elif which_heavy == "aqua":
             fname = "aqua_pt_h2o.data"
         elif which_heavy == "sio2":

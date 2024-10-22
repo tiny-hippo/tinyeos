@@ -79,7 +79,7 @@ class InterpolantsBuilder(TableLoader):
         self.__cache_z_interpolants("h2o_smoothed")
 
         # cache interpolants for SiO2, Fe, CO and the mixture
-        for heavy_element in ["aqua", "sio2", "fe", "co", "mixture"]:
+        for heavy_element in ["sesame_h2o", "aqua", "sio2", "fe", "co", "mixture"]:
             super().__init__(which_heavy=heavy_element)
             self.__build_DT_z_interpolants()
             self.__build_PT_z_interpolants()
