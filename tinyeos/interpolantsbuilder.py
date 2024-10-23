@@ -120,8 +120,6 @@ class InterpolantsBuilder(TableLoader):
         if which_interpolant == "rect":
             Z = np.reshape(Z, (X.size, Y.size))
             spl = self.__build_rect_interpolant(X, Y, Z, kx, ky)
-        elif which_interpolant == "smooth":
-            spl = self.__build_smooth_interpolant(X, Y, Z, kx, ky)
         else:
             raise NotImplementedError("Spline choice not implemented.")
         return spl
@@ -143,22 +141,6 @@ class InterpolantsBuilder(TableLoader):
         """
         return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
-    @staticmethod
-    def __build_smooth_interpolant(
-        X: ArrayLike, Y: ArrayLike, Z: ArrayLike, kx: int = 3, ky: int = 3
-    ) -> SmoothBivariateSpline:
-        """Wrapper for SmoothBivariateSpline
-
-        Args:
-            X, Y, Z (ArrayLike): 1-D sequences of data points
-                (order is not important).
-            kx, ky (ints, optional): degrees of the bivariate spline.
-                defaults to 3.
-
-        Returns:
-            SmoothBivariateSpline: fitted SmoothBivariateSpline.
-        """
-        return SmoothBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
     @staticmethod
     def __build_grid_interpolant(
