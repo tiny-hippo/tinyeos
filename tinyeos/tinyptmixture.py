@@ -74,7 +74,7 @@ class TinyPTMixture:
         if which_xy == "scvh_extended":
             self.logP_min = -6.00
             self.logT_min = 1.10
-        
+
         self.num_vals_for_evaluate = 7
         self.num_vals_for_return = 6
         self.i_logRho = 0
@@ -271,11 +271,13 @@ class TinyPTMixture:
         tpt = self.tpt_z1
         logRho = tpt.interpPT_logRho_x(logT, logP, **self.kwargs)
         logS = tpt.interpPT_logS_x(logT, logP, **self.kwargs)
-        dlS_dlP_T = tpt.interpPT_dlS_dlP_T_x(logT, logP, **self.kwargs)
-        dlS_dlT_P = tpt.interpPT_dlS_dlT_P_x(logT, logP, **self.kwargs)
-        grad_ad = tpt.interpPT_grad_ad_x(logT, logP, **self.kwargs)
-        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_x(logT, logP, **self.kwargs)
-        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_x(logT, logP, **self.kwargs)
+
+        dlS_dlT_P = tpt.interpPT_logS_x(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = tpt.interpPT_logS_x(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
+        dlRho_dlT_P = tpt.interpPT_logRho_x(logT, logP, dx=1, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_logRho_x(logT, logP, dy=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
@@ -305,11 +307,13 @@ class TinyPTMixture:
         tpt = self.tpt_z1
         logRho = tpt.interpPT_logRho_x_eff(logT, logP, **self.kwargs)
         logS = tpt.interpPT_logS_x_eff(logT, logP, **self.kwargs)
-        dlS_dlP_T = tpt.interpPT_dlS_dlP_T_x_eff(logT, logP, **self.kwargs)
-        dlS_dlT_P = tpt.interpPT_dlS_dlT_P_x_eff(logT, logP, **self.kwargs)
-        grad_ad = tpt.interpPT_grad_ad_x_eff(logT, logP, **self.kwargs)
-        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_x_eff(logT, logP, **self.kwargs)
-        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_x_eff(logT, logP, **self.kwargs)
+
+        dlS_dlT_P = tpt.interpPT_logS_x_eff(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = tpt.interpPT_logS_x_eff(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
+        dlRho_dlT_P = tpt.interpPT_logRho_x_eff(logT, logP, dx=1, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_logRho_x_eff(logT, logP, dy=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
@@ -341,11 +345,13 @@ class TinyPTMixture:
         tpt = self.tpt_z1
         logRho = tpt.interpPT_logRho_y(logT, logP, **self.kwargs)
         logS = tpt.interpPT_logS_y(logT, logP, **self.kwargs)
-        dlS_dlP_T = tpt.interpPT_dlS_dlP_T_y(logT, logP, **self.kwargs)
-        dlS_dlT_P = tpt.interpPT_dlS_dlT_P_y(logT, logP, **self.kwargs)
-        grad_ad = tpt.interpPT_grad_ad_y(logT, logP, **self.kwargs)
-        dlRho_dlP_T = tpt.interpPT_dlRho_dlP_T_y(logT, logP, **self.kwargs)
-        dlRho_dlT_P = tpt.interpPT_dlRho_dlT_P_y(logT, logP, **self.kwargs)
+
+        dlS_dlT_P = tpt.interpPT_logS_y(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = tpt.interpPT_logS_y(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
+        dlRho_dlT_P = tpt.interpPT_logRho_y(logT, logP, dx=1, **self.kwargs)
+        dlRho_dlP_T = tpt.interpPT_logRho_y(logT, logP, dy=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
@@ -376,11 +382,13 @@ class TinyPTMixture:
         tpt_zi = self.tpt_zs[which_iz]
         logRho = tpt_zi.interpPT_logRho_z(logT, logP, **self.kwargs)
         logS = tpt_zi.interpPT_logS_z(logT, logP, **self.kwargs)
-        dlS_dlP_T = tpt_zi.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
+
         dlS_dlT_P = tpt_zi.interpPT_logS_z(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = tpt_zi.interpPT_logS_z(logT, logP, dy=1, **self.kwargs)
         grad_ad = -dlS_dlP_T / dlS_dlT_P
-        dlRho_dlP_T = tpt_zi.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
+
         dlRho_dlT_P = tpt_zi.interpPT_logRho_z(logT, logP, dx=1, **self.kwargs)
+        dlRho_dlP_T = tpt_zi.interpPT_logRho_z(logT, logP, dy=1, **self.kwargs)
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 

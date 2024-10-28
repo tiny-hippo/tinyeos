@@ -4,11 +4,7 @@ from typing import Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy.interpolate import (
-    RectBivariateSpline,
-    RegularGridInterpolator,
-    SmoothBivariateSpline,
-)
+from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 
 from tinyeos.tableloader import TableLoader
 
@@ -141,7 +137,6 @@ class InterpolantsBuilder(TableLoader):
         """
         return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
 
-
     @staticmethod
     def __build_grid_interpolant(
         points: Tuple, values: ArrayLike, method: str = "linear"
@@ -194,11 +189,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpDT_logP_x,
                 self.interpDT_logS_x,
                 self.interpDT_logU_x,
-                self.interpDT_dlRho_dlT_P_x,
-                self.interpDT_dlRho_dlP_T_x,
-                self.interpDT_dlS_dlT_P_x,
-                self.interpDT_dlS_dlP_T_x,
-                self.interpDT_grad_ad_x,
                 self.interpDT_lfe_x,
                 self.interpDT_mu_x,
             ]
@@ -212,11 +202,6 @@ class InterpolantsBuilder(TableLoader):
                     self.interpDT_logP_x_eff,
                     self.interpDT_logS_x_eff,
                     self.interpDT_logU_x_eff,
-                    self.interpDT_dlRho_dlT_P_x_eff,
-                    self.interpDT_dlRho_dlP_T_x_eff,
-                    self.interpDT_dlS_dlT_P_x_eff,
-                    self.interpDT_dlS_dlP_T_x_eff,
-                    self.interpDT_grad_ad_x_eff,
                     self.interpDT_lfe_x_eff,
                     self.interpDT_mu_x_eff,
                 ]
@@ -229,11 +214,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpPT_logRho_x,
                 self.interpPT_logS_x,
                 self.interpPT_logU_x,
-                self.interpPT_dlRho_dlT_P_x,
-                self.interpPT_dlRho_dlP_T_x,
-                self.interpPT_dlS_dlT_P_x,
-                self.interpPT_dlS_dlP_T_x,
-                self.interpPT_grad_ad_x,
                 self.interpPT_lfe_x,
                 self.interpPT_mu_x,
             ]
@@ -247,11 +227,6 @@ class InterpolantsBuilder(TableLoader):
                     self.interpPT_logRho_x_eff,
                     self.interpPT_logS_x_eff,
                     self.interpPT_logU_x_eff,
-                    self.interpPT_dlRho_dlT_P_x_eff,
-                    self.interpPT_dlRho_dlP_T_x_eff,
-                    self.interpPT_dlS_dlT_P_x_eff,
-                    self.interpPT_dlS_dlP_T_x_eff,
-                    self.interpPT_grad_ad_x_eff,
                     self.interpPT_lfe_x_eff,
                     self.interpPT_mu_x_eff,
                 ]
@@ -264,11 +239,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpDT_logP_y,
                 self.interpDT_logS_y,
                 self.interpDT_logU_y,
-                self.interpDT_dlRho_dlT_P_y,
-                self.interpDT_dlRho_dlP_T_y,
-                self.interpDT_dlS_dlT_P_y,
-                self.interpDT_dlS_dlP_T_y,
-                self.interpDT_grad_ad_y,
                 self.interpDT_lfe_y,
                 self.interpDT_mu_y,
             ]
@@ -281,11 +251,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpPT_logRho_y,
                 self.interpPT_logS_y,
                 self.interpPT_logU_y,
-                self.interpPT_dlRho_dlT_P_y,
-                self.interpPT_dlRho_dlP_T_y,
-                self.interpPT_dlS_dlT_P_y,
-                self.interpPT_dlS_dlP_T_y,
-                self.interpPT_grad_ad_y,
                 self.interpPT_lfe_y,
                 self.interpPT_mu_y,
             ]
@@ -310,7 +275,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpDT_logP_z,
                 self.interpDT_logS_z,
                 self.interpDT_logU_z,
-                self.interpDT_grad_ad_z,
             ]
         )
         self.__cache_interpolant(filename, interp_array)
@@ -321,7 +285,6 @@ class InterpolantsBuilder(TableLoader):
                 self.interpPT_logRho_z,
                 self.interpPT_logS_z,
                 self.interpPT_logU_z,
-                self.interpPT_grad_ad_z,
             ]
         )
         self.__cache_interpolant(filename, interp_array)
@@ -341,21 +304,6 @@ class InterpolantsBuilder(TableLoader):
 
         logU = self.x_DT_table[:, 3]
         self.interpDT_logU_x = self.__build_interpolant(X, Y, logU)
-
-        dlRho_dlT_P = self.x_DT_table[:, 5]
-        self.interpDT_dlRho_dlT_P_x = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.x_DT_table[:, 6]
-        self.interpDT_dlRho_dlP_T_x = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.x_DT_table[:, 7]
-        self.interpDT_dlS_dlT_P_x = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.x_DT_table[:, 8]
-        self.interpDT_dlS_dlP_T_x = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.x_DT_table[:, 9]
-        self.interpDT_grad_ad_x = self.__build_interpolant(X, Y, grad_ad)
 
         log_free_e = self.x_DT_table[:, 10]
         self.interpDT_lfe_x = self.__build_interpolant(X, Y, log_free_e)
@@ -379,21 +327,6 @@ class InterpolantsBuilder(TableLoader):
         logU = self.x_eff_DT_table[:, 3]
         self.interpDT_logU_x_eff = self.__build_interpolant(X, Y, logU)
 
-        dlRho_dlT_P = self.x_eff_DT_table[:, 5]
-        self.interpDT_dlRho_dlT_P_x_eff = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.x_eff_DT_table[:, 6]
-        self.interpDT_dlRho_dlP_T_x_eff = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.x_eff_DT_table[:, 7]
-        self.interpDT_dlS_dlT_P_x_eff = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.x_eff_DT_table[:, 8]
-        self.interpDT_dlS_dlP_T_x_eff = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.x_eff_DT_table[:, 9]
-        self.interpDT_grad_ad_x_eff = self.__build_interpolant(X, Y, grad_ad)
-
         log_free_e = self.x_eff_DT_table[:, 10]
         self.interpDT_lfe_x_eff = self.__build_interpolant(X, Y, log_free_e)
 
@@ -415,21 +348,6 @@ class InterpolantsBuilder(TableLoader):
 
         logU = self.x_PT_table[:, 3]
         self.interpPT_logU_x = self.__build_interpolant(X, Y, logU)
-
-        dlRho_dlT_P = self.x_PT_table[:, 5]
-        self.interpPT_dlRho_dlT_P_x = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.x_PT_table[:, 6]
-        self.interpPT_dlRho_dlP_T_x = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.x_PT_table[:, 7]
-        self.interpPT_dlS_dlT_P_x = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.x_PT_table[:, 8]
-        self.interpPT_dlS_dlP_T_x = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.x_PT_table[:, 9]
-        self.interpPT_grad_ad_x = self.__build_interpolant(X, Y, grad_ad)
 
         log_free_e = self.x_PT_table[:, 10]
         self.interpPT_lfe_x = self.__build_interpolant(X, Y, log_free_e)
@@ -453,21 +371,6 @@ class InterpolantsBuilder(TableLoader):
         logU = self.x_eff_PT_table[:, 3]
         self.interpPT_logU_x_eff = self.__build_interpolant(X, Y, logU)
 
-        dlRho_dlT_P = self.x_eff_PT_table[:, 5]
-        self.interpPT_dlRho_dlT_P_x_eff = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.x_eff_PT_table[:, 6]
-        self.interpPT_dlRho_dlP_T_x_eff = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.x_eff_PT_table[:, 7]
-        self.interpPT_dlS_dlT_P_x_eff = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.x_eff_PT_table[:, 8]
-        self.interpPT_dlS_dlP_T_x_eff = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.x_eff_PT_table[:, 9]
-        self.interpPT_grad_ad_x_eff = self.__build_interpolant(X, Y, grad_ad)
-
         log_free_e = self.x_eff_PT_table[:, 10]
         self.interpPT_lfe_x_eff = self.__build_interpolant(X, Y, log_free_e)
 
@@ -490,21 +393,6 @@ class InterpolantsBuilder(TableLoader):
         logU = self.y_DT_table[:, 3]
         self.interpDT_logU_y = self.__build_interpolant(X, Y, logU)
 
-        dlRho_dlT_P = self.y_DT_table[:, 5]
-        self.interpDT_dlRho_dlT_P_y = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.y_DT_table[:, 6]
-        self.interpDT_dlRho_dlP_T_y = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.y_DT_table[:, 7]
-        self.interpDT_dlS_dlT_P_y = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.y_DT_table[:, 8]
-        self.interpDT_dlS_dlP_T_y = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.y_DT_table[:, 9]
-        self.interpDT_grad_ad_y = self.__build_interpolant(X, Y, grad_ad)
-
         log_free_e = self.y_DT_table[:, 10]
         self.interpDT_lfe_y = self.__build_interpolant(X, Y, log_free_e)
 
@@ -526,21 +414,6 @@ class InterpolantsBuilder(TableLoader):
 
         logU = self.y_PT_table[:, 3]
         self.interpPT_logU_y = self.__build_interpolant(X, Y, logU)
-
-        dlRho_dlT_P = self.y_PT_table[:, 5]
-        self.interpPT_dlRho_dlT_P_y = self.__build_interpolant(X, Y, dlRho_dlT_P)
-
-        dlRho_dlP_T = self.y_PT_table[:, 6]
-        self.interpPT_dlRho_dlP_T_y = self.__build_interpolant(X, Y, dlRho_dlP_T)
-
-        dlS_dlT_P = self.y_PT_table[:, 7]
-        self.interpPT_dlS_dlT_P_y = self.__build_interpolant(X, Y, dlS_dlT_P)
-
-        dlS_dlP_T = self.y_PT_table[:, 8]
-        self.interpPT_dlS_dlP_T_y = self.__build_interpolant(X, Y, dlS_dlP_T)
-
-        grad_ad = self.y_PT_table[:, 9]
-        self.interpPT_grad_ad_y = self.__build_interpolant(X, Y, grad_ad)
 
         log_free_e = self.y_PT_table[:, 10]
         self.interpPT_lfe_y = self.__build_interpolant(X, Y, log_free_e)
@@ -584,9 +457,6 @@ class InterpolantsBuilder(TableLoader):
         logU = self.z_DT_table[:, 3]
         self.interpDT_logU_z = self.__build_interpolant(X, Y, logU)
 
-        grad_ad = self.z_DT_table[:, 5]
-        self.interpDT_grad_ad_z = self.__build_interpolant(X, Y, grad_ad)
-
     def __build_PT_z_interpolants(self) -> None:
         """Builds (logT, logP) interpolants for for the heavy element."""
         logT = self.z_PT_table[:, 0]
@@ -602,6 +472,3 @@ class InterpolantsBuilder(TableLoader):
 
         logU = self.z_PT_table[:, 3]
         self.interpPT_logU_z = self.__build_interpolant(X, Y, logU)
-
-        grad_ad = self.z_PT_table[:, 5]
-        self.interpPT_grad_ad_z = self.__build_interpolant(X, Y, grad_ad)

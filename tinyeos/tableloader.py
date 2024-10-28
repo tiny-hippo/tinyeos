@@ -19,7 +19,7 @@ class TableLoader:
             SCvH extended version (R. Helled, priv. comm.).
 
         Heavy element:
-            H2O (QEOS, More et al. 1988, SESAME (Lyon & Johnson 1992), 
+            H2O (QEOS, More et al. 1988, SESAME (Lyon & Johnson 1992),
             and AQUA, Haldemann et al. 2020),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998),
