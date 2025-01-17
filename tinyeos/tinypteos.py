@@ -327,7 +327,7 @@ class TinyPT(InterpolantsBuilder):
             if np.any(self.X_close) and self.include_hhe_interactions:
                 logRho_x = self.interpPT_logRho_x(logT, logP, grid=False)
                 logRho_x_eff = self.interpPT_logRho_x_eff(logT, logP, grid=False)
-                i = np.logical_and(X > tiny_val, Y > tiny_val)
+                i = np.logical_and(tiny_val < X, tiny_val < Y)
                 logRho_x[i] = logRho_x_eff[i]
                 logRho_y = self.interpPT_logRho_y(logT, logP, grid=False)
                 logRho_z = self.interpPT_logRho_z(logT, logP, grid=False)
