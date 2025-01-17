@@ -389,7 +389,10 @@ class TinyDT(InterpolantsBuilder):
                 )
                 conv = sol.converged
                 logP = sol.root
-                logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
+                if tiny_val < X and tiny_val < Y:
+                    logRho_x = self.interpPT_logRho_x_eff(logT, logP, **self.kwargs)
+                else:
+                    logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
                 logRho_y = self.interpPT_logRho_y(logT, logP, **self.kwargs)
                 logRho_z = self.interpPT_logRho_z(logT, logP, **self.kwargs)
 
@@ -410,7 +413,9 @@ class TinyDT(InterpolantsBuilder):
         Y: float,
         Z: float,
     ) -> float:
-        if tiny_val < X:
+        if tiny_val < X and tiny_val < Y:
+            logRho_x = self.interpPT_logRho_x_eff(logT, logP, **self.kwargs)
+        elif tiny_val < X:
             logRho_x = self.interpPT_logRho_x(logT, logP, **self.kwargs)
         else:
             logRho_x = tiny_logRho
@@ -652,7 +657,12 @@ class TinyDT(InterpolantsBuilder):
         logRho_z = np.array(iml[3], dtype=np.float64)
         logP = iml[4]
 
-        if np.all(self.X_close) or not self.include_hhe_interactions:
+        if (
+            np.all(self.X_close)
+            or np.all(self.Y_close)
+            or np.all(self.Z_close)
+            or not self.include_hhe_interactions
+        ):
             res_x = self.__evaluate_x(logT, logRho_x)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             i_x_eff = X < 1
