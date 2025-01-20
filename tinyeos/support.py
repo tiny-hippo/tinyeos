@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.interpolate import UnivariateSpline
-from scipy.interpolate.interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
+from scipy.interpolate._interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
 from sklearn.neighbors._base import _get_weights
 
