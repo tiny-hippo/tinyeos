@@ -44,9 +44,9 @@ from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
     check_composition,
     get_eta,
+    get_mixing_entropy,
     get_zeros,
     ideal_mixing_law,
-    get_mixing_entropy,
 )
 from tinyeos.tinypteos import TinyPT
 
@@ -226,49 +226,35 @@ class TinyDT(InterpolantsBuilder):
         self.interp_dt_logP_x = self.interp_dt_x[0]
         self.interp_dt_logS_x = self.interp_dt_x[1]
         self.interp_dt_logU_x = self.interp_dt_x[2]
-        self.interp_dt_dlRho_dlT_P_x = self.interp_dt_x[3]
-        self.interp_dt_dlRho_dlP_T_x = self.interp_dt_x[4]
-        self.interp_dt_dlS_dlT_P_x = self.interp_dt_x[5]
-        self.interp_dt_dlS_dlP_T_x = self.interp_dt_x[6]
-        self.interp_dt_grad_ad_x = self.interp_dt_x[7]
-        self.interp_dt_lfe_x = self.interp_dt_x[8]
-        self.interp_dt_mu_x = self.interp_dt_x[9]
+        self.interp_dt_lfe_x = self.interp_dt_x[3]
+        self.interp_dt_mu_x = self.interp_dt_x[4]
 
         if self.include_hhe_interactions:
             self.interp_dt_logP_x_eff = self.interp_dt_x_eff[0]
             self.interp_dt_logS_x_eff = self.interp_dt_x_eff[1]
             self.interp_dt_logU_x_eff = self.interp_dt_x_eff[2]
-            self.interp_dt_dlRho_dlT_P_x_eff = self.interp_dt_x_eff[3]
-            self.interp_dt_dlRho_dlP_T_x_eff = self.interp_dt_x_eff[4]
-            self.interp_dt_dlS_dlT_P_x_eff = self.interp_dt_x_eff[5]
-            self.interp_dt_dlS_dlP_T_x_eff = self.interp_dt_x_eff[6]
-            self.interp_dt_grad_ad_x_eff = self.interp_dt_x_eff[7]
-            self.interp_dt_lfe_x_eff = self.interp_dt_x_eff[8]
-            self.interp_dt_mu_x_eff = self.interp_dt_x_eff[9]
+            self.interp_dt_lfe_x_eff = self.interp_dt_x_eff[3]
+            self.interp_dt_mu_x_eff = self.interp_dt_x_eff[4]
             self.interp_pt_V_mix_xy = self.interp_pt_xy[0]
             self.interp_pt_S_mix_xy = self.interp_pt_xy[1]
 
         self.interp_dt_logP_y = self.interp_dt_y[0]
         self.interp_dt_logS_y = self.interp_dt_y[1]
         self.interp_dt_logU_y = self.interp_dt_y[2]
-        self.interp_dt_dlRho_dlT_P_y = self.interp_dt_y[3]
-        self.interp_dt_dlRho_dlP_T_y = self.interp_dt_y[4]
-        self.interp_dt_dlS_dlT_P_y = self.interp_dt_y[5]
-        self.interp_dt_dlS_dlP_T_y = self.interp_dt_y[6]
-        self.interp_dt_grad_ad_y = self.interp_dt_y[7]
-        self.interp_dt_lfe_y = self.interp_dt_y[8]
-        self.interp_dt_mu_y = self.interp_dt_y[9]
+        self.interp_dt_lfe_y = self.interp_dt_y[3]
+        self.interp_dt_mu_y = self.interp_pt_y[4]
 
         self.interp_dt_logP_z = self.interp_dt_z[0]
         self.interp_dt_logS_z = self.interp_dt_z[1]
         self.interp_dt_logU_z = self.interp_dt_z[2]
-        if self.heavy_element == "aqua":
-            self.interp_dt_grad_ad_z = self.interp_dt_z[3]
 
         self.interp_pt_logRho_x = self.interp_pt_x[0]
+        self.interp_pt_logS_x = self.interp_pt_x[1]
         if self.include_hhe_interactions:
             self.interp_pt_logRho_x_eff = self.interp_pt_x_eff[0]
+            self.interp_pt_logS_x_eff = self.interp_pt_x_eff[1]
         self.interp_pt_logRho_y = self.interp_pt_y[0]
+        self.interp_pt_logS_y = self.interp_pt_y[1]
         self.interp_pt_logRho_z = self.interp_pt_z[0]
         self.interp_pt_logS_z = self.interp_pt_z[1]
         self.interp_pt_logU_z = self.interp_pt_z[2]
@@ -433,7 +419,10 @@ class TinyDT(InterpolantsBuilder):
                 )
                 conv = sol.converged
                 logP = sol.root
-                logRho_x = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
+                if tiny_val < X and tiny_val < Y:
+                    logRho_x = self.interp_pt_logRho_x_eff(logT, logP, **self.kwargs)
+                else:
+                    logRho_x = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
                 logRho_y = self.interp_pt_logRho_y(logT, logP, **self.kwargs)
                 logRho_z = self.interp_pt_logRho_z(logT, logP, **self.kwargs)
 
@@ -454,7 +443,9 @@ class TinyDT(InterpolantsBuilder):
         Y: float,
         Z: float,
     ) -> float:
-        if tiny_val < X:
+        if tiny_val < X and tiny_val < Y:
+            logRho_x = self.interp_pt_logRho_x_eff(logT, logP, **self.kwargs)
+        elif tiny_val < X:
             logRho_x = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
         else:
             logRho_x = tiny_logRho
@@ -486,15 +477,17 @@ class TinyDT(InterpolantsBuilder):
         """
 
         logP = self.interp_dt_logP_x(logT, logRho, **self.kwargs)
-        logS = self.interp_dt_logS_x(logT, logRho, **self.kwargs)
+        # use (logT, logP) for logS to be consistent with the derivatives
+        logS = self.interp_pt_logS_x(logT, logP, **self.kwargs)
         logU = self.interp_dt_logU_x(logT, logRho, **self.kwargs)
 
-        dlRho_dlP_T = self.interp_dt_dlRho_dlP_T_x(logT, logRho, **self.kwargs)
-        dlRho_dlT_P = self.interp_dt_dlRho_dlT_P_x(logT, logRho, **self.kwargs)
+        chiT = self.interp_dt_logP_x(logT, logRho, dx=1, **self.kwargs)
+        chiRho = self.interp_dt_logP_x(logT, logRho, dy=1, **self.kwargs)
 
-        chiRho = 1 / dlRho_dlP_T
-        chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interp_dt_grad_ad_x(logT, logRho, **self.kwargs)
+        dlS_dlT_P = self.interp_pt_logS_x(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = self.interp_pt_logS_x(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
         lfe = self.interp_dt_lfe_x(logT, logRho, **self.kwargs)
         mu = self.interp_dt_mu_x(logT, logRho, **self.kwargs)
 
@@ -524,15 +517,17 @@ class TinyDT(InterpolantsBuilder):
         """
 
         logP = self.interp_dt_logP_x_eff(logT, logRho, **self.kwargs)
-        logS = self.interp_dt_logS_x_eff(logT, logRho, **self.kwargs)
+        # use (logT, logP) for logS to be consistent with the derivatives
+        logS = self.interp_pt_logS_x_eff(logT, logP, **self.kwargs)
         logU = self.interp_dt_logU_x_eff(logT, logRho, **self.kwargs)
 
-        dlRho_dlP_T = self.interp_dt_dlRho_dlP_T_x_eff(logT, logRho, **self.kwargs)
-        dlRho_dlT_P = self.interp_dt_dlRho_dlT_P_x_eff(logT, logRho, **self.kwargs)
+        chiT = self.interp_dt_logP_x_eff(logT, logRho, dx=1, **self.kwargs)
+        chiRho = self.interp_dt_logP_x_eff(logT, logRho, dy=1, **self.kwargs)
 
-        chiRho = 1 / dlRho_dlP_T
-        chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interp_dt_grad_ad_x_eff(logT, logRho, **self.kwargs)
+        dlS_dlT_P = self.interp_pt_logS_x_eff(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = self.interp_pt_logS_x_eff(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
         lfe = self.interp_dt_lfe_x_eff(logT, logRho, **self.kwargs)
         mu = self.interp_dt_mu_x_eff(logT, logRho, **self.kwargs)
 
@@ -562,15 +557,17 @@ class TinyDT(InterpolantsBuilder):
         """
 
         logP = self.interp_dt_logP_y(logT, logRho, **self.kwargs)
-        logS = self.interp_dt_logS_y(logT, logRho, **self.kwargs)
+        # use (logT, logP) for logS to be consistent with the derivatives
+        logS = self.interp_pt_logS_y(logT, logP, **self.kwargs)
         logU = self.interp_dt_logU_y(logT, logRho, **self.kwargs)
 
-        dlRho_dlP_T = self.interp_dt_dlRho_dlP_T_y(logT, logRho, **self.kwargs)
-        dlRho_dlT_P = self.interp_dt_dlRho_dlT_P_y(logT, logRho, **self.kwargs)
+        chiT = self.interp_dt_logP_y(logT, logRho, dx=1, **self.kwargs)
+        chiRho = self.interp_dt_logP_y(logT, logRho, dy=1, **self.kwargs)
 
-        chiRho = 1 / dlRho_dlP_T
-        chiT = -dlRho_dlT_P / dlRho_dlP_T
-        grad_ad = self.interp_dt_grad_ad_y(logT, logRho, **self.kwargs)
+        dlS_dlT_P = self.interp_pt_logS_y(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T = self.interp_pt_logS_y(logT, logP, dy=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
+
         lfe = self.interp_dt_lfe_y(logT, logRho, **self.kwargs)
         mu = self.interp_dt_mu_y(logT, logRho, **self.kwargs)
 
@@ -598,11 +595,9 @@ class TinyDT(InterpolantsBuilder):
         Returns:
             NDArray: equation of state output.
         """
-
+        use_legacy_methods = False
         logP = self.interp_dt_logP_z(logT, logRho, **self.kwargs)
-        # logS = self.interp_dt_logS_z(logT, logRho, **self.kwargs)
-        # use (logT, logP) for logS to be consistent
-        # with the upcoming derivatives
+        # use (logT, logP) for logS to be consistent with the derivatives
         logS = self.interp_pt_logS_z(logT, logP, **self.kwargs)
         logU = self.interp_dt_logU_z(logT, logRho, **self.kwargs)
 
@@ -612,24 +607,28 @@ class TinyDT(InterpolantsBuilder):
         chiRho = 1 / dlRho_dlP_T
         chiT = -dlRho_dlT_P / dlRho_dlP_T
 
-        if self.heavy_element == "aqua":
-            grad_ad = self.interp_dt_grad_ad_z(logT, logRho, **self.kwargs)
-        else:
-            dlS_dlP_T = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
-            dlS_dlT_P = self.interp_pt_logS_z(logT, logP, dx=1, **self.kwargs)
-            grad_ad = -dlS_dlP_T / dlS_dlT_P
+        chiT = self.interp_dt_logP_z(logT, logRho, dx=1, **self.kwargs)
+        chiRho = self.interp_dt_logP_z(logT, logRho, dy=1, **self.kwargs)
+
+        dlS_dlP_T = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P = self.interp_pt_logS_z(logT, logP, dx=1, **self.kwargs)
+        grad_ad = -dlS_dlP_T / dlS_dlT_P
 
         # old method with (logT, logRho)
-        # chiRho = self.interp_dt_logP_z(logT, logRho, dy=1, **self.kwargs)
-        # chiT = self.interp_dt_logP_z(logT, logRho, dx=1, **self.kwargs)
-        # dlS_dlT_rho = self.interp_dt_logS_z(logT, logRho, dx=1, **self.kwargs)
-        # dlS_dlRho_T = self.interp_dt_logS_z(logT, logRho, dy=1, **self.kwargs)
-        # dlS_dlRho_P = dlS_dlRho_T + dlS_dlT_rho * (- chiRho / chiT)
-        # dlS_dlP_rho = dlS_dlT_rho / chiT
-        # gamma1 = - dlS_dlRho_P / dlS_dlP_rho
-        # grad_ad = (1 - chiRho / gamma1) / chiT
-        # alternatively:
-        # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
+        if use_legacy_methods:
+            dlRho_dlP_T = self.interp_pt_logRho_z(logT, logP, dy=1, **self.kwargs)
+            dlRho_dlT_P = self.interp_pt_logRho_z(logT, logP, dx=1, **self.kwargs)
+            chiRho = 1 / dlRho_dlP_T
+            chiT = -dlRho_dlT_P / dlRho_dlP_T
+
+            dlS_dlT_rho = self.interp_dt_logS_z(logT, logRho, dx=1, **self.kwargs)
+            dlS_dlRho_T = self.interp_dt_logS_z(logT, logRho, dy=1, **self.kwargs)
+            dlS_dlRho_P = dlS_dlRho_T + dlS_dlT_rho * (-chiRho / chiT)
+            dlS_dlP_rho = dlS_dlT_rho / chiT
+            gamma1 = -dlS_dlRho_P / dlS_dlP_rho
+            grad_ad = (1 - chiRho / gamma1) / chiT
+            # alternatively:
+            # grad_ad = 1 / (chiT - dlS_dlT_rho * chiRho / dlS_dlRho_T)
 
         input_shape = logT.shape
         res_z = get_zeros(input_shape=input_shape)
@@ -688,17 +687,24 @@ class TinyDT(InterpolantsBuilder):
         logRho_z = np.array(iml[3], dtype=np.float64)
         logP = iml[4]
 
-        if np.all(self.X_close) or not self.include_hhe_interactions:
+        if (
+            np.all(self.X_close)
+            or np.all(self.Y_close)
+            or np.all(self.Z_close)
+            or not self.include_hhe_interactions
+        ):
             res_x = self.__evaluate_x(logT, logRho_x)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             i_x_eff = X < 1
             i_x = ~i_x_eff
-            logT_x_normal = logT[i_x]
+            logT_x = logT[i_x]
+            logP_x = logP[i_x]
             logRho_x_normal = logRho_x[i_x]
             logT_x_eff = logT[i_x_eff]
+            logP_x_eff = logP[i_x_eff]
             logRho_x_eff = logRho_x[i_x_eff]
             res_x = get_zeros(input_shape=self.input_shape)
-            res_x[:, i_x] = self.__evaluate_x(logT_x_normal, logRho_x_normal)
+            res_x[:, i_x] = self.__evaluate_x(logT_x, logRho_x_normal)
             res_x[:, i_x_eff] = self.__evaluate_x_eff(logT_x_eff, logRho_x_eff)
         else:
             res_x = self.__evaluate_x_eff(logT, logRho_x)
@@ -729,32 +735,26 @@ class TinyDT(InterpolantsBuilder):
         logU = np.log10(U)
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
-            dlS_dlP_T_x = self.interp_dt_dlS_dlP_T_x(logT, logRho_x, **self.kwargs)
-            dlS_dlT_P_x = self.interp_dt_dlS_dlT_P_x(logT, logRho_x, **self.kwargs)
+            dlS_dlT_P_x = self.interp_pt_logS_x(logT, logP, dx=1, **self.kwargs)
+            dlS_dlP_T_x = self.interp_pt_logS_x(logT, logP, dy=1, **self.kwargs)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
-            dlS_dlP_T_x[i_x] = self.interp_dt_dlS_dlP_T_x(
-                logT_x_normal, logRho_x_normal, **self.kwargs
+            dlS_dlT_P_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dx=1, **self.kwargs)
+            dlS_dlT_P_x[i_x_eff] = self.interp_pt_logS_x_eff(
+                logT_x_eff, logP_x_eff, dx=1, **self.kwargs
             )
-            dlS_dlP_T_x[i_x_eff] = self.interp_dt_dlS_dlP_T_x(
-                logT_x_eff, logRho_x_eff, **self.kwargs
-            )
-
-            dlS_dlT_P_x = np.zeros_like(logS)
-            dlS_dlT_P_x[i_x] = self.interp_dt_dlS_dlT_P_x(
-                logT_x_normal, logRho_x_normal, **self.kwargs
-            )
-            dlS_dlT_P_x[i_x_eff] = self.interp_dt_dlS_dlT_P_x(
-                logT_x_eff, logRho_x_eff, **self.kwargs
+            dlS_dlP_T_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dy=1, **self.kwargs)
+            dlS_dlP_T_x[i_x_eff] = self.interp_pt_logS_x_eff(
+                logT_x_eff, logP_x_eff, dy=1, **self.kwargs
             )
         else:
-            dlS_dlP_T_x = self.interp_dt_dlS_dlP_T_x_eff(logT, logRho_x, **self.kwargs)
-            dlS_dlT_P_x = self.interp_dt_dlS_dlT_P_x_eff(logT, logRho_x, **self.kwargs)
+            dlS_dlT_P_x = self.interp_pt_logS_x_eff(logT, logP, dx=1, **self.kwargs)
+            dlS_dlP_T_x = self.interp_pt_logS_x_eff(logT, logP, dy=1, **self.kwargs)
 
-        dlS_dlP_T_y = self.interp_dt_dlS_dlP_T_y(logT, logRho_y, **self.kwargs)
-        dlS_dlT_P_y = self.interp_dt_dlS_dlT_P_y(logT, logRho_y, **self.kwargs)
-        dlS_dlP_T_z = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
+        dlS_dlT_P_y = self.interp_pt_logS_y(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T_y = self.interp_pt_logS_y(logT, logP, dy=1, **self.kwargs)
         dlS_dlT_P_z = self.interp_pt_logS_z(logT, logP, dx=1, **self.kwargs)
+        dlS_dlP_T_z = self.interp_pt_logS_z(logT, logP, dy=1, **self.kwargs)
 
         dlS_dlP_T = (
             X * S_x * dlS_dlP_T_x + Y * S_y * dlS_dlP_T_y + Z * S_z * dlS_dlP_T_z
