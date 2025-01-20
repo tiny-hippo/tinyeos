@@ -1,4 +1,3 @@
 fortranformat
 numpy
-scipy
-scikit-learn
+scipy>=1.15
