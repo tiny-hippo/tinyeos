@@ -20,8 +20,8 @@ h = 6.260755e-27  # planck constant
 sigma_b = 5.6704e-5  # stefan-boltzmann constant
 Na = 6.02214199e23  # avogadro constant
 Z_sun = 0.014  # solar heavy-element mass fraction
-X_proto = 0.705  # protosolar helium abundance
-Y_proto = 0.275  # protosolar hydrogen abundance
+X_proto = 0.705  # protosolar hydrogen abundance
+Y_proto = 0.275  # protosolar helium abundance
 proto_ratio = Y_proto / X_proto
 
 
