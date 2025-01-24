@@ -207,7 +207,7 @@ class TinyDT(InterpolantsBuilder):
         try:
             self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
         except FileNotFoundError:
-            self.__build_z_mixture_interpolants(Z1=Z1, Z2=Z2, Z3=Z3)
+            super().build_z_mixture_interpolants(Z1=Z1, Z2=Z2, Z3=Z3)
             self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
 
         self.interp_dt_x = self.__load_interp("interp_dt_x_" + which_hhe + ".npy")

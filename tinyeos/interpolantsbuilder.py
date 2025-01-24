@@ -86,7 +86,7 @@ class InterpolantsBuilder(TableLoader):
             self.__build_pt_z_interpolants()
             self.__cache_z_interpolants(heavy_element + "_smoothed")
 
-    def __build_z_mixture_interpolants(
+    def build_z_mixture_interpolants(
         self, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
     ) -> None:
         """Builds (logT, logRho) and (logT, logP) interpolants for
