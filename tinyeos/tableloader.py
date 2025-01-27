@@ -874,9 +874,6 @@ if __name__ == "__main__":
         store_table=True,
     )
 
-    # create a 67-33 h2o-sio2 mixture pt table
-    T = TableLoader(which_heavy="mixture", Z1=0.67, Z2=0.33, Z3=0)
-
     # create smoothed dt tables
     num_smoothing_rounds = 2
     for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
