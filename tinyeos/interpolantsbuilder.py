@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -74,8 +73,8 @@ class InterpolantsBuilder(TableLoader):
         self.__build_pt_z_interpolants()
         self.__cache_z_interpolants("h2o_smoothed")
 
-        # cache interpolants for SiO2, Fe, CO and the mixture
-        for heavy_element in ["sesame_h2o", "aqua", "sio2", "fe", "co", "mixture"]:
+        # build and cache interpolants for the other heavy elements
+        for heavy_element in ["sesame_h2o", "aqua", "sio2", "fe", "co"]:
             super().__init__(which_heavy=heavy_element)
             self.__build_dt_z_interpolants()
             self.__build_pt_z_interpolants()
@@ -85,6 +84,7 @@ class InterpolantsBuilder(TableLoader):
             self.__build_dt_z_interpolants()
             self.__build_pt_z_interpolants()
             self.__cache_z_interpolants(heavy_element + "_smoothed")
+
 
     def build_z_mixture_interpolants(
         self, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0
@@ -109,7 +109,7 @@ class InterpolantsBuilder(TableLoader):
         )
         self.__build_dt_z_interpolants()
         self.__build_pt_z_interpolants()
-        self.__cache_z_interpolants(fname)
+        self.__cache_z_interpolants(which_heavy=fname)
 
     def __build_interpolant(
         self,
@@ -140,7 +140,7 @@ class InterpolantsBuilder(TableLoader):
         # to-do: fix call for smooth interpolant
         if which_interpolant == "rect":
             Z = np.reshape(Z, (X.size, Y.size))
-            spl = self.__build_rect_interpolant(X, Y, Z, kx, ky)
+            spl = self.__build_rect_interpolant(X=X, Y=Y, Z=Z, kx=kx, ky=ky)
         else:
             raise NotImplementedError("Spline choice not implemented.")
         return spl
@@ -160,11 +160,15 @@ class InterpolantsBuilder(TableLoader):
         Returns:
             RectBivariateSpline: fitted RectBivariateSpline.
         """
-        return RectBivariateSpline(X, Y, Z, kx=kx, ky=ky)
+        return RectBivariateSpline(x=X, y=Y, z=Z, kx=kx, ky=ky)
 
     @staticmethod
     def __build_grid_interpolant(
-        points: Tuple, values: ArrayLike, method: str = "linear"
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+        values: ArrayLike,
+        method: str = "pchip",
     ) -> RegularGridInterpolator:
         """Wrapper for RegularGridInterpolator
 
@@ -178,13 +182,14 @@ class InterpolantsBuilder(TableLoader):
         Returns:
             RegularGridInterpolator: fitted RegularGridInterpolor.
         """
-        # to-do: reshape points and values
-        # points = (logTs, logRhos)
-        # shape(logTs) = (nlogT,)
-        # shape(logRhos) = (nlogRho,)
-        # shape(vals) = (nlogT, nlogRho)
+        points = (X, Y)
+        values = np.reshape(Z, (X.size, Y.size))
         return RegularGridInterpolator(
-            points, values, method=method, bounds_error=True, fill_value=np.nan
+            points=points,
+            values=values,
+            method=method,
+            bounds_error=True,
+            fill_value=np.nan,
         )
 
     def __cache_interpolant(self, filename: str, obj: object) -> None:
@@ -497,4 +502,3 @@ class InterpolantsBuilder(TableLoader):
 
         logU = self.z_pt_table[:, 3]
         self.interp_pt_logU_z = self.__build_interpolant(X, Y, logU)
-
