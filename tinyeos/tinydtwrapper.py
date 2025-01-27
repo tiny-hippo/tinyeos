@@ -1,10 +1,11 @@
 from typing import Tuple
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import root_scalar
+from scipy.optimize.elementwise import bracket_root, find_root
 
-from tinyeos.definitions import eos_num_vals, i_logRho, i_logT
+from tinyeos.definitions import i_logRho, i_logT
 from tinyeos.tinypteos import TinyPT
 
 
@@ -60,7 +61,9 @@ class TinyDTWrapper:
         self.logT_max = self.tpt.logT_max
         self.logT_min = self.tpt.logT_min
 
-    def __call__(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
+    def __call__(
+        self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
         """__call__ method acting as convenience wrapper for the evaluate method.
 
         Calculates the equation of state output for the mixture.
@@ -69,10 +72,10 @@ class TinyDTWrapper:
 
         Args:
         ----
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
-            X (float): hydrogen mass fraction.
-            Z (float): heavy-element mass fraction.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
 
         Returns:
         -------
@@ -84,13 +87,13 @@ class TinyDTWrapper:
 
     def __helper(
         self,
-        logP: float,
-        logT: float,
-        logRho: float,
-        X: float,
-        Y: float,
-        Z: float,
-    ) -> float:
+        logP: ArrayLike,
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+    ) -> ArrayLike:
         """Helper function for the root finding.
 
         Calls the pressure-temperature equation of state and returns
@@ -98,16 +101,16 @@ class TinyDTWrapper:
 
         Args:
         ----
-            logP (float): log10 of the pressure.
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
-            X (float): hydrogen mass fraction.
-            Y (float): helium mass fraction.
-            Z (float): heavy-element mass fraction.
+            logP (ArrayLike): log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Y (ArrayLike): helium mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
 
         Returns:
         -------
-            float: difference of the input and calculated density.
+            ArrayLike: difference of the input and calculated density.
 
         """
         logRho_iml = self.tpt._TinyPT__ideal_mixture(
@@ -117,12 +120,12 @@ class TinyDTWrapper:
 
     def __root_finder(
         self,
-        logT: float,
-        logRho: float,
-        X: float,
-        Y: float,
-        Z: float,
-    ) -> Tuple[bool, float]:
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+    ) -> Tuple[bool, ArrayLike]:
         """Root finding function.
 
         Uses the pressure-temperature
@@ -131,36 +134,59 @@ class TinyDTWrapper:
 
         Args:
         ----
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
-            X (float): hydrogen mass fraction.
-            Y (float): helium mass fraction.
-            Z (float): heavy-element mass fraction.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Y (ArrayLike): helium mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
 
         Returns:
         -------
-            Tuple[bool, float]: root finding result.
+            Tuple[bool, ArrayLike]: root finding result.
 
         """
-        logP0 = self.tpt.logP_min
-        logP1 = self.tpt.logP_max
-        f1 = self.__helper(logP=logP0, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
-        f2 = self.__helper(logP=logP1, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
-        if np.sign(f1) == np.sign(f2):
-            converged = False
-            root = np.nan
-        else:
-            sol = root_scalar(
-                f=self.__helper,
-                args=(logT, logRho, X, Y, Z),
-                method="brentq",
-                bracket=[logP0, logP1],
+        if logT.ndim == 0:
+            f1 = self.__helper(
+                logP=self.tpt.logP_min, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
             )
-            converged = sol.converged
-            root = sol.root
-        return (converged, root)
+            f2 = self.__helper(
+                logP=self.tpt.logP_max, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
+            )
+            if np.sign(f1) == np.sign(f2):
+                success = False
+                logP = np.nan
+            else:
+                sol = root_scalar(
+                    f=self.__helper,
+                    args=(logT, logRho, X, Y, Z),
+                    method="brentq",
+                    bracket=[self.tpt.logP_min, self.tpt.logP_max],
+                )
+                success = sol.converged
+                logP = sol.root
+            return (success, logP)
 
-    def evaluate(self, logT: float, logRho: float, X: float, Z: float) -> NDArray:
+        logP = np.empty(shape=logT.shape)
+        logP.fill(np.nan)
+        res_bracket = bracket_root(
+            f=self.__helper,
+            xl0=self.logP_min,
+            xr0=self.logP_max,
+            xmin=self.logP_min,
+            xmax=self.logP_max,
+            args=(logT, logRho, X, Y, Z),
+        )
+        res_root = find_root(
+            self.__helper,
+            res_bracket.bracket,
+            args=(logT, logRho, X, Y, Z),
+        )
+        logP[res_root.success] = res_root.x[res_root.success]
+        return (res_root.success, logP)
+
+    def evaluate(
+        self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
         """Calculate the equation of state output for the mixture.
 
         Only scalar inputs are supported. If the root find fails,
@@ -168,10 +194,10 @@ class TinyDTWrapper:
 
         Args:
         ----
-            logT (float): log10 of the temperature.
-            logRho (float): log10 of the density.
-            X (float): hydrogen mass fraction.
-            Z (float): heavy-element mass fraction.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
 
         Returns:
         -------
@@ -179,13 +205,45 @@ class TinyDTWrapper:
                 individual quantities are defined in definitions.py.
 
         """
-        _, _, X, Y, Z, _ = self.tpt._TinyPT__prepare(logT=logT, logP=6, X=X, Z=Z)
-        converged, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
-        if not converged:
-            res = np.zeros(eos_num_vals)
-            res[i_logT] = logT
-            res[i_logRho] = logRho
-            res[i_logRho + 1 :] = np.nan
+        dummy = 6 * np.ones_like(logT)
+        logT, _, X, Y, Z, res = self.tpt._TinyPT__prepare(
+            logT=logT, logP=dummy, X=X, Z=Z
+        )
+        if not isinstance(logRho, np.ndarray):
+            logRho = np.array(logRho, dtype=np.float64)
+        success, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
+        if logT.ndim == 0:
+            if success:
+                res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+            else:
+                res[i_logT] = logT
+                res[i_logRho] = logRho
+                res[i_logRho + 1 :] = np.nan
         else:
-            res = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+            if np.all(success):
+                res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+            else:
+                res[:, success] = self.tpt.evaluate(
+                    logT=logT[success], logP=logP[success], X=X[success], Z=Z[success]
+                )
+                not_success = np.invert(success)
+
+                res[i_logT, not_success] = logT[not_success]
+                res[i_logRho, not_success] = logRho[not_success]
+                res[i_logRho + 1 :, not_success] = np.nan
         return res
+
+
+if __name__ == "__main__":
+    eos = TinyDTWrapper()
+    logT = 3
+    logRho = -1
+    X = 0.1
+    Z = 0.8
+    res = eos(logT, logRho, X, Z)
+    print(res)
+
+    logT = [[3, 5], [3, 5]]
+    logRho = [[-1, -8], [-1, -8]]
+    res = eos(logT, logRho, X, Z)
+    print(res)
