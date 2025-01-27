@@ -64,7 +64,7 @@ class NearestND(NDInterpolatorBase):
             if xi.ndim == 1:
                 weight_matrix = dist
             elif xi.ndim == 2:
-                weight_matrix = _get_weights(dist, weights=weights)
+                weight_matrix = self.__get_weights(dist, weights=weights)
                 weight_matrix = np.repeat(
                     weight_matrix[:, :, np.newaxis], self.values.shape[-1], axis=2
                 )
