@@ -164,25 +164,25 @@ class TinyDTWrapper:
                 )
                 success = sol.converged
                 logP = sol.root
-            return (success, logP)
-
-        logP = np.empty(shape=logT.shape)
-        logP.fill(np.nan)
-        res_bracket = bracket_root(
-            f=self.__helper,
-            xl0=self.logP_min,
-            xr0=self.logP_max,
-            xmin=self.logP_min,
-            xmax=self.logP_max,
-            args=(logT, logRho, X, Y, Z),
-        )
-        res_root = find_root(
-            self.__helper,
-            res_bracket.bracket,
-            args=(logT, logRho, X, Y, Z),
-        )
-        logP[res_root.success] = res_root.x[res_root.success]
-        return (res_root.success, logP)
+        else:
+            logP = np.empty(shape=logT.shape)
+            logP.fill(np.nan)
+            res_bracket = bracket_root(
+                f=self.__helper,
+                xl0=self.logP_min,
+                xr0=self.logP_max,
+                xmin=self.logP_min,
+                xmax=self.logP_max,
+                args=(logT, logRho, X, Y, Z),
+            )
+            res_root = find_root(
+                self.__helper,
+                res_bracket.bracket,
+                args=(logT, logRho, X, Y, Z),
+            )
+            success = res_root.success
+            logP[success] = res_root.x[success]
+        return (success, logP)
 
     def evaluate(
         self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
