@@ -232,18 +232,3 @@ class TinyDTWrapper:
                 res[i_logRho, not_success] = logRho[not_success]
                 res[i_logRho + 1 :, not_success] = np.nan
         return res
-
-
-if __name__ == "__main__":
-    eos = TinyDTWrapper()
-    logT = 3
-    logRho = -1
-    X = 0.1
-    Z = 0.8
-    res = eos(logT, logRho, X, Z)
-    print(res)
-
-    logT = [[3, 5], [3, 5]]
-    logRho = [[-1, -8], [-1, -8]]
-    res = eos(logT, logRho, X, Z)
-    print(res)
