@@ -419,7 +419,7 @@ class TinyDT(InterpolantsBuilder):
                 )
                 conv = sol.converged
                 logP = sol.root
-                if tiny_val < X and tiny_val < Y:
+                if tiny_val < X and tiny_val < Y and self.include_hhe_interactions:
                     logRho_x = self.interp_pt_logRho_x_eff(logT, logP, **self.kwargs)
                 else:
                     logRho_x = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
@@ -443,7 +443,7 @@ class TinyDT(InterpolantsBuilder):
         Y: float,
         Z: float,
     ) -> float:
-        if tiny_val < X and tiny_val < Y:
+        if tiny_val < X and tiny_val < Y and self.include_hhe_interactions:
             logRho_x = self.interp_pt_logRho_x_eff(logT, logP, **self.kwargs)
         elif tiny_val < X:
             logRho_x = self.interp_pt_logRho_x(logT, logP, **self.kwargs)
@@ -739,11 +739,15 @@ class TinyDT(InterpolantsBuilder):
             dlS_dlP_T_x = self.interp_pt_logS_x(logT, logP, dy=1, **self.kwargs)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
-            dlS_dlT_P_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dx=1, **self.kwargs)
+            dlS_dlT_P_x[i_x] = self.interp_pt_logS_x(
+                logT_x, logP_x, dx=1, **self.kwargs
+            )
             dlS_dlT_P_x[i_x_eff] = self.interp_pt_logS_x_eff(
                 logT_x_eff, logP_x_eff, dx=1, **self.kwargs
             )
-            dlS_dlP_T_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dy=1, **self.kwargs)
+            dlS_dlP_T_x[i_x] = self.interp_pt_logS_x(
+                logT_x, logP_x, dy=1, **self.kwargs
+            )
             dlS_dlP_T_x[i_x_eff] = self.interp_pt_logS_x_eff(
                 logT_x_eff, logP_x_eff, dy=1, **self.kwargs
             )
