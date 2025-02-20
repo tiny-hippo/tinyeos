@@ -66,9 +66,8 @@ class TinyDTWrapper:
     ) -> NDArray:
         """__call__ method acting as convenience wrapper for the evaluate method.
 
-        Calculates the equation of state output for the mixture.
-        Only scalar inputs are supported. If the root find fails,
-        the results are set to nans.
+        Calculates the equation of state output for the mixture. 
+        If the calculation fails the results are set to nans.
 
         Args:
         ----
@@ -126,11 +125,10 @@ class TinyDTWrapper:
         Y: ArrayLike,
         Z: ArrayLike,
     ) -> tuple[bool, ArrayLike]:
-        """Root finding function.
+        """Root-finding function.
 
-        Uses the pressure-temperature
-        equation of state to find the pressure corresponding
-        to the input density.
+        Uses the pressure-temperature equation of state 
+        to find the pressure corresponding to the input density.
 
         Args:
         ----
@@ -142,7 +140,7 @@ class TinyDTWrapper:
 
         Returns:
         -------
-            Tuple[bool, ArrayLike]: root finding result.
+            Tuple[bool, ArrayLike]: root-finding result.
 
         """
         if logT.ndim == 0:
@@ -189,8 +187,8 @@ class TinyDTWrapper:
     ) -> NDArray:
         """Calculate the equation of state output for the mixture.
 
-        Only scalar inputs are supported. If the root find fails,
-        the results are set to nans.
+        Calculates the equation of state output for the mixture. 
+        If the calculation fails the results are set to nans.
 
         Args:
         ----
