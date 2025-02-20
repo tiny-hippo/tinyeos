@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -125,7 +125,7 @@ class TinyDTWrapper:
         X: ArrayLike,
         Y: ArrayLike,
         Z: ArrayLike,
-    ) -> Tuple[bool, ArrayLike]:
+    ) -> tuple[bool, ArrayLike]:
         """Root finding function.
 
         Uses the pressure-temperature

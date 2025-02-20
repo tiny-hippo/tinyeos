@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -247,7 +247,7 @@ class TinyPT(InterpolantsBuilder):
 
     def __prepare(
         self, logT: ArrayLike, logP: ArrayLike, X: ArrayLike, Z: ArrayLike
-    ) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
         """Prepare the equation of state input.
 
         Args:
@@ -294,7 +294,7 @@ class TinyPT(InterpolantsBuilder):
             raise FileNotFoundError("missing interpolant cache " + src)
         return np.load(src, allow_pickle=True)
 
-    def __check_pt(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
+    def __check_pt(self, logT: ArrayLike, logP: ArrayLike) -> tuple[NDArray, NDArray]:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 

@@ -1,6 +1,6 @@
 import os
 from multiprocessing import cpu_count
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from fortranformat import FortranRecordWriter
@@ -331,7 +331,7 @@ class TableCreatorDT:
         fname_prefix: str,
         output_path: str,
         do_only_pure: bool = False,
-    ) -> Tuple[int, NDArray, NDArray]:
+    ) -> tuple[int, NDArray, NDArray]:
         """Sets the table parameters.
 
         Args:

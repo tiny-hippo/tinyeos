@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -41,7 +41,7 @@ class NearestND(NDInterpolatorBase):
         self.tree = cKDTree(self.points, **tree_options)
         self.values = np.asarray(y)
 
-    def __call__(self, *args: Tuple, k: int = 1, weights: str = "uniform"):
+    def __call__(self, *args: tuple, k: int = 1, weights: str = "uniform"):
         xi = _ndim_coords_from_arrays(args, ndim=self.points.shape[1])
         xi = self._check_call_shape(xi)
         xi = self._scale_x(xi)
@@ -191,14 +191,14 @@ def get_1d_spline(
 
 
 def get_zeros(
-    input_shape: Tuple[int, ...],
+    input_shape: tuple[int, ...],
     num_vals: int = eos_num_vals,
     empty: bool = False,
 ) -> NDArray:
     """Helper function to return a result array of the appropriate shape.
 
     Args:
-        input_shape (Tuple): shape of the inputs.
+        input_shape (tuple): shape of the inputs.
         num_vals (int, optional): number of values in the first dimension.
             Defaults to num_eos_vals.
         empty (bool, optional): whether to return an empty array.
@@ -217,7 +217,7 @@ def get_zeros(
 
 def check_composition(
     X: ArrayLike, Z: ArrayLike
-) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Checks whether input composition adds up to less than 1,
     and formats the mass fractions.
 
@@ -316,7 +316,7 @@ def ideal_mixing_law(
 
 def get_xy_number_fractions(
     Y: ArrayLike, ionized: bool = False
-) -> Tuple[ArrayLike, ArrayLike]:
+) -> tuple[ArrayLike, ArrayLike]:
     """Calculates the hydrogen and helium number fractions
     of a hydrogen-helium mixture.
 
@@ -326,7 +326,7 @@ def get_xy_number_fractions(
             ionized or not. Defaults to False.
 
     Returns:
-        Tuple[ArrayLike, ArrayLike]: tuple of hydrogen and helium
+        tuple[ArrayLike, ArrayLike]: tuple of hydrogen and helium
             number fractions.
     """
     if not isinstance(Y, np.ndarray):
@@ -343,7 +343,7 @@ def get_xy_number_fractions(
 
 def get_xyz_number_fractions(
     Y: ArrayLike, Z: ArrayLike, A_z: ArrayLike
-) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
     """Calculates the hydrogen, helium and heavy-element number fractions.
 
     Args:
@@ -352,7 +352,7 @@ def get_xyz_number_fractions(
         A_z (ArrayLike): atomic mass of the heavy element.
 
     Returns:
-        Tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of the number fractions.
+        tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of the number fractions.
     """
     # Y_eff = Y / (1 - Z)
     Y_eff = Y

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -151,7 +151,7 @@ class TinyPTMixture:
         """
         return self.evaluate(logT, logP, X, Z1, Z2, Z3)
 
-    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> Tuple[NDArray, NDArray]:
+    def __check_PT(self, logT: ArrayLike, logP: ArrayLike) -> tuple[NDArray, NDArray]:
         """Makes sure that input temperature and pressure
         are within equation of state limits.
 
@@ -187,7 +187,7 @@ class TinyPTMixture:
 
     def __check_composition(
         self, X: ArrayLike, Z1: ArrayLike, Z2: ArrayLike, Z3: ArrayLike
-    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
         """Checks whether input composition adds up to less than one,
         dumps the residual into helium, and formats the mass fractions.
 
@@ -238,7 +238,7 @@ class TinyPTMixture:
 
     def __unpack(
         self, res: NDArray
-    ) -> Tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
         """Returns the results from the equation of state call
         as a tuple.
 

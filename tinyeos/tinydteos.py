@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -278,7 +278,7 @@ class TinyDT(InterpolantsBuilder):
 
     def __prepare(
         self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
-    ) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]:
         """Prepare the equation of state input.
 
         Args:
@@ -367,7 +367,7 @@ class TinyDT(InterpolantsBuilder):
         X: float,
         Y: float,
         Z: float,
-    ) -> Tuple:
+    ) -> tuple:
         """Calculates the individual densities of the elements in the mixture.
 
         Args:

@@ -1,7 +1,7 @@
 import os
 import pickle
 from pathlib import Path
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 import requests
@@ -217,7 +217,7 @@ class TinyFreedmanOpacity:
         fname = f"freedman_{suffix}.txt"
         return fname
 
-    def __get_freedman_kap_tables(self, Z: float) -> Tuple:
+    def __get_freedman_kap_tables(self, Z: float) -> tuple:
         """Loads the Freedman opacity table for
         a given heavy-element mass fraction.
 

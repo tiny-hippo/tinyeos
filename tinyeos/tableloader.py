@@ -1,7 +1,7 @@
 import os
 import pickle
 from pathlib import Path
-from typing import Tuple
+from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -85,7 +85,7 @@ class TableLoader:
         _ = self.__load_z_dt_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
         _ = self.__load_z_pt_table(which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3)
 
-    def __load_xy_dt_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
+    def __load_xy_dt_tables(self, which_hhe: str = "cms") -> tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logRho, logT) tables.
 
         Args:
@@ -129,7 +129,7 @@ class TableLoader:
         self.y_dt_table = data
         return (self.x_dt_table, self.y_dt_table)
 
-    def __load_xy_pt_tables(self, which_hhe: str = "cms") -> Tuple[NDArray, NDArray]:
+    def __load_xy_pt_tables(self, which_hhe: str = "cms") -> tuple[NDArray, NDArray]:
         """Loads the hydrogen and helium (logP, logT) tables.
 
         Args:
