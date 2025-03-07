@@ -1,7 +1,6 @@
 import os
 import pickle
 from pathlib import Path
-from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -96,7 +95,7 @@ class TableLoader:
             NotImplementedError: raised if which_hhe option is unavailable.
 
         Returns:
-            Tuple[NDArray, NDArray]: hydrogen and helium tables
+            tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":
@@ -140,7 +139,7 @@ class TableLoader:
             NotImplementedError: raised if which_hhe option is unvailable.
 
         Returns:
-            Tuple[NDArray, NDArray]: hydrogen and helium tables
+            tuple[NDArray, NDArray]: hydrogen and helium tables
         """
 
         if which_hhe == "cms":

@@ -1,5 +1,3 @@
-from typing import tuple
-
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import root_scalar
@@ -140,7 +138,7 @@ class TinyDTWrapper:
 
         Returns:
         -------
-            Tuple[bool, ArrayLike]: root-finding result.
+            tuple[bool, ArrayLike]: root-finding result.
 
         """
         if logT.ndim == 0:

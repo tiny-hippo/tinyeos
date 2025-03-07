@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -288,7 +287,7 @@ class TinyDT(InterpolantsBuilder):
             Z (ArrayLike): heavy-element mass-fraction.
 
         Returns:
-            Tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
+            tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
         """
         logT, logRho = self.__check_dt(logT, logRho)
         X, Y, Z = check_composition(X, Z)
@@ -340,7 +339,7 @@ class TinyDT(InterpolantsBuilder):
                 state limits.
 
         Returns:
-            Tuple[NDArray, NDArray]: (logT, logRho) as arrays.
+            tuple[NDArray, NDArray]: (logT, logRho) as arrays.
         """
 
         if not isinstance(logT, np.ndarray):
@@ -378,7 +377,7 @@ class TinyDT(InterpolantsBuilder):
             Z (float): heavy-element mass-fraction.
 
         Returns:
-            Tuple: tuple consisting of convergence information, individual
+            tuple: tuple consisting of convergence information, individual
                 densities and gas pressure.
         """
         if np.isclose(Z, 1, atol=eps1):

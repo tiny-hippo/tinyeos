@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -257,7 +256,7 @@ class TinyPT(InterpolantsBuilder):
             Z (ArrayLike): heavy-element mass-fraction.
 
         Returns:
-            Tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
+            tuple[NDArray, NDArray, NDArray]: formated input and result arrays.
         """
         logT, logP = self.__check_pt(logT, logP)
         X, Y, Z = check_composition(X, Z)
@@ -308,7 +307,7 @@ class TinyPT(InterpolantsBuilder):
                 state limits.
 
         Returns:
-            Tuple[NDArray, NDArray]: (logT, logP) as arrays.
+            tuple[NDArray, NDArray]: (logT, logP) as arrays.
         """
 
         if not isinstance(logT, np.ndarray):

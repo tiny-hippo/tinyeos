@@ -1,6 +1,5 @@
 import os
 from multiprocessing import cpu_count
-from typing import tuple
 
 import numpy as np
 from fortranformat import FortranRecordWriter

@@ -1,5 +1,3 @@
-from typing import tuple
-
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -165,7 +163,7 @@ class TinyPTMixture:
                 state limits.
 
         Returns:
-            Tuple[NDArray, NDArray]: (logT, logP) as arrays.
+            tuple[NDArray, NDArray]: (logT, logP) as arrays.
         """
 
         if not isinstance(logT, np.ndarray):
@@ -202,7 +200,7 @@ class TinyPTMixture:
                 and their sum must be smaller or equal 1.
 
         Returns:
-            Tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
+            tuple[ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]:
                 tuple of hydrogen, helium and heavy-element mass fractions.
         """
         if not isinstance(X, np.ndarray):
@@ -246,7 +244,7 @@ class TinyPTMixture:
             res (NDArray): results from the equation of state call.
 
         Returns:
-            Tuple[float, float, float, float, float]:
+            tuple[float, float, float, float, float]:
                 (logRho, logS, dlS_dlP_T, dlS_dlT_P, grad_ad)
         """
         logRho = res[self.i_logRho]

@@ -1,7 +1,6 @@
 import os
 import pickle
 from pathlib import Path
-from typing import tuple
 
 import numpy as np
 import requests
@@ -225,7 +224,7 @@ class TinyFreedmanOpacity:
             Z (float): heavy-element mass fraction
 
         Returns:
-            Tuple: temperature, pressure and opacity
+            tuple: temperature, pressure and opacity
         """
         i_T = 0
         i_P = 1
