@@ -173,7 +173,7 @@ class InterpolantsBuilder(TableLoader):
         """Wrapper for RegularGridInterpolator
 
         Args:
-            points (Tuple of ndarray of float, with shapes (m1,), ..., (mn,):
+            points (tuple of ndarray of float, with shapes (m1,), ..., (mn,):
             The points defining the regular grid in n dimensions.
             values (ArrayLike, shape (m1, ..., mn, ...)):
             The data on the regular grid in n dimensions.
@@ -464,11 +464,6 @@ class InterpolantsBuilder(TableLoader):
         Y = np.unique(logT)
         self.interp_pt_V_mix_xy = self.__build_interpolant(X, Y, V_mix)
         self.interp_pt_S_mix_xy = self.__build_interpolant(X, Y, S_mix)
-        # points = (X, Y)
-        # values = np.reshape(V_mix, (X.size, Y.size))
-        # self.interp_pt_V_mix_xy = RegularGridInterpolator(points, values, method="linear")
-        # values = np.reshape(S_mix, (X.size, Y.size))
-        # self.interp_pt_S_mix_xy = RegularGridInterpolator(points, values, method="linear")
 
     def __build_dt_z_interpolants(self) -> None:
         """Builds (logT, logRho) interpolants for the heavy element."""

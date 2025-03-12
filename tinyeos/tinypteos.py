@@ -189,7 +189,7 @@ class TinyPT(InterpolantsBuilder):
             super().build_z_mixture_interpolants(Z1=Z1, Z2=Z2, Z3=Z3)
             self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
         self.interp_dt_z = self.__load_interp("interp_dt_z_" + which_heavy + ".npy")
-        
+
         if self.include_hhe_interactions:
             self.interp_pt_x_eff = self.__load_interp(
                 "interp_pt_x_eff_" + which_hhe + ".npy"
@@ -600,11 +600,15 @@ class TinyPT(InterpolantsBuilder):
             dlS_dlP_T_x = self.interp_pt_logS_x(logT, logP, dy=1, **self.kwargs)
         elif np.any(self.X_close) and self.include_hhe_interactions:
             dlS_dlP_T_x = np.zeros_like(logS)
-            dlS_dlT_P_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dx=1, **self.kwargs)
+            dlS_dlT_P_x[i_x] = self.interp_pt_logS_x(
+                logT_x, logP_x, dx=1, **self.kwargs
+            )
             dlS_dlT_P_x[i_x_eff] = self.interp_pt_logS_x_eff(
                 logT_x_eff, logP_x_eff, dx=1, **self.kwargs
             )
-            dlS_dlP_T_x[i_x] = self.interp_pt_logS_x(logT_x, logP_x, dy=1, **self.kwargs)
+            dlS_dlP_T_x[i_x] = self.interp_pt_logS_x(
+                logT_x, logP_x, dy=1, **self.kwargs
+            )
             dlS_dlP_T_x[i_x_eff] = self.interp_pt_logS_x_eff(
                 logT_x_eff, logP_x_eff, dy=1, **self.kwargs
             )

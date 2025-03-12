@@ -228,7 +228,7 @@ def check_composition(
             and their sum must be smaller or equal 1.
 
     Returns:
-        Tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of hydrogen,
+        tuple[ArrayLike, ArrayLike, ArrayLike]: tuple of hydrogen,
             helium and heavy-element mass fractions.
     """
 

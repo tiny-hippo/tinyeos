@@ -349,7 +349,7 @@ class TableCreatorDT:
                 tables of pure substances. Defaults to False.
 
         Returns:
-            Tuple[int, NDArray, NDarray]: number of tables and
+            tuple[int, NDArray, NDarray]: number of tables and
                 mass fractions.
         """
         self.eos_num_vals = eos_num_vals
