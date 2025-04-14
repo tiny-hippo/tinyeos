@@ -17,5 +17,5 @@ setup(
             "data/kap/interpolants/*",
         ]
     },
-    install_requires=["fortranformat", "numpy", "scipy", "scikit-learn"],
+    install_requires=["fortranformat", "numpy", "scipy"],
 )
