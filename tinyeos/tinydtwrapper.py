@@ -10,8 +10,11 @@ from tinyeos.tinypteos import TinyPT
 class TinyDTWrapper:
     def __init__(
         self,
-        which_heavy: str = "h2o",
         which_hhe: str = "cms",
+        which_heavy: str = "h2o",
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0.0,
         include_hhe_interactions: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
@@ -24,11 +27,11 @@ class TinyDTWrapper:
 
         Args:
         ----
-            which_heavy (str, optional): heavy-element equation of state
-                to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
-                "mixture", "fe" or "co".
             which_hhe (str, optional): hydrogen-helium equation of state
-                to use. Defaults to "cms". Options are "cms" or "scvh".
+                to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
+            which_heavy (str, optional): heavy-element equation of state
+                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
+                "fe" or "co". Defaults to "h2o". 
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed
@@ -44,8 +47,11 @@ class TinyDTWrapper:
 
         """
         self.tpt = TinyPT(
-            which_heavy=which_heavy,
             which_hhe=which_hhe,
+            which_heavy=which_heavy,
+            Z1=Z1,
+            Z2=Z2,
+            Z3=Z3,
             include_hhe_interactions=include_hhe_interactions,
             use_smoothed_xy_tables=use_smoothed_xy_tables,
             use_smoothed_z_tables=use_smoothed_z_tables,
