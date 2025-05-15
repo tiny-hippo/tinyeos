@@ -74,7 +74,7 @@ class TinyDT(InterpolantsBuilder):
         which_heavy: str = "h2o",
         Z1: float = 0.5,
         Z2: float = 0.5,
-        Z3: float = 0,
+        Z3: float = 0.0,
         include_hhe_interactions: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
@@ -85,7 +85,7 @@ class TinyDT(InterpolantsBuilder):
 
         Args:
             which_hhe (str, optional): hydrogen-helium equation of state
-                to use. Defaults to "cms". Options are "cms" or "scvh".
+                to use. Defaults to "cms". Options are "cms", "scvh" or "scvh_extended".
             which_heavy (str, optional): heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".

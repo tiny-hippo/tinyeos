@@ -44,18 +44,17 @@ class TinyPTMixture:
         builds the interpolants.
 
         Args:
-            which_xy (str, optional): which hydrogen-helium equation of state
-                to use. Defaults to "cms". Options are "cms" or "scvh".
-                Defaults to "cms".
+            which_xy (str, optional): hydrogen-helium equation of state
+                to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
             which_z1 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
-                or "co". Defaults to "h2o".
+                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
+                "fe" or "co". Defaults to "h2o".
             which_z2 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
-                or "co". Defaults to "sio2".
+                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
+                "fe" or "co". Defaults to "sio2".
             which_z3 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "aqua", "sio2", "mixture", "fe"
-                or "co". Defaults to "fe".
+                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
+                "fe" or "co". Defaults to "fe".
             include_hhe_interactions (bool, optional): whether to include
                 hydrogen-helium interactions. Defaults to True.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed
