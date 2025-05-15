@@ -85,7 +85,13 @@ class TinyPT(InterpolantsBuilder):
                 to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
             which_heavy (str, optional): heavy-element equation of state
                 to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
-                "fe" or "co". Defaults to "h2o". 
+                "fe" or "co". Defaults to "h2o".
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.0.
             which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms", "scvh" or "scvh_extended".
             include_hhe_interactions (bool, optional): include
