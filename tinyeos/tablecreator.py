@@ -199,8 +199,11 @@ class TableCreatorDT:
 
     def __init__(
         self,
-        which_heavy: str = "h2o",
         which_hhe: str = "cms",
+        which_heavy: str = "h2o",
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0.0,
         include_hhe_interactions: bool = False,
         use_pt_eos: bool = False,
         use_smoothed_xy_tables: bool = False,
@@ -216,10 +219,16 @@ class TableCreatorDT:
         for creating the equation of state tables.
 
         Args:
-            which_heavy (str, optional): heavy-element
-                equation of state to use. Defaults to "h2o".
             which_hhe (str, optional): hydrogen-helium
                 equation of state to use. Defaults to "cms".
+           which_heavy (str, optional): heavy-element
+                equation of state to use. Defaults to "h2o".
+            Z1 (float, optional): mass-fraction of the first heavy element.
+                Defaults to 0.5
+            Z2 (float, optional): mass-fraction of the second heavy element.
+                Defaults to 0.5.
+            Z3 (float, optional): mass-fraction of the third heavy element.
+                Defaults to 0.0.
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False
             use_pt_eos (bool, optional): use the pressure-temperature
@@ -243,24 +252,18 @@ class TableCreatorDT:
             debug (bool, optional): enable debugging mode for
                 additional output. Defaults to False.
         """
-        if use_pt_eos:
-            self.eos = TinyDTWrapper(
-                which_heavy=which_heavy,
-                which_hhe=which_hhe,
-                include_hhe_interactions=include_hhe_interactions,
-                use_smoothed_xy_tables=use_smoothed_xy_tables,
-                use_smoothed_z_tables=use_smoothed_z_tables,
-                build_interpolants=build_interpolants,
-            )
-        else:
-            self.eos = TinyDT(
-                which_heavy=which_heavy,
-                which_hhe=which_hhe,
-                include_hhe_interactions=include_hhe_interactions,
-                use_smoothed_xy_tables=use_smoothed_xy_tables,
-                use_smoothed_z_tables=use_smoothed_z_tables,
-                build_interpolants=build_interpolants,
-            )
+        eos = TinyDTWrapper if use_pt_eos else TinyDT
+        self.eos = eos(
+            which_hhe=which_hhe,
+            which_heavy=which_heavy,
+            Z1=Z1,
+            Z2=Z2,
+            Z3=Z3,
+            include_hhe_interactions=include_hhe_interactions,
+            use_smoothed_xy_tables=use_smoothed_xy_tables,
+            use_smoothed_z_tables=use_smoothed_z_tables,
+            build_interpolants=build_interpolants,
+        )
 
         self.fix_bad_values = fix_bad_values
         self.do_simple_smoothing = do_simple_smoothing
