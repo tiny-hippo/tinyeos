@@ -46,8 +46,11 @@ def createTablesDT(
     output_path: str = "data/mesa/eosDT",
     do_only_pure: bool = False,
     do_only_single: bool = False,
-    which_heavy: str = "h2o",
     which_hhe: str = "cms",
+    which_heavy: str = "h2o",
+    Z1: float = 0.5,
+    Z2: float = 0.5,
+    Z3: float = 0.0,
     include_hhe_interactions: bool = False,
     use_pt_eos: bool = False,
     use_smoothed_xy_tables: bool = False,
@@ -61,7 +64,7 @@ def createTablesDT(
     num_cores: int = cpu_count() - 2,
     debug: bool = False,
 ) -> ArrayLike:
-    """Wrapper function to creates density-temperature
+    """Wrapper function to create density-temperature
     equation of state tables for MESA.
 
     Args:
@@ -87,10 +90,16 @@ def createTablesDT(
             pure substances. Defaults to False.
         do_only_single (bool, optional):  create a single table
             for debugging. Defaults to False.
-        which_heavy (str, optional): heavy-element
-            equation of state to use. Defaults to "h2o".
         which_hhe (str, optional): hydrogen-helium
             equation of state to use. Defaults to "cms".
+        which_heavy (str, optional): heavy-element
+            equation of state to use. Defaults to "h2o".
+        Z1 (float, optional): mass-fraction of the first heavy element.
+            Defaults to 0.5
+        Z2 (float, optional): mass-fraction of the second heavy element.
+            Defaults to 0.5.
+        Z3 (float, optional): mass-fraction of the third heavy element.
+            Defaults to 0.0.
         include_hhe_interactions (bool, optional): include
             hydrogen-helium interactions. Defaults to False.
         use_pt_eos (bool, optional): use the pressure-temperature
@@ -122,8 +131,11 @@ def createTablesDT(
     """
 
     TC = TableCreatorDT(
-        which_heavy=which_heavy,
         which_hhe=which_hhe,
+        which_heavy=which_heavy,
+        Z1=Z1,
+        Z2=Z2,
+        Z3=Z3,
         include_hhe_interactions=include_hhe_interactions,
         use_pt_eos=use_pt_eos,
         use_smoothed_xy_tables=use_smoothed_xy_tables,
@@ -221,7 +233,7 @@ class TableCreatorDT:
         Args:
             which_hhe (str, optional): hydrogen-helium
                 equation of state to use. Defaults to "cms".
-           which_heavy (str, optional): heavy-element
+            which_heavy (str, optional): heavy-element
                 equation of state to use. Defaults to "h2o".
             Z1 (float, optional): mass-fraction of the first heavy element.
                 Defaults to 0.5
