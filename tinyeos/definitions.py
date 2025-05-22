@@ -80,8 +80,3 @@ eos_dict = {
     "lfe": i_lfe,
     "c_sound": i_csound,
 }
-
-# num_derivs = 3
-# i_dl_dlT = 0
-# i_dl_dlRho = 1
-# i_dl_dlP = 2
