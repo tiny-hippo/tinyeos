@@ -674,8 +674,8 @@ class TinyDT(InterpolantsBuilder):
         iml = self.__ideal_mixture(logT, logRho, X, Y, Z)
         if not iml[0]:
             if verbose:
-                msg = "evaluate failed in density root find"
-                print(msg)
+                msg = "Evaluate failed in density root find at"
+                print(msg, f"logT = {logT}, logRho = {logRho}")
             res[self.i_logT] = logT
             res[self.i_logRho] = logRho
             res[self.i_logP :] = np.nan
