@@ -3,7 +3,28 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import root_scalar
 from scipy.optimize.elementwise import bracket_root, find_root
 
-from tinyeos.definitions import i_logRho, i_logT
+from tinyeos.definitions import (
+    eos_num_vals,
+    i_chiRho,
+    i_chiT,
+    i_cp,
+    i_csound,
+    i_cv,
+    i_dE_dRho,
+    i_dS_dRho,
+    i_dS_dT,
+    i_eta,
+    i_gamma1,
+    i_gamma3,
+    i_grad_ad,
+    i_lfe,
+    i_logP,
+    i_logRho,
+    i_logS,
+    i_logT,
+    i_logU,
+    i_mu,
+)
 from tinyeos.tinypteos import TinyPT
 
 
@@ -70,13 +91,33 @@ class TinyDTWrapper:
         self.logP_min = self.tpt.logP_min
         self.logT_max = self.tpt.logT_max
         self.logT_min = self.tpt.logT_min
+        self.eos_num_vals = eos_num_vals
+        self.i_logT = i_logT
+        self.i_logRho = i_logRho
+        self.i_logP = i_logP
+        self.i_logS = i_logS
+        self.i_logU = i_logU
+        self.i_chiRho = i_chiRho
+        self.i_chiT = i_chiT
+        self.i_grad_ad = i_grad_ad
+        self.i_cp = i_cp
+        self.i_cv = i_cv
+        self.i_gamma1 = i_gamma1
+        self.i_gamma3 = i_gamma3
+        self.i_dS_dT = i_dS_dT
+        self.i_dS_dRho = i_dS_dRho
+        self.i_dE_dRho = i_dE_dRho
+        self.i_mu = i_mu
+        self.i_eta = i_eta
+        self.i_lfe = i_lfe
+        self.i_csound = i_csound
 
     def __call__(
         self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
     ) -> NDArray:
         """__call__ method acting as convenience wrapper for the evaluate method.
 
-        Calculates the equation of state output for the mixture. 
+        Calculates the equation of state output for the mixture.
         If the calculation fails the results are set to nans.
 
         Args:
@@ -137,7 +178,7 @@ class TinyDTWrapper:
     ) -> tuple[bool, ArrayLike]:
         """Root-finding function.
 
-        Uses the pressure-temperature equation of state 
+        Uses the pressure-temperature equation of state
         to find the pressure corresponding to the input density.
 
         Args:
@@ -197,7 +238,7 @@ class TinyDTWrapper:
     ) -> NDArray:
         """Calculate the equation of state output for the mixture.
 
-        Calculates the equation of state output for the mixture. 
+        Calculates the equation of state output for the mixture.
         If the calculation fails the results are set to nans.
 
         Args:
