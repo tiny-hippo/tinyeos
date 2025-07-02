@@ -41,8 +41,8 @@ def createTablesDT(
     logQ_max: float = 6.00,
     del_X: float = 0.10,
     del_Z: float = 0.10,
-    fname_prefix: str = "cms_qeos-eosDT",
-    output_path: str = "data/mesa/eosDT",
+    fname_prefix: str = "custom-eosDT",
+    output_path: str = "tables",
     do_only_pure: bool = False,
     do_only_single: bool = False,
     which_hhe: str = "cms",
@@ -377,6 +377,8 @@ class TableCreatorDT:
         self.num_logQs = np.int32(1 + np.rint((logQ_max - logQ_min) / del_logQ))
         self.fname_prefix = fname_prefix
         self.output_path = output_path
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path)
 
         if do_only_pure:
             self.Xs = np.array([1, 0, 0])
