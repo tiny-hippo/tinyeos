@@ -4,39 +4,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tinyeos.definitions import (
-    atomic_masses,
-    eos_num_vals,
-    eps1,
-    heavy_elements,
-    i_chiRho,
-    i_chiT,
-    i_cp,
-    i_csound,
-    i_cv,
-    i_dE_dRho,
-    i_dS_dRho,
-    i_dS_dT,
-    i_eta,
-    i_gamma1,
-    i_gamma3,
-    i_grad_ad,
-    i_lfe,
-    i_logP,
-    i_logRho,
-    i_logS,
-    i_logT,
-    i_logU,
-    i_mu,
-    ionic_charges,
-    logP_max,
-    logP_min,
-    logRho_max,
-    logRho_min,
-    logT_max,
-    logT_min,
-    tiny_val,
-)
+from tinyeos.definitions import heavy_elements
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
 from tinyeos.support import (
     check_composition,
@@ -44,6 +12,7 @@ from tinyeos.support import (
     get_mixing_entropy,
     get_zeros,
     ideal_mixing_law,
+    set_eos_params,
 )
 
 
@@ -108,49 +77,6 @@ class TinyPT(InterpolantsBuilder):
                 are unavailable.
         """
 
-        if build_interpolants:
-            super().__init__()
-
-        self.logRho_max = logRho_max
-        self.logRho_min = logRho_min
-        self.logP_max = logP_max
-        self.logP_min = logP_min
-        self.logT_max = logT_max
-        self.logT_min = logT_min
-        if which_hhe == "scvh_extended":
-            self.logRho_min = -15.00
-            self.logP_min = -6.00
-            self.logT_min = 1.10
-
-        self.eos_num_vals = eos_num_vals
-        self.i_logT = i_logT
-        self.i_logRho = i_logRho
-        self.i_logP = i_logP
-        self.i_logS = i_logS
-        self.i_logU = i_logU
-        self.i_chiRho = i_chiRho
-        self.i_chiT = i_chiT
-        self.i_grad_ad = i_grad_ad
-        self.i_cp = i_cp
-        self.i_cv = i_cv
-        self.i_gamma1 = i_gamma1
-        self.i_gamma3 = i_gamma3
-        self.i_dS_dT = i_dS_dT
-        self.i_dS_dRho = i_dS_dRho
-        self.i_dE_dRho = i_dE_dRho
-        self.i_mu = i_mu
-        self.i_eta = i_eta
-        self.i_lfe = i_lfe
-        self.i_csound = i_csound
-
-        # limits for derivatives
-        self.lower_grad_ad = 0.01
-        self.lower_chiT = 0.01
-        self.lower_chiRho = 0.01
-        self.upper_grad_ad = 2.5
-        self.upper_chiT = 2.5
-        self.upper_chiRho = 2.5
-
         self.kwargs = {"grid": False}
         self.cache_path = Path(__file__).parent / "data/eos/interpolants"
         if which_heavy not in heavy_elements:
@@ -161,40 +87,31 @@ class TinyPT(InterpolantsBuilder):
         if include_hhe_interactions and which_hhe == "scvh":
             raise NotImplementedError("can't include H-He interactions with scvh")
 
-        # heavy-element atomic mass and ionic charge
-        self.heavy_element = which_heavy
-        if which_heavy == "mixture":
-            which_heavy = (
-                f"h2o_{100 * Z1:02.0f}"
-                + f"_sio2_{100 * Z2:02.0f}"
-                + f"_fe_{100 * Z3:02.0f}"
-            )
-            self.A = (
-                Z1 * atomic_masses["h2o"]
-                + Z2 * atomic_masses["sio2"]
-                + Z3 * atomic_masses["fe"]
-            )
-            self.z = (
-                Z1 * ionic_charges["h2o"]
-                + Z2 * ionic_charges["sio2"]
-                + Z3 * ionic_charges["fe"]
-            )
-        else:
-            self.A = atomic_masses[which_heavy]
-            self.z = ionic_charges[which_heavy]
+        if build_interpolants:
+            super().__init__()
+
+        set_eos_params(
+            eos=self, which_hhe=which_hhe, which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
+        )
 
         # if use_smoothed_xy_tables:
         #     which_hhe = which_hhe + "_smoothed"
         if use_smoothed_z_tables:
-            which_heavy = which_heavy + "_smoothed"
+            self.which_heavy = self.which_heavy + "_smoothed"
         self.interp_pt_x = self.__load_interp("interp_pt_x_" + which_hhe + ".npy")
         self.interp_pt_y = self.__load_interp("interp_pt_y_" + which_hhe + ".npy")
         try:
-            self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
+            self.interp_pt_z = self.__load_interp(
+                "interp_pt_z_" + self.which_heavy + ".npy"
+            )
         except FileNotFoundError:
             super().build_z_mixture_interpolants(Z1=Z1, Z2=Z2, Z3=Z3)
-            self.interp_pt_z = self.__load_interp("interp_pt_z_" + which_heavy + ".npy")
-        self.interp_dt_z = self.__load_interp("interp_dt_z_" + which_heavy + ".npy")
+            self.interp_pt_z = self.__load_interp(
+                "interp_pt_z_" + self.which_heavy + ".npy"
+            )
+        self.interp_dt_z = self.__load_interp(
+            "interp_dt_z_" + self.which_heavy + ".npy"
+        )
 
         if self.include_hhe_interactions:
             self.interp_pt_x_eff = self.__load_interp(
@@ -202,7 +119,9 @@ class TinyPT(InterpolantsBuilder):
             )
             self.interp_pt_xy = self.__load_interp("interp_pt_xy_int.npy")
 
-        self.interp_dt_z = self.__load_interp("interp_dt_z_" + which_heavy + ".npy")
+        self.interp_dt_z = self.__load_interp(
+            "interp_dt_z_" + self.which_heavy + ".npy"
+        )
 
         self.interp_pt_logRho_x = self.interp_pt_x[0]
         self.interp_pt_logS_x = self.interp_pt_x[1]
@@ -274,9 +193,9 @@ class TinyPT(InterpolantsBuilder):
             logT = logT * np.ones_like(X)
             logP = logP * np.ones_like(X)
 
-        self.X_close = np.isclose(X, 1, atol=eps1)
-        self.Y_close = np.isclose(X, 1, atol=eps1)
-        self.Z_close = np.isclose(Z, 1, atol=eps1)
+        self.X_close = np.isclose(X, 1, atol=self.eps1)
+        self.Y_close = np.isclose(X, 1, atol=self.eps1)
+        self.Z_close = np.isclose(Z, 1, atol=self.eps1)
         self.input_shape = logT.shape
         self.input_ndim = len(self.input_shape)
         res = get_zeros(input_shape=self.input_shape)
@@ -360,7 +279,7 @@ class TinyPT(InterpolantsBuilder):
             if np.any(self.X_close) and self.include_hhe_interactions:
                 logRho_x = self.interp_pt_logRho_x(logT, logP, grid=False)
                 logRho_x_eff = self.interp_pt_logRho_x_eff(logT, logP, grid=False)
-                i = np.logical_and(tiny_val < X, tiny_val < Y)
+                i = np.logical_and(self.tiny_val < X, self.tiny_val < Y)
                 logRho_x[i] = logRho_x_eff[i]
                 logRho_y = self.interp_pt_logRho_y(logT, logP, grid=False)
                 logRho_z = self.interp_pt_logRho_z(logT, logP, grid=False)
@@ -637,21 +556,21 @@ class TinyPT(InterpolantsBuilder):
         if self.input_ndim > 0:
             shape = (3, 3) + logT.shape
             fac = np.zeros(shape)
-            iX = np.isclose(X, tiny_val, atol=eps1)
-            iY = np.isclose(Y, tiny_val, atol=eps1)
-            iZ = np.isclose(Z, tiny_val, atol=eps1)
+            iX = np.isclose(X, self.tiny_val, atol=self.eps1)
+            iY = np.isclose(Y, self.tiny_val, atol=self.eps1)
+            iZ = np.isclose(Z, self.tiny_val, atol=self.eps1)
             if np.any(iX) or np.any(iY) or np.any(iZ):
-                i = tiny_val < X
+                i = self.tiny_val < X
                 fac[0, 0, i] = X[i] / rho_x[i] / res_x[self.i_chiRho, i]
                 fac[0, 1, i] = -fac[0, 0, i] * res_x[self.i_chiT, i]
                 fac[0, 2, i] = X[i] / res_x[self.i_mu, i]
 
-                i = tiny_val < Y
+                i = self.tiny_val < Y
                 fac[1, 0, i] = Y[i] / rho_y[i] / res_y[self.i_chiRho, i]
                 fac[1, 1, i] = -fac[1, 0, i] * res_y[self.i_chiT, i]
                 fac[1, 2, i] = Y[i] / res_y[self.i_mu, i]
 
-                i = tiny_val < Z
+                i = self.tiny_val < Z
                 fac[2, 0, i] = Z[i] / rho_z[i] / res_z[self.i_chiRho, i]
                 fac[2, 1, i] = -fac[2, 0, i] * res_z[self.i_chiT, i]
                 fac[2, 2, i] = Z[i] / res_z[self.i_mu, i]
@@ -667,15 +586,15 @@ class TinyPT(InterpolantsBuilder):
                 fac[2, 2] = Z / res_z[self.i_mu]
         else:
             fac = np.zeros((3, 3))
-            if tiny_val < X:
+            if self.tiny_val < X:
                 fac[0, 0] = X / rho_x / res_x[self.i_chiRho]
                 fac[0, 1] = -fac[0, 0] * res_x[self.i_chiT]
                 fac[0, 2] = X / res_x[self.i_mu]
-            if tiny_val < Y:
+            if self.tiny_val < Y:
                 fac[1, 0] = Y / rho_y / res_y[self.i_chiRho]
                 fac[1, 1] = -fac[1, 0] * res_y[self.i_chiT]
                 fac[1, 2] = Y / res_y[self.i_mu]
-            if tiny_val < Z:
+            if self.tiny_val < Z:
                 fac[2, 0] = Z / rho_z / res_z[self.i_chiRho]
                 fac[2, 1] = -fac[2, 0] * res_z[self.i_chiT]
                 fac[2, 2] = Z / res_z[self.i_mu]
@@ -702,21 +621,21 @@ class TinyPT(InterpolantsBuilder):
         # Alternatively from Stellar Interiors pp. 176
         cp = P * chiT / (rho * T * chiRho * grad_ad)
         if self.input_ndim > 0:
-            i = gamma1 >= tiny_val
+            i = gamma1 >= self.tiny_val
             cv = np.zeros_like(logT)
             cv[i] = cp[i] * chiRho[i] / gamma1[i]
             cv[~i] = cp[~i]
             # Alternatively from Chabrier et al. (2019) eq. 5:
             # cv = cp - (P * chiT**2) / (rho * T * chiRho)
-            c_sound = tiny_val * np.ones_like(logT)
+            c_sound = self.tiny_val * np.ones_like(logT)
             c_sound[i] = np.sqrt(P[i] / rho[i] * gamma1[i])
         else:
-            if gamma1 >= tiny_val:
+            if gamma1 >= self.tiny_val:
                 cv = cp * chiRho / gamma1
                 c_sound = np.sqrt(P / rho * gamma1)
             else:
                 cv = cp
-                c_sound = tiny_val
+                c_sound = self.tiny_val
 
         # these are at constant density or temperature
         dS_dT = cv / T  # definition of specific heat

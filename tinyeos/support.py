@@ -4,7 +4,43 @@ from scipy.interpolate import UnivariateSpline
 from scipy.interpolate._interpnd import NDInterpolatorBase, _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
 
-from tinyeos.definitions import eos_num_vals, eps1, eps2, tiny_val
+from tinyeos.definitions import (
+    atomic_masses,
+    eos_num_vals,
+    eps1,
+    eps2,
+    i_chiRho,
+    i_chiT,
+    i_cp,
+    i_csound,
+    i_cv,
+    i_dE_dRho,
+    i_dS_dRho,
+    i_dS_dT,
+    i_eta,
+    i_gamma1,
+    i_gamma3,
+    i_grad_ad,
+    i_lfe,
+    i_logP,
+    i_logRho,
+    i_logS,
+    i_logT,
+    i_logU,
+    i_mu,
+    ionic_charges,
+    logP_max,
+    logP_min,
+    logP_min_extended,
+    logRho_max,
+    logRho_min,
+    logRho_min_extended,
+    logT_max,
+    logT_min,
+    logT_min_extended,
+    tiny_logRho,
+    tiny_val,
+)
 
 # constants (in cgs units)
 A_h = 1.0078  # atomic mass of hydrogen
@@ -124,6 +160,78 @@ class NearestND(NDInterpolatorBase):
         if callable(weights):
             return weights(dist)
 
+
+def set_eos_params(
+    eos: object, which_hhe: str, which_heavy: str, Z1: float, Z2: float, Z3: float
+) -> None:
+    """Sets the parameters of an equation of state class object.
+
+    Args:
+        eos (object): equation of state class object
+        to set the parameters for.
+    """
+
+    eos.logRho_max = logRho_max
+    eos.logRho_min = (
+        logRho_min if which_hhe != "scvh_extended" else logRho_min_extended
+    )
+    eos.logP_max = logP_max
+    eos.logP_min = logP_min if which_hhe != "scvh_extended" else logP_min_extended
+    eos.logT_max = logT_max
+    eos.logT_min = logT_min if which_hhe != "scvh_extended" else logT_min_extended
+    eos.i_logT = i_logT
+    eos.i_logRho = i_logRho
+    eos.i_logP = i_logP
+    eos.i_logS = i_logS
+    eos.i_logU = i_logU
+    eos.i_chiRho = i_chiRho
+    eos.i_chiT = i_chiT
+    eos.i_grad_ad = i_grad_ad
+    eos.i_cp = i_cp
+    eos.i_cv = i_cv
+    eos.i_gamma1 = i_gamma1
+    eos.i_gamma3 = i_gamma3
+    eos.i_dS_dT = i_dS_dT
+    eos.i_dS_dRho = i_dS_dRho
+    eos.i_dE_dRho = i_dE_dRho
+    eos.i_mu = i_mu
+    eos.i_eta = i_eta
+    eos.i_lfe = i_lfe
+    eos.i_csound = i_csound
+
+    # heavy-element atomic mass and ionic charge
+    if which_heavy == "mixture":
+        eos.which_heavy = (
+            f"h2o_{100 * Z1:02.0f}"
+            + f"_sio2_{100 * Z2:02.0f}"
+            + f"_fe_{100 * Z3:02.0f}"
+        )
+        eos.A = (
+            Z1 * atomic_masses["h2o"]
+            + Z2 * atomic_masses["sio2"]
+            + Z3 * atomic_masses["fe"]
+        )
+        eos.z = (
+            Z1 * ionic_charges["h2o"]
+            + Z2 * ionic_charges["sio2"]
+            + Z3 * ionic_charges["fe"]
+        )
+    else:
+        eos.A = atomic_masses[which_heavy]
+        eos.z = ionic_charges[which_heavy]
+
+    # limits for derivatives
+    eos.lower_grad_ad = 0.01
+    eos.lower_chiT = 0.01
+    eos.lower_chiRho = 0.01
+    eos.upper_grad_ad = 2.5
+    eos.upper_chiT = 2.5
+    eos.upper_chiRho = 2.5
+
+    # numerical tolerances
+    eos.eps1 = eps1
+    eos.tiny_val = tiny_val
+    eos.tiny_logRho = tiny_logRho
 
 def get_X(Z: ArrayLike) -> ArrayLike:
     """Calculates the hydrogen mass fraction given

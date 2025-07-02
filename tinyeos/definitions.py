@@ -26,12 +26,15 @@ ionic_charges = {
 # min/max temperatures are limited by SCvH and CMS
 logT_max = 6.00
 logT_min = 2.00
+logT_min_extended = 1.00
 # min/max pressures and densities are limited 
 # by the heavy element equations of state
 logP_max = 17.00
 logP_min = 1.00
+logP_min_extended = -6.00
 logRho_max = 2.00
 logRho_min = -8.00
+logRho_min_extended = -15.00 
 
 # tolerances and tiny values
 eps1 = 1e-6

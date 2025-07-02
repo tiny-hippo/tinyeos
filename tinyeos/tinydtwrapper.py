@@ -3,28 +3,7 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import root_scalar
 from scipy.optimize.elementwise import bracket_root, find_root
 
-from tinyeos.definitions import (
-    eos_num_vals,
-    i_chiRho,
-    i_chiT,
-    i_cp,
-    i_csound,
-    i_cv,
-    i_dE_dRho,
-    i_dS_dRho,
-    i_dS_dT,
-    i_eta,
-    i_gamma1,
-    i_gamma3,
-    i_grad_ad,
-    i_lfe,
-    i_logP,
-    i_logRho,
-    i_logS,
-    i_logT,
-    i_logU,
-    i_mu,
-)
+from tinyeos.support import set_eos_params
 from tinyeos.tinypteos import TinyPT
 
 
@@ -85,32 +64,10 @@ class TinyDTWrapper:
             build_interpolants=build_interpolants,
         )
 
-        self.logRho_max = self.tpt.logRho_max
-        self.logRho_min = self.tpt.logRho_min
-        self.logP_max = self.tpt.logP_max
-        self.logP_min = self.tpt.logP_min
-        self.logT_max = self.tpt.logT_max
-        self.logT_min = self.tpt.logT_min
-        self.eos_num_vals = eos_num_vals
-        self.i_logT = i_logT
-        self.i_logRho = i_logRho
-        self.i_logP = i_logP
-        self.i_logS = i_logS
-        self.i_logU = i_logU
-        self.i_chiRho = i_chiRho
-        self.i_chiT = i_chiT
-        self.i_grad_ad = i_grad_ad
-        self.i_cp = i_cp
-        self.i_cv = i_cv
-        self.i_gamma1 = i_gamma1
-        self.i_gamma3 = i_gamma3
-        self.i_dS_dT = i_dS_dT
-        self.i_dS_dRho = i_dS_dRho
-        self.i_dE_dRho = i_dE_dRho
-        self.i_mu = i_mu
-        self.i_eta = i_eta
-        self.i_lfe = i_lfe
-        self.i_csound = i_csound
+        set_eos_params(
+            eos=self, which_hhe=which_hhe, which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
+        )
+
 
     def __call__(
         self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
@@ -265,9 +222,9 @@ class TinyDTWrapper:
             if success:
                 res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
             else:
-                res[i_logT] = logT
-                res[i_logRho] = logRho
-                res[i_logRho + 1 :] = np.nan
+                res[self.i_logT] = logT
+                res[self.i_logRho] = logRho
+                res[self.i_logRho + 1 :] = np.nan
         else:
             if np.all(success):
                 res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
@@ -277,7 +234,7 @@ class TinyDTWrapper:
                 )
                 not_success = np.invert(success)
 
-                res[i_logT, not_success] = logT[not_success]
-                res[i_logRho, not_success] = logRho[not_success]
-                res[i_logRho + 1 :, not_success] = np.nan
+                res[self.i_logT, not_success] = logT[not_success]
+                res[self.i_logRho, not_success] = logRho[not_success]
+                res[self.i_logRho + 1 :, not_success] = np.nan
         return res
