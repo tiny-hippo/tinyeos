@@ -217,6 +217,7 @@ def set_eos_params(
             + Z3 * ionic_charges["fe"]
         )
     else:
+        eos.which_heavy = which_heavy
         eos.A = atomic_masses[which_heavy]
         eos.z = ionic_charges[which_heavy]
 
