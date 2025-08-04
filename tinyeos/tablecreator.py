@@ -28,8 +28,7 @@ from tinyeos.definitions import (
     i_mu,
 )
 from tinyeos.support import NearestND
-from tinyeos.tinydteos import TinyDT
-from tinyeos.tinydtwrapper import TinyDTWrapper
+from tinyeos.tinydteos import TinyDirectDT, TinyDT
 
 
 def createTablesDT(
@@ -263,7 +262,7 @@ class TableCreatorDT:
             debug (bool, optional): enable debugging mode for
                 additional output. Defaults to False.
         """
-        eos = TinyDTWrapper if use_pt_eos else TinyDT
+        eos = TinyDT if use_pt_eos else TinyDirectDT
         self.eos = eos(
             which_hhe=which_hhe,
             which_heavy=which_heavy,

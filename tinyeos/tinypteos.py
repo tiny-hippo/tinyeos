@@ -17,22 +17,65 @@ from tinyeos.support import (
 
 
 class TinyPT(InterpolantsBuilder):
-    """Temperature-pressure equation of state for a mixture of hydrogen,
-    helium and a heavy element. Units are cgs everywhere.
-
-    Equations of state implemented:
-        Hydrogen-Helium:
-            CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995),
-            SCvH extended version (R. Helled, priv. comm.).
-
-        Heavy element:
-            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
-            SiO2 (QEOS, More et al. 1988),
-            Fe (QEOS, More et al. 1998),
-            CO (QEOS, Podolak et al. 2022),
-            ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
     """
+    Equation of state for mixtures of hydrogen, helium, and heavy elements.
+    This class provides a high-level interface for calculating the equation of state
+    properties for mixtures of hydrogen, helium, and heavy elements.
+    
+    Parameters
+    ----------
+    which_hhe : str, optional
+        Hydrogen-helium tables to use. Options: "cms", "scvh", "scvh_extended".
+        Default: "cms".
+    which_heavy : str, optional
+        Heavy-element tables to use. Options: "h2o", "sesame_h2o", "aqua", "sio2",
+        "fe", "co", and "mixture". Default: "h2o".
+    Z1 : float, optional
+        Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+    Z2 : float, optional
+        Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+    Z3 : float, optional
+        Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
+    include_hhe_interactions : bool, optional
+        Whether to include hydrogen-helium interactions. Default: False.
+    use_smoothed_xy_tables : bool, optional
+        Use smoothed hydrogen and helium tables. Default: False.
+    use_smoothed_z_tables : bool, optional
+        Use smoothed heavy-element tables. Default: False.
+    build_interpolants : bool, optional
+        Build interpolants for EOS tables. Default: False.
+    
+    Raises
+    ------
+    NotImplementedError
+        Raised if which_heavy or which_hhe are invalid choices.
+    
+    Methods
+    -------
+    __call__(logT, logP, X, Z)
+        Convenience wrapper for "evaluate".
+    evaluate(logT, logRho, X, Z)
+        Calculates equation of state output for the mixture.
+        Returns an NDArray with equation of state quantities.
+    __prepare(logT, logP, X, Z)
+        Prepares and validates input arrays for evaluation.
+    __load_interp(filename)
+        Loads an interpolant from disk.
+    __check_pt(logT, logP)
+        Validates that logT and logP are within limits.
+    __ideal_mixture(logT, logP, X, Y, Z)
+        Computes the total density using the ideal mixing law.
+    __evaluate_x(logT, logP)
+        Computes equation of state output for hydrogen.
+    __evaluate_x_eff(logT, logP)
+        Computes equation of state output for
+        effective hydrogen (with H-He interactions).
+    __evaluate_y(logT, logP)
+        Computes equation of state output for helium.
+    __evaluate_z(logT, logP)
+        Computes equation of state output for the heavy element.
+    """
+
 
     def __init__(
         self,
@@ -51,18 +94,16 @@ class TinyPT(InterpolantsBuilder):
 
         Args:
             which_hhe (str, optional): hydrogen-helium equation of state
-                to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
-            which_heavy (str, optional): heavy-element equation of state
-                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
-                "fe" or "co". Defaults to "h2o".
-            Z1 (float, optional): mass-fraction of the first heavy element.
-                Defaults to 0.5
-            Z2 (float, optional): mass-fraction of the second heavy element.
-                Defaults to 0.5.
-            Z3 (float, optional): mass-fraction of the third heavy element.
-                Defaults to 0.0.
-            which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms", "scvh" or "scvh_extended".
+            which_heavy (str, optional): heavy-element equation of state
+                to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
+                "mixture", "fe" or "co".
+            Z1 : float, optional
+                Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+            Z2 : float, optional
+                Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+            Z3 : float, optional
+                Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed

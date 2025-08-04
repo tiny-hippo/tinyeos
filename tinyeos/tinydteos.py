@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import root_scalar
+from scipy.optimize.elementwise import bracket_root, find_root
 
 from tinyeos.definitions import heavy_elements
 from tinyeos.interpolantsbuilder import InterpolantsBuilder
@@ -18,23 +19,358 @@ from tinyeos.support import (
 from tinyeos.tinypteos import TinyPT
 
 
-class TinyDT(InterpolantsBuilder):
-    """Temperature-density equation of state for a mixture of hydrogen,
-    helium and a heavy element. Units are cgs everywhere.
-
-    Equations of state implemented:
-        Hydrogen-Helium:
-            CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995),
-            SCvH extended version (R. Helled, priv. comm.).
-
-        Heavy element:
-            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
-            SiO2 (QEOS, More et al. 1988),
-            Fe (QEOS, More et al. 1998),
-            CO (QEOS, Podolak et al. 2022),
-            ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
+class TinyDT:
     """
+    Equation of state for mixtures of hydrogen, helium, and heavy elements.
+    This class provides a high-level interface for calculating the equation of state
+    properties for mixtures of hydrogen, helium, and heavy elements. It wraps
+    the TinyPT equation of state and handles root-finding to match density and pressure.
+
+    Parameters
+    ----------
+    which_hhe : str, optional
+        Hydrogen-helium tables to use. Options: "cms", "scvh", "scvh_extended".
+        Default: "cms".
+    which_heavy : str, optional
+        Heavy-element tables to use. Options: "h2o", "sesame_h2o", "aqua", "sio2",
+        "fe", "co", and "mixture". Default: "h2o".
+    Z1 : float, optional
+        Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+    Z2 : float, optional
+        Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+    Z3 : float, optional
+        Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
+    include_hhe_interactions : bool, optional
+        Whether to include hydrogen-helium interactions. Default: False.
+    use_smoothed_xy_tables : bool, optional
+        Use smoothed hydrogen and helium tables. Default: False.
+    use_smoothed_z_tables : bool, optional
+        Use smoothed heavy-element tables. Default: False.
+    build_interpolants : bool, optional
+        Build interpolants for EOS tables. Default: False.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if which_heavy or which_hhe are invalid choices.
+
+    Methods
+    -------
+    __call__(logT, logRho, X, Z)
+        Convenience wrapper for "evaluate". Calculates equation of state output
+        for the mixture.
+    evaluate(logT, logRho, X, Z)
+        Calculates equation of state output for the mixture.
+        Returns an NDArray with equation of state quantities.
+    __helper(logP, logT, logRho, X, Y, Z)
+        Internal helper for root finding. Returns difference
+        between input and calculated density.
+    __root_finder(logT, logRho, X, Y, Z)
+        Finds the pressure corresponding to the input density using root-finding.
+    
+    Notes
+    -----
+    - The output NDArray indices are defined in definitions.py.
+    - If calculation fails, results are set to NaN.
+    """
+
+    def __init__(
+        self,
+        which_hhe: str = "cms",
+        which_heavy: str = "h2o",
+        Z1: float = 0.5,
+        Z2: float = 0.5,
+        Z3: float = 0.0,
+        include_hhe_interactions: bool = False,
+        use_smoothed_xy_tables: bool = False,
+        use_smoothed_z_tables: bool = False,
+        build_interpolants: bool = False,
+    ) -> None:
+        """__init__ method.
+
+        Defines parameters and either loads or builds the interpolants.
+
+        Args:
+        ----
+            which_hhe (str, optional): hydrogen-helium equation of state
+                to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
+            which_heavy : str, optional
+                Heavy-element tables to use. Options: "h2o", "sesame_h2o", "aqua", 
+                "sio2", "fe", "co", and "mixture". Default: "h2o".
+            Z1 : float, optional
+                Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+            Z2 : float, optional
+                Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+            Z3 : float, optional
+                Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
+            include_hhe_interactions (bool, optional): include
+                hydrogen-helium interactions. Defaults to False.
+            use_smoothed_xy_tables (bool, optional): use smoothed
+                hydrogen and helium tables. Defaults to False.
+            use_smoothed_z_tables (bool, optional): use smoothed
+                heavy-element tables. Defaults to False.
+            build_interpolants (bool, optional): build interpolants.
+                Defaults to False.
+
+        Raises:
+        ------
+            NotImplementedError: raised if which_heavy or which_hhe choices.
+
+        """
+        self.tpt = TinyPT(
+            which_hhe=which_hhe,
+            which_heavy=which_heavy,
+            Z1=Z1,
+            Z2=Z2,
+            Z3=Z3,
+            include_hhe_interactions=include_hhe_interactions,
+            use_smoothed_xy_tables=use_smoothed_xy_tables,
+            use_smoothed_z_tables=use_smoothed_z_tables,
+            build_interpolants=build_interpolants,
+        )
+
+        set_eos_params(
+            eos=self, which_hhe=which_hhe, which_heavy=which_heavy, Z1=Z1, Z2=Z2, Z3=Z3
+        )
+
+    def __call__(
+        self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
+        """__call__ method acting as convenience wrapper for the evaluate method.
+
+        Calculates the equation of state output for the mixture.
+        If the calculation fails the results are set to nans.
+
+        Args:
+        ----
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
+
+        Returns:
+        -------
+            NDArray: equation of state output. The indices of the
+                individual quantities are defined in definitions.py.
+
+        """
+        return self.evaluate(logT=logT, logRho=logRho, X=X, Z=Z)
+
+    def __helper(
+        self,
+        logP: ArrayLike,
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+    ) -> ArrayLike:
+        """Helper function for the root finding.
+
+        Calls the pressure-temperature equation of state and returns
+        the difference between the input and the calculated density.
+
+        Args:
+        ----
+            logP (ArrayLike): log10 of the pressure.
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Y (ArrayLike): helium mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
+
+        Returns:
+        -------
+            ArrayLike: difference of the input and calculated density.
+
+        """
+        logRho_iml = self.tpt._TinyPT__ideal_mixture(
+            logT=logT, logP=logP, X=X, Y=Y, Z=Z
+        )
+        return logRho - logRho_iml
+
+    def __root_finder(
+        self,
+        logT: ArrayLike,
+        logRho: ArrayLike,
+        X: ArrayLike,
+        Y: ArrayLike,
+        Z: ArrayLike,
+    ) -> tuple[bool, ArrayLike]:
+        """Root-finding function.
+
+        Uses the pressure-temperature equation of state
+        to find the pressure corresponding to the input density.
+
+        Args:
+        ----
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Y (ArrayLike): helium mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
+
+        Returns:
+        -------
+            tuple[bool, ArrayLike]: root-finding result.
+
+        """
+        if logT.ndim == 0:
+            f1 = self.__helper(
+                logP=self.tpt.logP_min, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
+            )
+            f2 = self.__helper(
+                logP=self.tpt.logP_max, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
+            )
+            if np.sign(f1) == np.sign(f2):
+                success = False
+                logP = np.nan
+            else:
+                sol = root_scalar(
+                    f=self.__helper,
+                    args=(logT, logRho, X, Y, Z),
+                    method="brentq",
+                    bracket=[self.tpt.logP_min, self.tpt.logP_max],
+                )
+                success = sol.converged
+                logP = sol.root
+        else:
+            logP = np.empty(shape=logT.shape)
+            logP.fill(np.nan)
+            res_bracket = bracket_root(
+                f=self.__helper,
+                xl0=self.logP_min,
+                xr0=self.logP_max,
+                xmin=self.logP_min,
+                xmax=self.logP_max,
+                args=(logT, logRho, X, Y, Z),
+            )
+            res_root = find_root(
+                self.__helper,
+                res_bracket.bracket,
+                args=(logT, logRho, X, Y, Z),
+            )
+            success = res_root.success
+            logP[success] = res_root.x[success]
+        return (success, logP)
+
+    def evaluate(
+        self, logT: ArrayLike, logRho: ArrayLike, X: ArrayLike, Z: ArrayLike
+    ) -> NDArray:
+        """Calculate the equation of state output for the mixture.
+
+        Calculates the equation of state output for the mixture.
+        If the calculation fails the results are set to nans.
+
+        Args:
+        ----
+            logT (ArrayLike): log10 of the temperature.
+            logRho (ArrayLike): log10 of the density.
+            X (ArrayLike): hydrogen mass fraction.
+            Z (ArrayLike): heavy-element mass fraction.
+
+        Returns:
+        -------
+            NDArray: equation of state output. The indices of the
+                individual quantities are defined in definitions.py.
+
+        """
+        dummy = 6 * np.ones_like(logT)
+        logT, _, X, Y, Z, res = self.tpt._TinyPT__prepare(
+            logT=logT, logP=dummy, X=X, Z=Z
+        )
+        if not isinstance(logRho, np.ndarray):
+            logRho = np.array(logRho, dtype=np.float64)
+        success, logP = self.__root_finder(logT=logT, logRho=logRho, X=X, Y=Y, Z=Z)
+        if logT.ndim == 0:
+            if success:
+                res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+            else:
+                res[self.i_logT] = logT
+                res[self.i_logRho] = logRho
+                res[self.i_logRho + 1 :] = np.nan
+        else:
+            if np.all(success):
+                res[...] = self.tpt.evaluate(logT=logT, logP=logP, X=X, Z=Z)
+            else:
+                res[:, success] = self.tpt.evaluate(
+                    logT=logT[success], logP=logP[success], X=X[success], Z=Z[success]
+                )
+                not_success = np.invert(success)
+
+                res[self.i_logT, not_success] = logT[not_success]
+                res[self.i_logRho, not_success] = logRho[not_success]
+                res[self.i_logRho + 1 :, not_success] = np.nan
+        return res
+
+
+class TinyDirectDT(InterpolantsBuilder):
+    """
+    Equation of state for mixtures of hydrogen, helium, and heavy elements.
+    Mixtures are calculated using the density-temperature tables.
+
+    Parameters
+    ----------
+    which_hhe : str, optional
+        Hydrogen-helium equation of state to use. Options: "cms", "scvh",
+        and "scvh_extended". Default is "cms".
+    which_heavy : str, optional
+        Heavy-element equation of state to use. Options: "h2o", "aqua", "sio2",
+        "fe", "co", and "mixture". Default is "h2o".
+    Z1 : float, optional
+        Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+    Z2 : float, optional
+        Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+    Z3 : float, optional
+        Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
+    include_hhe_interactions : bool, optional
+        Whether to include hydrogen-helium interactions. Default is False.
+    use_smoothed_xy_tables : bool, optional
+        Use smoothed hydrogen and helium tables. Default is False.
+    use_smoothed_z_tables : bool, optional
+        Use smoothed heavy-element tables. Default is False.
+    build_interpolants : bool, optional
+        Whether to build interpolants. Default is False.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if which_heavy or which_hhe are invalid choices.
+
+    Methods
+    -------
+    __call__(logT, logRho, X, Z)
+        Convenience wrapper for `evaluate`. Returns equation of state output
+        for the mixture.
+    __prepare(logT, logRho, X, Z)
+        Prepares and formats input arrays for equation of state calculations.
+    __load_interp(filename)
+        Loads interpolant data from disk.
+    __check_dt(logT, logRho)
+        Checks that temperature and density inputs are within equation of state limits.
+    __ideal_mixture(logT, logRho, X, Y, Z)
+        Calculates individual densities and pressure for the mixture
+        using the ideal mixing law.
+    __ideal_mixing_law_wrapper(logP, logT, logRho, X, Y, Z)
+        Helper for root finding in the ideal mixing law.
+    __evaluate_x(logT, logRho)
+        Calculates equation of state output for hydrogen.
+    __evaluate_x_eff(logT, logRho)
+        Calculates equation of state output for effective hydrogen (with interactions).
+    __evaluate_y(logT, logRho)
+        Calculates equation of state output for helium.
+    __evaluate_z(logT, logRho)
+        Calculates equation of state output for the heavy element.
+    evaluate(logT, logRho, X, Z, verbose=False)
+        Calculates the equation of state output for the mixture,
+        supporting only scalar inputs at this time.
+
+    Notes
+    -----
+    - The indices of the output quantities are defined in the class.
+    - If root finding fails, output is filled with NaNs.
+    """
+
 
     def __init__(
         self,
@@ -57,12 +393,12 @@ class TinyDT(InterpolantsBuilder):
             which_heavy (str, optional): heavy-element equation of state
                 to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
                 "mixture", "fe" or "co".
-            Z1 (float, optional): mass-fraction of the first heavy element.
-                Defaults to 0.5
-            Z2 (float, optional): mass-fraction of the second heavy element.
-                Defaults to 0.5.
-            Z3 (float, optional): mass-fraction of the third heavy element.
-                Defaults to 0.
+            Z1 : float, optional
+                Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
+            Z2 : float, optional
+                Mass fraction of SiO2 in the heavy-element mixture. Default: 0.5.
+            Z3 : float, optional
+                Mass fraction of Fe in the heavy-element mixture. Default: 0.0.
             include_hhe_interactions (bool, optional): include
                 hydrogen-helium interactions. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed
