@@ -8,7 +8,7 @@ Download or clone this repository, navigate into the directory and execute
 pip install .
 ```
 
-Note that the package requires numpy, scipy, fortranformat and scikit-learn.
+Note that the package requires numpy, scipy, fortranformat.
 
 ### Basic usage
 ```python
