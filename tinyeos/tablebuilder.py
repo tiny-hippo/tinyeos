@@ -180,7 +180,7 @@ def build_mesa_tables(
         debug=debug,
     )
 
-    num_tables, Xs, Zs = table_builder.set_parameters(
+    num_tables, Xs, Zs = table_builder.set_params(
         del_logT=del_logT,
         del_logQ=del_logQ,
         logT_min=logT_min,
@@ -404,7 +404,7 @@ class TableBuilder:
             "(f4.2,3(f10.5),7(1pe13.5),1(0pf9.5),4(0pf10.5),1(0pf11.5))"
         )
 
-    def set_parameters(
+    def set_params(
         self,
         del_logT: float,
         del_logQ: float,
