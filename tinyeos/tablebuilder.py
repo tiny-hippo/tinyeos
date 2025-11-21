@@ -49,6 +49,8 @@ def build_mesa_tables(
     Z1: float = 0.5,
     Z2: float = 0.5,
     Z3: float = 0.0,
+    use_pt_eos: bool = False,
+    include_hhe_interactions: bool = False,
     set_custom_eos_boundaries: bool = False,
     logT_min_eos: float = 2.0,
     logT_max_eos: float = 6.0,
@@ -56,8 +58,6 @@ def build_mesa_tables(
     logRho_max_eos: float = 2.0,
     logP_min_eos: float = 1.0,
     logP_max_eos: float = 17.0,
-    include_hhe_interactions: bool = False,
-    use_pt_eos: bool = False,
     use_smoothed_xy_tables: bool = False,
     use_smoothed_z_tables: bool = False,
     build_interpolants: bool = False,
@@ -105,6 +105,10 @@ def build_mesa_tables(
             Defaults to 0.5.
         Z3 (float, optional): mass-fraction of the third heavy element.
             Defaults to 0.0.
+        use_pt_eos (bool, optional): use the pressure-temperature
+            equation of state as the basis. Defaults to False.
+        include_hhe_interactions (bool, optional): include
+            hydrogen-helium interactions. Defaults to False.
         set_custom_eos_boundaries (bool, optional): set custom
             equation of state boundaries. Defaults to False.
         logT_min_eos (float, optional): minimum logT
@@ -119,10 +123,6 @@ def build_mesa_tables(
             for the equation of state. Defaults to 1.0.
         logP_max_eos (float, optional): maximum logP
             for the equation of state. Defaults to 17.0.
-        include_hhe_interactions (bool, optional): include
-            hydrogen-helium interactions. Defaults to False.
-        use_pt_eos (bool, optional): use the pressure-temperature
-            equation of state as the basis. Defaults to False.
         use_smoothed_xy_tables (bool, optional): use smoothed
             hydrogen and helium tables. Defaults to False.
         use_smoothed_z_tables (bool, optional): use smoothed
@@ -155,6 +155,8 @@ def build_mesa_tables(
         Z1=Z1,
         Z2=Z2,
         Z3=Z3,
+        use_pt_eos=use_pt_eos,
+        include_hhe_interactions=include_hhe_interactions,
         set_custom_eos_boundaries=set_custom_eos_boundaries,
         logT_min_eos=logT_min_eos,
         logT_max_eos=logT_max_eos,
@@ -162,8 +164,6 @@ def build_mesa_tables(
         logRho_max_eos=logRho_max_eos,
         logP_min_eos=logP_min_eos,
         logP_max_eos=logP_max_eos,
-        include_hhe_interactions=include_hhe_interactions,
-        use_pt_eos=use_pt_eos,
         use_smoothed_xy_tables=use_smoothed_xy_tables,
         use_smoothed_z_tables=use_smoothed_z_tables,
         build_interpolants=build_interpolants,
@@ -242,6 +242,8 @@ class TableBuilder:
         Z1: float = 0.5,
         Z2: float = 0.5,
         Z3: float = 0.0,
+        use_pt_eos: bool = False,
+        include_hhe_interactions: bool = False,
         set_custom_eos_boundaries: bool = False,
         logT_min_eos: float = 2.0,
         logT_max_eos: float = 6.0,
@@ -249,8 +251,6 @@ class TableBuilder:
         logRho_max_eos: float = 2.0,
         logP_min_eos: float = 1.0,
         logP_max_eos: float = 17.0,
-        include_hhe_interactions: bool = False,
-        use_pt_eos: bool = False,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
         build_interpolants: bool = False,
@@ -274,6 +274,10 @@ class TableBuilder:
                 Defaults to 0.5.
             Z3 (float, optional): mass-fraction of the third heavy element.
                 Defaults to 0.0.
+            use_pt_eos (bool, optional): use the pressure-temperature
+                equation of state as the basis. Defaults to False.
+            include_hhe_interactions (bool, optional): include
+                hydrogen-helium interactions. Defaults to False.
             set_custom_eos_boundaries (bool, optional): set custom
                 equation of state boundaries. Defaults to False.
             logT_min_eos (float, optional): minimum logT
@@ -288,10 +292,6 @@ class TableBuilder:
                 for the equation of state. Defaults to 1.0.
             logP_max_eos (float, optional): maximum logP
                 for the equation of state. Defaults to 17.0.
-            include_hhe_interactions (bool, optional): include
-                hydrogen-helium interactions. Defaults to False
-            use_pt_eos (bool, optional): use the pressure-temperature
-                equation of state as the basis. Defaults to False.
             use_smoothed_xy_tables (bool, optional): use smoothed
                 hydrogen and helium tables. Defaults to False.
             use_smoothed_z_tables (bool, optional): use smoothed
