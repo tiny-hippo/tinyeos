@@ -333,12 +333,21 @@ class TableBuilder:
         )
 
         if set_custom_eos_boundaries:
-            self.eos.logT_min = logT_min_eos
-            self.eos.logT_max = logT_max_eos
-            self.eos.logP_min = logP_min_eos
-            self.eos.logP_max = logP_max_eos
-            self.eos.logRho_min = logRho_min_eos
-            self.eos.logRho_max = logRho_max_eos
+            if use_pt_eos:
+                self.eos.tpt.logT_min = logT_min_eos
+                self.eos.tpt.logT_max = logT_max_eos
+                self.eos.tpt.logP_min = logP_min_eos
+                self.eos.tpt.logP_max = logP_max_eos
+                self.eos.tpt.logRho_min = logRho_min_eos
+                self.eos.tpt.logRho_max = logRho_max_eos
+
+            else:
+                self.eos.logT_min = logT_min_eos
+                self.eos.logT_max = logT_max_eos
+                self.eos.logP_min = logP_min_eos
+                self.eos.logP_max = logP_max_eos
+                self.eos.logRho_min = logRho_min_eos
+                self.eos.logRho_max = logRho_max_eos
 
         self.fix_bad_values = fix_bad_values
         self.do_simple_smoothing = do_simple_smoothing
