@@ -459,7 +459,10 @@ class TableBuilder:
             self.Xs = np.array([1, 0, 0])
             self.Zs = np.array([0, 0, 1])
         else:
-            Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
+            if min_Z == max_Z or del_Z == 0: 
+                Zs = np.array([min_Z])
+            else:
+                Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
             Xs = [np.arange(0, (1 - Z) + del_X, del_X) for Z in Zs]
             Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
             self.Xs = np.concatenate(Xs)
