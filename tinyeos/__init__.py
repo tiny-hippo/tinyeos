@@ -1,6 +1,5 @@
-from tinyeos.tinydteos import TinyDirectDT, TinyDT
+from tinyeos.tinydteos import TinyDT
 from tinyeos.tinykap import TinyOpacity
 from tinyeos.tinypteos import TinyPT
-from tinyeos.tinyptmixture import TinyPTMixture
 
-__all__ = ["TinyDT", "TinyDirectDT", "TinyOpacity", "TinyPT", "TinyPTMixture"]
+__all__ = ["TinyDT", "TinyOpacity", "TinyPT"]
