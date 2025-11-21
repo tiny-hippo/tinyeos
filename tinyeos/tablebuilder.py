@@ -31,7 +31,7 @@ from tinyeos.support import NearestND
 from tinyeos.tinydteos import TinyDirectDT, TinyDT
 
 
-def createTablesDT(
+def build_mesa_tables(
     del_logT: float = 0.02,
     del_logQ: float = 0.05,
     logT_min: float = 2.00,
@@ -128,7 +128,7 @@ def createTablesDT(
         ArrayLike: equation of state tables.
     """
 
-    TC = TableCreatorDT(
+    table_builder = TableBuilder(
         which_hhe=which_hhe,
         which_heavy=which_heavy,
         Z1=Z1,
@@ -146,7 +146,7 @@ def createTablesDT(
         debug=debug,
     )
 
-    num_tables, Xs, Zs = TC.set_parameters(
+    num_tables, Xs, Zs = table_builder.set_parameters(
         del_logT=del_logT,
         del_logQ=del_logQ,
         logT_min=logT_min,
@@ -159,12 +159,12 @@ def createTablesDT(
         output_path=output_path,
         do_only_pure=do_only_pure,
     )
-    num_logQs = TC.num_logQs
-    num_logTs = TC.num_logTs
-    num_vals = TC.eos_num_vals
+    num_logQs = table_builder.num_logQs
+    num_logTs = table_builder.num_logTs
+    num_vals = table_builder.eos_num_vals
 
     def parallelWrapper(X: float, Z: float) -> NDArray:
-        return TC.create_tables(X, Z)
+        return table_builder.build_tables(X, Z)
 
     if do_only_single:
         X = 0.5
@@ -202,7 +202,7 @@ def createTablesDT(
     return comp_info, results
 
 
-class TableCreatorDT:
+class TableBuilder:
     """Creates density-temperature tables for use with the stellar evolution
     code MESA.
     """
@@ -391,7 +391,7 @@ class TableCreatorDT:
         self.num_tables = len(self.Xs)
         return (self.num_tables, self.Xs, self.Zs)
 
-    def create_tables(
+    def build_tables(
         self,
         X: float,
         Z: float,
