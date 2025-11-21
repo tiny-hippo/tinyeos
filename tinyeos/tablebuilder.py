@@ -40,6 +40,8 @@ def build_mesa_tables(
     logQ_max: float = 6.00,
     del_X: float = 0.10,
     del_Z: float = 0.10,
+    min_Z: float = 0.0,
+    max_Z: float = 1.0,
     fname_prefix: str = "custom-eosDT",
     output_path: str = "tables",
     do_only_pure: bool = False,
@@ -89,6 +91,10 @@ def build_mesa_tables(
             Defaults to 0.10.
         del_Z (float, optional): step-size for heavy-elements.
             Defaults to 0.10.
+        min_Z (float, optional): minimum heavy-element mass-fraction.
+            Defaults to 0.0.
+        max_Z (float, optional): maximum heavy-element mass-fraction.
+            Defaults to 1.0.
         fname_prefix (str, optional): table prefix.
             Defaults to "cms_qeos-eosDT".
         do_only_pure (bool, optional): only create tables of
@@ -183,6 +189,8 @@ def build_mesa_tables(
         logQ_max=logQ_max,
         del_X=del_X,
         del_Z=del_Z,
+        min_Z=min_Z,
+        max_Z=max_Z,
         fname_prefix=fname_prefix,
         output_path=output_path,
         do_only_pure=do_only_pure,
@@ -397,6 +405,8 @@ class TableBuilder:
         logQ_max: float,
         del_X: float,
         del_Z: float,
+        min_Z: float,
+        max_Z: float,
         fname_prefix: str,
         output_path: str,
         do_only_pure: bool = False,
@@ -440,7 +450,7 @@ class TableBuilder:
             self.Xs = np.array([1, 0, 0])
             self.Zs = np.array([0, 0, 1])
         else:
-            Zs = np.arange(0, 1 + del_Z, del_Z)
+            Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
             Xs = [np.arange(0, (1 - Z) + del_X, del_X) for Z in Zs]
             Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
             self.Xs = np.concatenate(Xs)
