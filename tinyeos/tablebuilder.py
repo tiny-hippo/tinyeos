@@ -468,10 +468,14 @@ class TableBuilder:
                 Zs = np.array([min_Z])
             else:
                 Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
+        if max_Z > 0 and max_Z < 0.1:
+            Xs = [np.arange(0, (1 - Z), del_X) for Z in Zs]
+            Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
+        else:
             Xs = [np.arange(0, (1 - Z) + del_X, del_X) for Z in Zs]
             Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
-            self.Xs = np.concatenate(Xs)
-            self.Zs = np.concatenate(Zs)
+        self.Xs = np.concatenate(Xs)
+        self.Zs = np.concatenate(Zs)
         self.num_tables = len(self.Xs)
         return (self.num_tables, self.Xs, self.Zs)
 
