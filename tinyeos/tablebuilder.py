@@ -51,6 +51,7 @@ def build_mesa_tables(
     Z1: float = 0.5,
     Z2: float = 0.5,
     Z3: float = 0.0,
+    use_helium_for_heavy_elements: bool = False,
     use_pt_eos: bool = True,
     include_hhe_interactions: bool = True,
     set_custom_eos_boundaries: bool = False,
@@ -111,6 +112,8 @@ def build_mesa_tables(
             Defaults to 0.5.
         Z3 (float, optional): mass-fraction of the third heavy element.
             Defaults to 0.0.
+        use_helium_for_heavy_elements (bool, optional): use helium
+            in place of heavy-elements. Defaults to False.
         use_pt_eos (bool, optional): use the pressure-temperature
             equation of state as the basis. Defaults to False.
         include_hhe_interactions (bool, optional): include
@@ -200,7 +203,9 @@ def build_mesa_tables(
     num_vals = table_builder.eos_num_vals
 
     def parallelWrapper(X: float, Z: float) -> NDArray:
-        return table_builder.build_tables(X, Z)
+        return table_builder.build_tables(
+            X=X, Z=Z, use_helium_for_heavy_elements=use_helium_for_heavy_elements
+        )
 
     if do_only_single:
         X = 0.5
@@ -459,7 +464,7 @@ class TableBuilder:
             self.Xs = np.array([1, 0, 0])
             self.Zs = np.array([0, 0, 1])
         else:
-            if min_Z == max_Z or del_Z == 0: 
+            if min_Z == max_Z or del_Z == 0:
                 Zs = np.array([min_Z])
             else:
                 Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
@@ -474,6 +479,7 @@ class TableBuilder:
         self,
         X: float,
         Z: float,
+        use_helium_for_heavy_elements: bool = False,
     ) -> NDArray:
         """Wrapper function for __make_eos_files.
         Calculates the equation of state table for a mixture of
@@ -482,11 +488,13 @@ class TableBuilder:
         Args:
             X (float): hydrogen mass fraction.
             Z (float): heavy-element mass fraction.
+            use_helium_for_heavy_elements (bool, optional): use helium
+                in place of heavy-elements. Defaults to False.
 
         Returns:
             ArrayLike: equation of state tables.
         """
-        return self.__make_eos_files(X, Z)
+        return self.__make_eos_files(X, Z, use_helium_for_heavy_elements)
 
     def __smooth_table(self, table: NDArray) -> NDArray:
         """Smoothes the equation of state tables by taking
@@ -519,13 +527,17 @@ class TableBuilder:
                 ) / 5
         return out_table
 
-    def __make_eos_files(self, X: float, Z: float) -> NDArray:
+    def __make_eos_files(
+        self, X: float, Z: float, use_helium_for_heavy_elements: bool = False
+    ) -> NDArray:
         """Calculates the equation of state table for a mixture of
         hydrogen, helium and a heavy-element.
 
         Args:
             X (float): hydrogen mass-fraction.
             Z (float): heavy-element mass-fraction.
+            use_helium_for_heavy_elements (bool, optional): use helium
+                in place of heavy-elements. Defaults to False.
 
         Returns:
             NDArray: equation of state table.
@@ -533,6 +545,13 @@ class TableBuilder:
         assert X + Z <= 1
         X = np.round(X, 2)
         Z = np.round(Z, 2)
+
+        if use_helium_for_heavy_elements:
+            X_for_eos = X - Z
+            Z_for_eos = 0
+        else:
+            X_for_eos = X
+            Z_for_eos = Z
 
         # placeholders
         version_number = 11
@@ -570,7 +589,9 @@ class TableBuilder:
                 # logRho boundaries
                 logRho = np.max([self.eos.logRho_min, logQ + 2 * logT - 12])
                 logRho = np.min([logRho, self.eos.logRho_max])
-                res = self.eos.evaluate(logT=logT, logRho=logRho, X=X, Z=Z)
+                res = self.eos.evaluate(
+                    logT=logT, logRho=logRho, X=X_for_eos, Z=Z_for_eos
+                )
                 if (
                     np.any(np.isnan(res))
                     or np.any(np.isinf(res))
