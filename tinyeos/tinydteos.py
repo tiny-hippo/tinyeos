@@ -217,10 +217,10 @@ class TinyDT:
         """
         if logT.ndim == 0:
             f1 = self.__helper(
-                logP=self.tpt.logP_min, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
+                logP=self.logP_min, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
             )
             f2 = self.__helper(
-                logP=self.tpt.logP_max, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
+                logP=self.logP_max, logT=logT, logRho=logRho, X=X, Y=Y, Z=Z
             )
             if np.sign(f1) == np.sign(f2):
                 success = False
