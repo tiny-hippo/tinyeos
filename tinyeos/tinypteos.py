@@ -552,8 +552,8 @@ class TinyPT(InterpolantsBuilder):
                 log_entropy,
                 copy=False,
                 nan=np.nan,
-                posinf=self.upper_logS,
-                neginf=self.lower_logS,
+                posinf=self.logS_max,
+                neginf=self.logS_min,
         )
 
         S_x = 10**logS_x
@@ -562,7 +562,7 @@ class TinyPT(InterpolantsBuilder):
         S = X * S_x + Y * S_y + Z * S_z
         S = S + get_mixing_entropy(Y=Y, Z=Z, A_z=self.A)
         logS = np.log10(S)
-        logS = np.clip(logS, a_min=self.lower_logS, a_max=self.upper_logS)
+        logS = np.clip(logS, a_min=self.logS_min, a_max=self.logS_max)
 
         logU_x = res_x[self.i_logU]
         logU_y = res_y[self.i_logU]
@@ -570,9 +570,9 @@ class TinyPT(InterpolantsBuilder):
         U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
         logU = np.log10(U)
         logU = np.nan_to_num(
-            logU, nan=np.nan, posinf=self.upper_logU, neginf=self.lower_logU
+            logU, nan=np.nan, posinf=self.logU_max, neginf=self.logU_min
         )
-        logU = np.clip(logU, a_min=self.lower_logU, a_max=self.upper_logU)
+        logU = np.clip(logU, a_min=self.logU_min, a_max=self.logU_max)
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
             dlS_dlT_P_x = self.interp_pt_logS_x(logT, logP, dx=1, **self.kwargs)
@@ -662,12 +662,12 @@ class TinyPT(InterpolantsBuilder):
         check_grad_ad = np.isnan(grad_ad)
         if np.any(check_grad_ad):
             if self.input_ndim > 0:
-                grad_ad[check_grad_ad] = self.lower_grad_ad
+                grad_ad[check_grad_ad] = self.grad_ad_min
             else:
-                grad_ad = self.lower_grad_ad
-        grad_ad = np.clip(a=grad_ad, a_min=self.lower_grad_ad, a_max=self.upper_grad_ad)
-        chiRho = np.clip(a=chiRho, a_min=self.lower_chiRho, a_max=self.upper_chiRho)
-        chiT = np.clip(a=chiT, a_min=self.lower_chiT, a_max=self.upper_chiT)
+                grad_ad = self.grad_ad_min
+        grad_ad = np.clip(a=grad_ad, a_min=self.grad_ad_min, a_max=self.grad_ad_max)
+        chiRho = np.clip(a=chiRho, a_min=self.chiRho_min, a_max=self.chiRho_max)
+        chiT = np.clip(a=chiT, a_min=self.chiT_min, a_max=self.chiT_max)
         gamma3 = 1 - (grad_ad / chiRho)
         gamma1 = chiT * (gamma3 - 1) + chiRho
 
