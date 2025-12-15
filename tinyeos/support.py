@@ -222,12 +222,12 @@ def set_eos_params(
         eos.z = ionic_charges[which_heavy]
 
     # limits for derivatives
-    eos.lower_grad_ad = 0.01
-    eos.lower_chiT = 0.01
-    eos.lower_chiRho = 0.01
-    eos.upper_grad_ad = 2.5
-    eos.upper_chiT = 2.5
-    eos.upper_chiRho = 2.5
+    eos.lower_grad_ad = 0.1
+    eos.lower_chiT = 0.1
+    eos.lower_chiRho = 0.1
+    eos.upper_grad_ad = 0.5
+    eos.upper_chiT = 2.0
+    eos.upper_chiRho = 2.0
 
     # numerical tolerances
     eos.eps1 = eps1
