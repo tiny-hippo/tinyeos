@@ -548,9 +548,8 @@ class TinyPT(InterpolantsBuilder):
         logS_y = res_y[self.i_logS]
         logS_z = res_z[self.i_logS]
         for log_entropy in [logS_x, logS_y, logS_z]:
-            np.nan_to_num(
+            log_entropy = np.nan_to_num(
                 log_entropy,
-                copy=False,
                 nan=np.nan,
                 posinf=self.logS_max,
                 neginf=self.logS_min,

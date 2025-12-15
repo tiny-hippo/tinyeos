@@ -523,9 +523,8 @@ class TinyPTMixture:
         logRho = -np.log10(rho_inv)
         
         for log_entropy in [logS_x, logS_y, logS_z1, logS_z2, logS_z3]:
-                np.nan_to_num(
+                log_entropy = np.nan_to_num(
                     log_entropy,
-                    copy=False,
                     nan=np.nan,
                     posinf=self.logS_max,
                     neginf=self.logS_min,
