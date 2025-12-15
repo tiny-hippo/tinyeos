@@ -655,8 +655,13 @@ class TinyPT(InterpolantsBuilder):
         grad_ad = np.clip(a=grad_ad, a_min=self.lower_grad_ad, a_max=self.upper_grad_ad)
         chiRho = np.clip(a=chiRho, a_min=self.lower_chiRho, a_max=self.upper_chiRho)
         chiT = np.clip(a=chiT, a_min=self.lower_chiT, a_max=self.upper_chiT)
-        gamma1 = chiRho / (1 - chiT * grad_ad)
-        gamma3 = 1 + gamma1 * grad_ad
+        gamma3 = 1 - (grad_ad / chiRho)
+        gamma1 = chiT * (gamma3 - 1) + chiRho
+
+        # alternative expressions:
+        # gamma1 = chiRho / (1 - chiT * grad_ad)
+        # gamma3 = 1 + gamma1 * grad_ad
+        
         # from the definition of the specific heat
         # cp = S * dlS_dlT_P
         # Alternatively from Stellar Interiors pp. 176
