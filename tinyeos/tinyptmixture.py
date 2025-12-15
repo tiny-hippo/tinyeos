@@ -521,7 +521,15 @@ class TinyPTMixture:
 
         rho_inv = X / rho_x + Y / rho_y + Z1 / rho_z1 + Z2 / rho_z2 + Z3 / rho_z3
         logRho = -np.log10(rho_inv)
-
+        
+        for log_entropy in [logS_x, logS_y, logS_z1, logS_z2, logS_z3]:
+                np.nan_to_num(
+                    log_entropy,
+                    copy=False,
+                    nan=np.nan,
+                    posinf=self.upper_logS,
+                    neginf=self.lower_logS,
+            )
         S_x = 10**logS_x
         S_y = 10**logS_y
         S_z1 = 10**logS_z1
@@ -534,6 +542,7 @@ class TinyPTMixture:
         ) / Z_tot  # mean atomic weight of the three heavy elements
         S = S + get_mixing_entropy(Y=Y, Z=Z_tot, A_z=A_z_mean)
         logS = np.log10(S)
+        logS = np.clip(logS, a_min=self.lower_logS, a_max=self.upper_logS)
 
         dlS_dlP = (
             X * S_x * dlS_dlP_x

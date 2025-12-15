@@ -221,6 +221,12 @@ def set_eos_params(
         eos.A = atomic_masses[which_heavy]
         eos.z = ionic_charges[which_heavy]
 
+    # limits for equation of state values
+    eos.lower_logS = 1
+    eos.upper_logS = 16
+    eos.lower_logU = 9
+    eos.upper_logU = 18
+
     # limits for derivatives
     eos.lower_grad_ad = 0.1
     eos.lower_chiT = 0.1

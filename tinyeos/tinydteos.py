@@ -976,18 +976,32 @@ class TinyDirectDT(InterpolantsBuilder):
         logS_x = res_x[self.i_logS]
         logS_y = res_y[self.i_logS]
         logS_z = res_z[self.i_logS]
+        for log_entropy in [logS_x, logS_y, logS_z]:
+            np.nan_to_num(
+                log_entropy,
+                copy=False,
+                nan=np.nan,
+                posinf=self.upper_logS,
+                neginf=self.lower_logS,
+        )
+  
         S_x = 10**logS_x
         S_y = 10**logS_y
         S_z = 10**logS_z
         S = X * S_x + Y * S_y + Z * S_z
         S = S + get_mixing_entropy(Y=Y, Z=Z, A_z=self.A)
         logS = np.log10(S)
+        logS = np.clip(logS, a_min=self.lower_logS, a_max=self.upper_logS)
 
         logU_x = res_x[self.i_logU]
         logU_y = res_y[self.i_logU]
         logU_z = res_z[self.i_logU]
         U = X * (10**logU_x) + Y * (10**logU_y) + Z * (10**logU_z)
         logU = np.log10(U)
+        logU = np.nan_to_num(
+            logU, nan=np.nan, posinf=self.upper_logU, neginf=self.lower_logU
+        )
+        logU = np.clip(logU, a_min=self.lower_logU, a_max=self.upper_logU)
 
         if np.all(self.X_close) or not self.include_hhe_interactions:
             dlS_dlT_P_x = self.interp_pt_logS_x(logT, logP, dx=1, **self.kwargs)
