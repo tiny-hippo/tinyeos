@@ -1112,7 +1112,7 @@ class TinyDirectDT(InterpolantsBuilder):
         # alternative expressions:
         # gamma1 = chiRho / (1 - chiT * grad_ad)
         # gamma3 = 1 + gamma1 * grad_ad
-        
+
         # from the definition of the specific heat
         # cp = S * dlS_dlT_P
         # Alternatively from Stellar Interiors pp. 176
