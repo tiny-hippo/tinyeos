@@ -522,13 +522,36 @@ class TinyPTMixture:
         rho_inv = X / rho_x + Y / rho_y + Z1 / rho_z1 + Z2 / rho_z2 + Z3 / rho_z3
         logRho = -np.log10(rho_inv)
         
-        for log_entropy in [logS_x, logS_y, logS_z1, logS_z2, logS_z3]:
-                log_entropy = np.nan_to_num(
-                    log_entropy,
-                    nan=np.nan,
-                    posinf=self.logS_max,
-                    neginf=self.logS_min,
-            )
+        logS_x = np.nan_to_num(
+            logS_x,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_y = np.nan_to_num(
+            logS_y,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z1 = np.nan_to_num(
+            logS_z1,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z2 = np.nan_to_num(
+            logS_z2,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z3 = np.nan_to_num(
+            logS_z3,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
         S_x = 10**logS_x
         S_y = 10**logS_y
         S_z1 = 10**logS_z1

@@ -976,14 +976,24 @@ class TinyDirectDT(InterpolantsBuilder):
         logS_x = res_x[self.i_logS]
         logS_y = res_y[self.i_logS]
         logS_z = res_z[self.i_logS]
-        for log_entropy in [logS_x, logS_y, logS_z]:
-            log_entropy = np.nan_to_num(
-                log_entropy,
-                nan=np.nan,
-                posinf=self.logS_max,
-                neginf=self.logS_min,
+        logS_x = np.nan_to_num(
+            logS_x,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
         )
-  
+        logS_y = np.nan_to_num(
+            logS_y,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z = np.nan_to_num(
+            logS_z,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
         S_x = 10**logS_x
         S_y = 10**logS_y
         S_z = 10**logS_z
