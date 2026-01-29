@@ -86,12 +86,12 @@ class TinyPTMixture:
         self.kwargs = {"grid": False}
 
         # limits for derivatives
-        self.grad_ad_min = 0.01
-        self.chiT_min = 0.01
-        self.chiRho_min = 0.01
-        self.grad_ad_max = 2.5
-        self.chiT_max = 2.5
-        self.chiRho_max = 2.5
+        self.grad_ad_min = 0.1
+        self.chiT_min = 0.1
+        self.chiRho_min = 0.1
+        self.grad_ad_max = 0.5
+        self.chiT_max = 2.0
+        self.chiRho_max = 2.0
 
         # atomic weights
         self.A1 = atomic_masses[which_z1]
