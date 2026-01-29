@@ -10,7 +10,7 @@ from tinyeos.definitions import (
     logT_min,
     tiny_val,
 )
-from tinyeos.support import get_mixing_entropy, get_zeros
+from tinyeos.support import get_mixing_entropy, get_zeros, set_eos_params
 from tinyeos.tinypteos import TinyPT
 
 
@@ -64,13 +64,9 @@ class TinyPTMixture:
             limit_bad_values (bool, optional): whether to limit bad equation
                 of state results. Defaults to False.
         """
-        self.logP_max = logP_max
-        self.logP_min = logP_min
-        self.logT_max = logT_max
-        self.logT_min = logT_min
-        if which_xy == "scvh_extended":
-            self.logP_min = -6.00
-            self.logT_min = 1.10
+        set_eos_params(
+            self, which_hhe=which_xy, which_heavy="mixture", Z1=0, Z2=0, Z3=0
+        )
 
         self.num_vals_for_evaluate = 7
         self.num_vals_for_return = 6
@@ -84,14 +80,6 @@ class TinyPTMixture:
         self.include_hhe_interactions = include_hhe_interactions
         self.limit_bad_values = limit_bad_values
         self.kwargs = {"grid": False}
-
-        # limits for derivatives
-        self.grad_ad_min = 0.1
-        self.chiT_min = 0.1
-        self.chiRho_min = 0.1
-        self.grad_ad_max = 0.5
-        self.chiT_max = 2.0
-        self.chiRho_max = 2.0
 
         # atomic weights
         self.A1 = atomic_masses[which_z1]
@@ -521,7 +509,7 @@ class TinyPTMixture:
 
         rho_inv = X / rho_x + Y / rho_y + Z1 / rho_z1 + Z2 / rho_z2 + Z3 / rho_z3
         logRho = -np.log10(rho_inv)
-        
+
         logS_x = np.nan_to_num(
             logS_x,
             nan=np.nan,
@@ -618,9 +606,7 @@ class TinyPTMixture:
                 else:
                     grad_ad = self.grad_ad_min
             logS = np.clip(a=logS, a_min=-10, a_max=12)
-            grad_ad = np.clip(
-                a=grad_ad, a_min=self.grad_ad_min, a_max=self.grad_ad_max
-            )
+            grad_ad = np.clip(a=grad_ad, a_min=self.grad_ad_min, a_max=self.grad_ad_max)
             chiRho = np.clip(a=chiRho, a_min=self.chiRho_min, a_max=self.chiRho_max)
             chiT = np.clip(a=chiT, a_min=self.chiT_min, a_max=self.chiT_max)
 
