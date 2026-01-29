@@ -86,12 +86,12 @@ class TinyPTMixture:
         self.kwargs = {"grid": False}
 
         # limits for derivatives
-        self.lower_grad_ad = 0.01
-        self.lower_chiT = 0.01
-        self.lower_chiRho = 0.01
-        self.upper_grad_ad = 2.5
-        self.upper_chiT = 2.5
-        self.upper_chiRho = 2.5
+        self.grad_ad_min = 0.1
+        self.chiT_min = 0.1
+        self.chiRho_min = 0.1
+        self.grad_ad_max = 0.5
+        self.chiT_max = 2.0
+        self.chiRho_max = 2.0
 
         # atomic weights
         self.A1 = atomic_masses[which_z1]
@@ -521,7 +521,37 @@ class TinyPTMixture:
 
         rho_inv = X / rho_x + Y / rho_y + Z1 / rho_z1 + Z2 / rho_z2 + Z3 / rho_z3
         logRho = -np.log10(rho_inv)
-
+        
+        logS_x = np.nan_to_num(
+            logS_x,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_y = np.nan_to_num(
+            logS_y,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z1 = np.nan_to_num(
+            logS_z1,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z2 = np.nan_to_num(
+            logS_z2,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
+        logS_z3 = np.nan_to_num(
+            logS_z3,
+            nan=np.nan,
+            posinf=self.logS_max,
+            neginf=self.logS_min,
+        )
         S_x = 10**logS_x
         S_y = 10**logS_y
         S_z1 = 10**logS_z1
@@ -534,6 +564,7 @@ class TinyPTMixture:
         ) / Z_tot  # mean atomic weight of the three heavy elements
         S = S + get_mixing_entropy(Y=Y, Z=Z_tot, A_z=A_z_mean)
         logS = np.log10(S)
+        logS = np.clip(logS, a_min=self.logS_min, a_max=self.logS_max)
 
         dlS_dlP = (
             X * S_x * dlS_dlP_x
@@ -583,17 +614,19 @@ class TinyPTMixture:
                     logS = -10
             if np.any(check_grad_ad):
                 if self.input_ndim > 0:
-                    grad_ad[check_grad_ad] = self.lower_grad_ad
+                    grad_ad[check_grad_ad] = self.grad_ad_min
                 else:
-                    grad_ad = self.lower_grad_ad
+                    grad_ad = self.grad_ad_min
             logS = np.clip(a=logS, a_min=-10, a_max=12)
             grad_ad = np.clip(
-                a=grad_ad, a_min=self.lower_grad_ad, a_max=self.upper_grad_ad
+                a=grad_ad, a_min=self.grad_ad_min, a_max=self.grad_ad_max
             )
-            chiRho = np.clip(a=chiRho, a_min=self.lower_chiRho, a_max=self.upper_chiRho)
-            chiT = np.clip(a=chiT, a_min=self.lower_chiT, a_max=self.upper_chiT)
+            chiRho = np.clip(a=chiRho, a_min=self.chiRho_min, a_max=self.chiRho_max)
+            chiT = np.clip(a=chiT, a_min=self.chiT_min, a_max=self.chiT_max)
 
-        gamma1 = chiRho / (1 - chiT * grad_ad)
+        gamma3 = 1 - (grad_ad / chiRho)
+        gamma1 = chiT * (gamma3 - 1) + chiRho
+        # gamma1 = chiRho / (1 - chiT * grad_ad)
         c_sound = np.sqrt(10**logP / 10**logRho * gamma1)
 
         res = get_zeros(input_shape=self.input_shape, num_vals=self.num_vals_for_return)

@@ -31,7 +31,7 @@ from tinyeos.support import NearestND
 from tinyeos.tinydteos import TinyDirectDT, TinyDT
 
 
-def createTablesDT(
+def build_mesa_tables(
     del_logT: float = 0.02,
     del_logQ: float = 0.05,
     logT_min: float = 2.00,
@@ -40,6 +40,8 @@ def createTablesDT(
     logQ_max: float = 6.00,
     del_X: float = 0.10,
     del_Z: float = 0.10,
+    min_Z: float = 0.0,
+    max_Z: float = 1.0,
     fname_prefix: str = "custom-eosDT",
     output_path: str = "tables",
     do_only_pure: bool = False,
@@ -49,8 +51,16 @@ def createTablesDT(
     Z1: float = 0.5,
     Z2: float = 0.5,
     Z3: float = 0.0,
-    include_hhe_interactions: bool = False,
-    use_pt_eos: bool = False,
+    use_helium_for_heavy_elements: bool = False,
+    use_pt_eos: bool = True,
+    include_hhe_interactions: bool = True,
+    set_custom_eos_boundaries: bool = False,
+    logT_min_eos: float = 2.0,
+    logT_max_eos: float = 6.0,
+    logRho_min_eos: float = -8.0,
+    logRho_max_eos: float = 2.0,
+    logP_min_eos: float = 1.0,
+    logP_max_eos: float = 17.0,
     use_smoothed_xy_tables: bool = False,
     use_smoothed_z_tables: bool = False,
     build_interpolants: bool = False,
@@ -82,6 +92,10 @@ def createTablesDT(
             Defaults to 0.10.
         del_Z (float, optional): step-size for heavy-elements.
             Defaults to 0.10.
+        min_Z (float, optional): minimum heavy-element mass-fraction.
+            Defaults to 0.0.
+        max_Z (float, optional): maximum heavy-element mass-fraction.
+            Defaults to 1.0.
         fname_prefix (str, optional): table prefix.
             Defaults to "cms_qeos-eosDT".
         do_only_pure (bool, optional): only create tables of
@@ -98,10 +112,26 @@ def createTablesDT(
             Defaults to 0.5.
         Z3 (float, optional): mass-fraction of the third heavy element.
             Defaults to 0.0.
-        include_hhe_interactions (bool, optional): include
-            hydrogen-helium interactions. Defaults to False.
+        use_helium_for_heavy_elements (bool, optional): use helium
+            in place of heavy-elements. Defaults to False.
         use_pt_eos (bool, optional): use the pressure-temperature
             equation of state as the basis. Defaults to False.
+        include_hhe_interactions (bool, optional): include
+            hydrogen-helium interactions. Defaults to False.
+        set_custom_eos_boundaries (bool, optional): set custom
+            equation of state boundaries. Defaults to False.
+        logT_min_eos (float, optional): minimum logT
+            for the equation of state. Defaults to 2.0.
+        logT_max_eos (float, optional): maximum logT
+            for the equation of state. Defaults to 6.0.
+        logRho_min_eos (float, optional): minimum logRho
+            for the equation of state. Defaults to -8.0.
+        logRho_max_eos (float, optional): maximum logRho
+            for the equation of state. Defaults to 2.0.
+        logP_min_eos (float, optional): minimum logP
+            for the equation of state. Defaults to 1.0.
+        logP_max_eos (float, optional): maximum logP
+            for the equation of state. Defaults to 17.0.
         use_smoothed_xy_tables (bool, optional): use smoothed
             hydrogen and helium tables. Defaults to False.
         use_smoothed_z_tables (bool, optional): use smoothed
@@ -128,14 +158,21 @@ def createTablesDT(
         ArrayLike: equation of state tables.
     """
 
-    TC = TableCreatorDT(
+    table_builder = TableBuilder(
         which_hhe=which_hhe,
         which_heavy=which_heavy,
         Z1=Z1,
         Z2=Z2,
         Z3=Z3,
-        include_hhe_interactions=include_hhe_interactions,
         use_pt_eos=use_pt_eos,
+        include_hhe_interactions=include_hhe_interactions,
+        set_custom_eos_boundaries=set_custom_eos_boundaries,
+        logT_min_eos=logT_min_eos,
+        logT_max_eos=logT_max_eos,
+        logRho_min_eos=logRho_min_eos,
+        logRho_max_eos=logRho_max_eos,
+        logP_min_eos=logP_min_eos,
+        logP_max_eos=logP_max_eos,
         use_smoothed_xy_tables=use_smoothed_xy_tables,
         use_smoothed_z_tables=use_smoothed_z_tables,
         build_interpolants=build_interpolants,
@@ -146,7 +183,7 @@ def createTablesDT(
         debug=debug,
     )
 
-    num_tables, Xs, Zs = TC.set_parameters(
+    num_tables, Xs, Zs = table_builder.set_params(
         del_logT=del_logT,
         del_logQ=del_logQ,
         logT_min=logT_min,
@@ -155,16 +192,20 @@ def createTablesDT(
         logQ_max=logQ_max,
         del_X=del_X,
         del_Z=del_Z,
+        min_Z=min_Z,
+        max_Z=max_Z,
         fname_prefix=fname_prefix,
         output_path=output_path,
         do_only_pure=do_only_pure,
     )
-    num_logQs = TC.num_logQs
-    num_logTs = TC.num_logTs
-    num_vals = TC.eos_num_vals
+    num_logQs = table_builder.num_logQs
+    num_logTs = table_builder.num_logTs
+    num_vals = table_builder.eos_num_vals
 
     def parallelWrapper(X: float, Z: float) -> NDArray:
-        return TC.create_tables(X, Z)
+        return table_builder.build_tables(
+            X=X, Z=Z, use_helium_for_heavy_elements=use_helium_for_heavy_elements
+        )
 
     if do_only_single:
         X = 0.5
@@ -202,7 +243,7 @@ def createTablesDT(
     return comp_info, results
 
 
-class TableCreatorDT:
+class TableBuilder:
     """Creates density-temperature tables for use with the stellar evolution
     code MESA.
     """
@@ -214,8 +255,15 @@ class TableCreatorDT:
         Z1: float = 0.5,
         Z2: float = 0.5,
         Z3: float = 0.0,
-        include_hhe_interactions: bool = False,
-        use_pt_eos: bool = False,
+        use_pt_eos: bool = True,
+        include_hhe_interactions: bool = True,
+        set_custom_eos_boundaries: bool = False,
+        logT_min_eos: float = 2.0,
+        logT_max_eos: float = 6.0,
+        logRho_min_eos: float = -8.0,
+        logRho_max_eos: float = 2.0,
+        logP_min_eos: float = 1.0,
+        logP_max_eos: float = 17.0,
         use_smoothed_xy_tables: bool = False,
         use_smoothed_z_tables: bool = False,
         build_interpolants: bool = False,
@@ -239,10 +287,24 @@ class TableCreatorDT:
                 Defaults to 0.5.
             Z3 (float, optional): mass-fraction of the third heavy element.
                 Defaults to 0.0.
-            include_hhe_interactions (bool, optional): include
-                hydrogen-helium interactions. Defaults to False
             use_pt_eos (bool, optional): use the pressure-temperature
                 equation of state as the basis. Defaults to False.
+            include_hhe_interactions (bool, optional): include
+                hydrogen-helium interactions. Defaults to False.
+            set_custom_eos_boundaries (bool, optional): set custom
+                equation of state boundaries. Defaults to False.
+            logT_min_eos (float, optional): minimum logT
+                for the equation of state. Defaults to 2.0.
+            logT_max_eos (float, optional): maximum logT
+                for the equation of state. Defaults to 6.0.
+            logRho_min_eos (float, optional): minimum logRho
+                for the equation of state. Defaults to -8.0.
+            logRho_max_eos (float, optional): maximum logRho
+                for the equation of state. Defaults to 2.0.
+            logP_min_eos (float, optional): minimum logP
+                for the equation of state. Defaults to 1.0.
+            logP_max_eos (float, optional): maximum logP
+                for the equation of state. Defaults to 17.0.
             use_smoothed_xy_tables (bool, optional): use smoothed
                 hydrogen and helium tables. Defaults to False.
             use_smoothed_z_tables (bool, optional): use smoothed
@@ -274,6 +336,21 @@ class TableCreatorDT:
             use_smoothed_z_tables=use_smoothed_z_tables,
             build_interpolants=build_interpolants,
         )
+
+        if set_custom_eos_boundaries:
+            self.eos.logT_min = logT_min_eos
+            self.eos.logT_max = logT_max_eos
+            self.eos.logP_min = logP_min_eos
+            self.eos.logP_max = logP_max_eos
+            self.eos.logRho_min = logRho_min_eos
+            self.eos.logRho_max = logRho_max_eos
+            if use_pt_eos:
+                self.eos.tpt.logT_min = logT_min_eos
+                self.eos.tpt.logT_max = logT_max_eos
+                self.eos.tpt.logP_min = logP_min_eos
+                self.eos.tpt.logP_max = logP_max_eos
+                self.eos.tpt.logRho_min = logRho_min_eos
+                self.eos.tpt.logRho_max = logRho_max_eos
 
         self.fix_bad_values = fix_bad_values
         self.do_simple_smoothing = do_simple_smoothing
@@ -330,7 +407,7 @@ class TableCreatorDT:
             "(f4.2,3(f10.5),7(1pe13.5),1(0pf9.5),4(0pf10.5),1(0pf11.5))"
         )
 
-    def set_parameters(
+    def set_params(
         self,
         del_logT: float,
         del_logQ: float,
@@ -340,6 +417,8 @@ class TableCreatorDT:
         logQ_max: float,
         del_X: float,
         del_Z: float,
+        min_Z: float,
+        max_Z: float,
         fname_prefix: str,
         output_path: str,
         do_only_pure: bool = False,
@@ -383,18 +462,26 @@ class TableCreatorDT:
             self.Xs = np.array([1, 0, 0])
             self.Zs = np.array([0, 0, 1])
         else:
-            Zs = np.arange(0, 1 + del_Z, del_Z)
+            if min_Z == max_Z or del_Z == 0:
+                Zs = np.array([min_Z])
+            else:
+                Zs = np.arange(min_Z, max_Z + del_Z, del_Z)
+        if max_Z > 0 and max_Z < 0.1:
+            Xs = [np.arange(0, (1 - Z), del_X) for Z in Zs]
+            Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
+        else:
             Xs = [np.arange(0, (1 - Z) + del_X, del_X) for Z in Zs]
             Zs = [Zs[i] * np.ones(len(Xs[i])) for i in range(len(Zs))]
-            self.Xs = np.concatenate(Xs)
-            self.Zs = np.concatenate(Zs)
+        self.Xs = np.concatenate(Xs)
+        self.Zs = np.concatenate(Zs)
         self.num_tables = len(self.Xs)
         return (self.num_tables, self.Xs, self.Zs)
 
-    def create_tables(
+    def build_tables(
         self,
         X: float,
         Z: float,
+        use_helium_for_heavy_elements: bool = False,
     ) -> NDArray:
         """Wrapper function for __make_eos_files.
         Calculates the equation of state table for a mixture of
@@ -403,11 +490,13 @@ class TableCreatorDT:
         Args:
             X (float): hydrogen mass fraction.
             Z (float): heavy-element mass fraction.
+            use_helium_for_heavy_elements (bool, optional): use helium
+                in place of heavy-elements. Defaults to False.
 
         Returns:
             ArrayLike: equation of state tables.
         """
-        return self.__make_eos_files(X, Z)
+        return self.__make_eos_files(X, Z, use_helium_for_heavy_elements)
 
     def __smooth_table(self, table: NDArray) -> NDArray:
         """Smoothes the equation of state tables by taking
@@ -440,13 +529,17 @@ class TableCreatorDT:
                 ) / 5
         return out_table
 
-    def __make_eos_files(self, X: float, Z: float) -> NDArray:
+    def __make_eos_files(
+        self, X: float, Z: float, use_helium_for_heavy_elements: bool = False
+    ) -> NDArray:
         """Calculates the equation of state table for a mixture of
         hydrogen, helium and a heavy-element.
 
         Args:
             X (float): hydrogen mass-fraction.
             Z (float): heavy-element mass-fraction.
+            use_helium_for_heavy_elements (bool, optional): use helium
+                in place of heavy-elements. Defaults to False.
 
         Returns:
             NDArray: equation of state table.
@@ -454,6 +547,13 @@ class TableCreatorDT:
         assert X + Z <= 1
         X = np.round(X, 2)
         Z = np.round(Z, 2)
+
+        if use_helium_for_heavy_elements:
+            X_for_eos = X - Z
+            Z_for_eos = 0
+        else:
+            X_for_eos = X
+            Z_for_eos = Z
 
         # placeholders
         version_number = 11
@@ -491,7 +591,9 @@ class TableCreatorDT:
                 # logRho boundaries
                 logRho = np.max([self.eos.logRho_min, logQ + 2 * logT - 12])
                 logRho = np.min([logRho, self.eos.logRho_max])
-                res = self.eos.evaluate(logT=logT, logRho=logRho, X=X, Z=Z)
+                res = self.eos.evaluate(
+                    logT=logT, logRho=logRho, X=X_for_eos, Z=Z_for_eos
+                )
                 if (
                     np.any(np.isnan(res))
                     or np.any(np.isinf(res))
