@@ -381,7 +381,7 @@ def ideal_mixing_law(
     Z: ArrayLike,
 ) -> ArrayLike:
     """Implementation of the ideal mixing law:
-    1 / rho = X / rho_x + Y / rho_y + Z / rho_y
+    1 / rho = X / rho_x + Y / rho_y + Z / rho_y.
 
     Args:
         rho_x (ArrayLike): density of hydrogen.
@@ -534,7 +534,7 @@ def get_eta(logT: ArrayLike, logRho: ArrayLike, log_free_e: ArrayLike) -> ArrayL
     """Calculates the inverse electron chemical potential
     by inverting the fermi integral using the
     rational function approximation for Fermi-Dirac
-    integrals (Antia, 1993)
+    integrals (Antia, 1993).
 
     Args:
         logT (ArrayLike): log10 of temperature.
