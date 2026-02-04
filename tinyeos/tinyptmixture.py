@@ -549,7 +549,7 @@ class TinyPTMixture:
         Z_tot = Z1 + Z2 + Z3
         A_z_mean = (
             Z1 * self.A1 + Z2 * self.A2 + Z3 * self.A3
-        ) / Z_tot  # mean atomic weight of the three heavy elements
+        )
         S = S + get_mixing_entropy(Y=Y, Z=Z_tot, A_z=A_z_mean)
         logS = np.log10(S)
         logS = np.clip(logS, a_min=self.logS_min, a_max=self.logS_max)
