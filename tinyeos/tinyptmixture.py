@@ -396,6 +396,7 @@ class TinyPTMixture:
         Z1: ArrayLike = 0,
         Z2: ArrayLike = 0,
         Z3: ArrayLike = 0,
+        check_composition: bool = True
     ) -> NDArray:
         """Calculates the equation of state output for the mixture.
 
@@ -416,7 +417,10 @@ class TinyPTMixture:
         # check the input and make sure everything
         # has the same shape
         logT, logP = self.__check_PT(logT, logP)
-        X, Y, Z1, Z2, Z3 = self.__check_composition(X, Z1, Z2, Z3)
+        if check_composition:
+            X, Y, Z1, Z2, Z3 = self.__check_composition(X, Z1, Z2, Z3)
+        else:
+            Y = 1 - X - Z1 - Z2 - Z3
         if logT.ndim > X.ndim:
             X = X * np.ones_like(logT)
             Y = Y * np.ones_like(logT)
