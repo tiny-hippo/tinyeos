@@ -410,7 +410,8 @@ class TinyPTMixture:
                 Defaults to 0.
             Z3 (ArrayLike, optional): third heavy-element mass-fraction.
                 Defaults to 0.
-
+                check_composition (bool, optional): whether to check the 
+                composition input. Defaults to True.
         Returns:
             NDArray: logRho, logS, grad_ad, chiRho, chiT and c_sound.
         """
