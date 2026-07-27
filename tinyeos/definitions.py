@@ -3,22 +3,36 @@ array indices for the output.
 """
 
 # currently supported heavy elements
-heavy_elements = ["h2o", "sesame_h2o", "aqua", "sio2", "fe", "co", "mixture"]
+heavy_elements = [
+    "h2o",
+    "sesame_h2o",
+    "aqua_revised_h2o",
+    "sio2",
+    "aneos_mg2sio4",
+    "fe",
+    "paleos_fe",
+    "co",
+    "mixture",
+]
 atomic_masses = {
     "h2o": 18.015,
     "sesame_h2o": 18.015,
-    "aqua": 18.015,
+    "aqua_revised_h2o": 18.015,
     "sio2": 60.080,
+    "aneos_mg2sio4": 140.691,
     "fe": 55.845,
+    "paleos_fe": 55.845,
     "co": 28.010,
     "mixture": 0.5 * (18.015 + 60.080),
 }
 ionic_charges = {
     "h2o": 10,
     "sesame_h2o": 10,
-    "aqua": 10,
+    "aqua_revised_h2o": 10,
     "sio2": 30,
+    "aneos_mg2sio4": 70,
     "fe": 26,
+    "paleos_fe": 26,
     "co": 14,
     "mixture": 0.5 * (10 + 30),
 }
@@ -27,14 +41,14 @@ ionic_charges = {
 logT_max = 6.00
 logT_min = 2.00
 logT_min_extended = 1.00
-# min/max pressures and densities are limited 
+# min/max pressures and densities are limited
 # by the heavy element equations of state
 logP_max = 17.00
 logP_min = 1.00
 logP_min_extended = -6.00
 logRho_max = 2.00
 logRho_min = -8.00
-logRho_min_extended = -15.00 
+logRho_min_extended = -15.00
 
 # tolerances and tiny values
 eps1 = 1e-6

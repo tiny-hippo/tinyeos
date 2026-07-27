@@ -19,9 +19,9 @@ class TableLoader:
 
         Heavy element:
             H2O (QEOS, More et al. 1988, SESAME (Lyon & Johnson 1992),
-            and AQUA, Haldemann et al. 2020),
+            and PALEOS (Attia et al. 2026)),
             SiO2 (QEOS, More et al. 1988),
-            Fe (QEOS, More et al. 1998),
+            Fe (QEOS, More et al. 1998) and PALEOS (Attia et al. 2026),
             CO (QEOS, Podolak et al. 2022),
             ideal mixture of H2O and SiO2 (QEOS, More et al. 1988).
 
@@ -216,9 +216,7 @@ class TableLoader:
         if which_heavy == "h2o":
             fname = f"qeos_{extra}dt_h2o.data"
         elif which_heavy == "sesame_h2o":
-            fname = f"qeos_{extra}dt_h2o.data"  # placeholder
-        elif which_heavy == "aqua":
-            fname = "aqua_dt_h2o.data"
+            fname = f"sesame_{extra}dt_h2o.data"
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}dt_sio2.data"
         elif which_heavy == "mixture":
@@ -253,6 +251,12 @@ class TableLoader:
             fname = f"qeos_{extra}dt_fe.data"
         elif which_heavy == "co":
             fname = f"qeos_{extra}dt_co.data"
+        elif which_heavy == "aqua_revised_h2o":
+            fname = "aqua_revised_dt_h2o.data"
+        elif which_heavy == "aneos_mg2sio4":
+            fname = "aneos_dt_mg2sio4.data"
+        elif which_heavy == "paleos_fe":
+            fname = "paleos_dt_fe.data"
         else:
             raise NotImplementedError("this heavy element is not available")
 
@@ -290,8 +294,6 @@ class TableLoader:
             fname = f"qeos_{extra}pt_h2o.data"
         elif which_heavy == "sesame_h2o":
             fname = "sesame_pt_h2o.data"
-        elif which_heavy == "aqua":
-            fname = "aqua_pt_h2o.data"
         elif which_heavy == "sio2":
             fname = f"qeos_{extra}pt_sio2.data"
         elif which_heavy == "mixture":
@@ -314,6 +316,12 @@ class TableLoader:
             fname = f"qeos_{extra}pt_fe.data"
         elif which_heavy == "co":
             fname = f"qeos_{extra}pt_co.data"
+        elif which_heavy == "aqua_revised_h2o":
+            fname = "aqua_revised_pt_h2o.data"
+        elif which_heavy == "aneos_mg2sio4":
+            fname = "aneos_pt_mg2sio4.data"
+        elif which_heavy == "paleos_fe":
+            fname = "paleos_pt_fe.data"
         else:
             raise NotImplementedError("this heavy element is not available")
         src = os.path.join(self.tables_path, fname)
@@ -329,6 +337,7 @@ class TableLoader:
         Z1: float = 0.5,
         Z2: float = 0.5,
         Z3: float = 0,
+        fname: str = "",
         kind: str = "pchip",
         extrapolate: bool = True,
         smooth_table: bool = False,
@@ -461,15 +470,15 @@ class TableLoader:
                 mask = np.isnan(z)
                 z[mask] = res[mask]
                 out_table[:, i] = z
-
-        if which_heavy == "mixture":
-            fname = (
-                f"qeos_{which_variables}_h2o_{100 * Z1:02.0f}"
-                + f"_sio2_{100 * Z2:02.0f}"
-                + f"_fe_{100 * Z3:02.0f}.data"
-            )
-        else:
-            fname = f"qeos_{which_variables}_{which_heavy}.data"
+        if not fname:
+            if which_heavy == "mixture":
+                fname = (
+                    f"qeos_{which_variables}_h2o_{100 * Z1:02.0f}"
+                    + f"_sio2_{100 * Z2:02.0f}"
+                    + f"_fe_{100 * Z3:02.0f}.data"
+                )
+            else:
+                fname = f"qeos_{which_variables}_{which_heavy}.data"
         if store_table:
             header = self.z_dt_header if which_variables == "dt" else self.z_pt_header
             dst = os.path.join(self.tables_path, fname)
@@ -835,70 +844,3 @@ class TableLoader:
             data[:, i] = z
 
         return data
-
-
-if __name__ == "__main__":
-    T = TableLoader(which_hhe="cms")
-    # convert effective hydrogen table
-    # from (logT, logP) to (logT, logRho)
-    T.invert_xeff_pt_table(
-        kind="linear",
-        extrapolate=True,
-        smooth_table=False,
-        num_smoothing_rounds=2,
-        store_table=True,
-    )
-
-    # convert h2o, sio2 and fe tables from
-    # (logT, logRho) to (logT, logP)
-    for element in ["h2o", "sio2", "fe", "co"]:
-        T.invert_z_table(
-            which_variables="pt",
-            which_heavy=element,
-            kind="pchip",
-            extrapolate=True,
-            smooth_table=True,
-            num_smoothing_rounds=1,
-            store_table=True,
-        )
-
-    # create a 50-50 h2o-sio2 mixture pt table
-    T.mix_heavy_elements(
-        which_Z1="h2o",
-        Z1=0.5,
-        which_Z2="sio2",
-        Z2=0.5,
-        which_Z3="fe",
-        Z3=0,
-        store_table=True,
-    )
-
-    # create smoothed dt tables
-    num_smoothing_rounds = 2
-    for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
-        T = TableLoader(which_heavy=element)
-        table = T.z_dt_table
-        smoothed_table = T.smooth_z_table(
-            table, num_smoothing_rounds=num_smoothing_rounds
-        )
-        if element == "mixture":
-            element = "h2o_50_sio2_50_fe_00"
-        fname = f"qeos_smoothed_dt_{element}.data"
-        dst = os.path.join(T.tables_path, fname)
-        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_dt_header)
-
-    # create smoothed pt tables
-    for element in ["h2o", "aqua", "sio2", "fe", "co", "mixture"]:
-        T = TableLoader(which_heavy=element)
-        table = T.z_pt_table
-        smoothed_table = T.smooth_z_table(
-            table, num_smoothing_rounds=num_smoothing_rounds
-        )
-        if element == "mixture":
-            element = "h2o_50_sio2_50_fe_00"
-        if element == "aqua":
-            fname = "aqua_smoothed_pt_h2o.data"
-        else:
-            fname = f"qeos_smoothed_pt_{element}.data"
-        dst = os.path.join(T.tables_path, fname)
-        np.savetxt(dst, smoothed_table, fmt="%.8e", header=T.z_dt_header)

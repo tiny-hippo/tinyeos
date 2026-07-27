@@ -1,14 +1,15 @@
-""" Example program that attempts to infer the
+"""Example program that attempts to infer the
 heavy-element profile for a given (logT, logRho, LogP).
 """
-import numpy as np
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import brentq
-from tinyeos.tinypteos import TinyPT
-from tinyeos.support import get_X
 from tinyeos.definitions import i_logRho
+from tinyeos.support import get_X
+from tinyeos.tinypteos import TinyPT
 
 mpl.rcParams["lines.linewidth"] = 2.5
 mpl.rcParams["font.size"] = 12
@@ -84,7 +85,6 @@ logRho = np.log10(planet_profile[:, 3])
 
 # get the heavy-element profiles and plot them
 z_water = get_z("h2o", logT, logP, logRho)
-z_aqua = get_z("aqua", logT, logP, logRho)
 z_rock = get_z("sio2", logT, logP, logRho)
 z_mix = get_z("mixture", logT, logP, logRho)
 z_co = get_z("co", logT, logP, logRho)
@@ -92,7 +92,6 @@ z_fe = get_z("fe", logT, logP, logRho)
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 ax.plot(R, z_water, label=r"H$_2$O")
-ax.plot(R, z_water, label=r"AQUA")
 ax.plot(R, z_co, label=r"CO")
 ax.plot(R, z_rock, label=r"SiO$_2$")
 ax.plot(R, z_mix, label=r"50-50 H$_2$O-SiO$_2$")

@@ -17,16 +17,6 @@ from tinyeos.tinypteos import TinyPT
 class TinyPTMixture:
     """Temperature-pressure equation of state for a mixture of hydrogen,
     helium and three heavy elements. Units are cgs everywhere.
-
-    Equations of state implemented:
-        Hydrogen-Helium:
-            CMS (Chabrier et al. 2019),
-            SCvH (Saumon et al. 1995).
-        Heavy element:
-            H2O (QEOS, More et al. 1988 and AQUA, Haldemann et al. 2020),
-            SiO2 (QEOS, More et al. 1988),
-            Fe (QEOS, More et al. 1998),
-            CO (QEOS, Podolak et al. 2022),
     """
 
     def __init__(
@@ -43,18 +33,21 @@ class TinyPTMixture:
         """__init__ method. Defines parameters and either loads or
         builds the interpolants.
 
+        Available heavy-element equations of stare are:
+        - "h2o", "sio2", "fe" and "co" (QEOS)
+        - "sesame_h2o" (SESAME, Lyon & Johnson 1992)
+        - "paleos_h2o" (Paleos, H2O)
+        - "paleos_fe" (Paleos, Fe)
+
         Args:
             which_xy (str, optional): hydrogen-helium equation of state
                 to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
             which_z1 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
-                "fe" or "co". Defaults to "h2o".
+                to use.
             which_z2 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
-                "fe" or "co". Defaults to "sio2".
+                to use.
             which_z3 (str, optional): which heavy-element equation of state
-                to use. Options are "h2o", "sesame_h2o", "aqua", "sio2", "mixture",
-                "fe" or "co". Defaults to "fe".
+                to use.
             include_hhe_interactions (bool, optional): whether to include
                 hydrogen-helium interactions. Defaults to True.
             use_smoothed_xy_tables (bool, optional): whether to use smoothed

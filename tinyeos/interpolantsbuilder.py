@@ -74,17 +74,24 @@ class InterpolantsBuilder(TableLoader):
         self.__cache_z_interpolants("h2o_smoothed")
 
         # build and cache interpolants for the other heavy elements
-        for heavy_element in ["sesame_h2o", "aqua", "sio2", "fe", "co"]:
+        for heavy_element in [
+            "sio2",
+            "fe",
+            "co",
+            "aqua_revised_h2o",
+            "paleos_fe",
+            "aneos_mg2sio4",
+        ]:
             super().__init__(which_heavy=heavy_element)
             self.__build_dt_z_interpolants()
             self.__build_pt_z_interpolants()
             self.__cache_z_interpolants(heavy_element)
             # smoothed version
-            super().__init__(which_heavy=heavy_element, use_smoothed_z_tables=True)
-            self.__build_dt_z_interpolants()
-            self.__build_pt_z_interpolants()
-            self.__cache_z_interpolants(heavy_element + "_smoothed")
-
+            if heavy_element in ["sio2", "fe", "co"]:
+                super().__init__(which_heavy=heavy_element, use_smoothed_z_tables=True)
+                self.__build_dt_z_interpolants()
+                self.__build_pt_z_interpolants()
+                self.__cache_z_interpolants(heavy_element + "_smoothed")
 
     def build_z_mixture_interpolants(
         self, Z1: float = 0.5, Z2: float = 0.5, Z3: float = 0

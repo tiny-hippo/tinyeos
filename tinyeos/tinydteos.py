@@ -32,7 +32,7 @@ class TinyDT:
         Hydrogen-helium tables to use. Options: "cms", "scvh", "scvh_extended".
         Default: "cms".
     which_heavy : str, optional
-        Heavy-element tables to use. Options: "h2o", "sesame_h2o", "aqua", "sio2",
+        Heavy-element tables to use. Options: "h2o", "sesame_h2o", "sio2",
         "fe", "co", and "mixture". Default: "h2o".
     Z1 : float, optional
         Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
@@ -67,7 +67,7 @@ class TinyDT:
         between input and calculated density.
     __root_finder(logT, logRho, X, Y, Z)
         Finds the pressure corresponding to the input density using root-finding.
-    
+
     Notes
     -----
     - The output NDArray indices are defined in definitions.py.
@@ -95,7 +95,7 @@ class TinyDT:
             which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Options are "cms", "scvh" or "scvh_extended". Defaults to "cms".
             which_heavy : str, optional
-                Heavy-element tables to use. Options: "h2o", "sesame_h2o", "aqua", 
+                Heavy-element tables to use. Options: "h2o", "sesame_h2o",
                 "sio2", "fe", "co", and "mixture". Default: "h2o".
             Z1 : float, optional
                 Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
@@ -315,8 +315,8 @@ class TinyDirectDT(InterpolantsBuilder):
         Hydrogen-helium equation of state to use. Options: "cms", "scvh",
         and "scvh_extended". Default is "cms".
     which_heavy : str, optional
-        Heavy-element equation of state to use. Options: "h2o", "aqua", "sio2",
-        "fe", "co", and "mixture". Default is "h2o".
+        Heavy-element equation of state to use. Options are "h2o", "sesame_h2o", 
+        "paleos_h2o", "sio2", "mixture", "fe", "paleos_fe", or "co". Default is "h2o".
     Z1 : float, optional
         Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
     Z2 : float, optional
@@ -371,7 +371,6 @@ class TinyDirectDT(InterpolantsBuilder):
     - If root finding fails, output is filled with NaNs.
     """
 
-
     def __init__(
         self,
         which_hhe: str = "cms",
@@ -391,8 +390,8 @@ class TinyDirectDT(InterpolantsBuilder):
             which_hhe (str, optional): hydrogen-helium equation of state
                 to use. Defaults to "cms". Options are "cms", "scvh" or "scvh_extended".
             which_heavy (str, optional): heavy-element equation of state
-                to use. Defaults to "h2o". Options are "h2o", "aqua", "sio2",
-                "mixture", "fe" or "co".
+                to use. Defaults to "h2o". Options are "h2o", "sesame_h2o", 
+                "paleos_h2o", "sio2", "mixture", "fe", "paleos_fe", or "co".
             Z1 : float, optional
                 Mass fraction of H2O in the heavy-element mixture. Default: 0.5.
             Z2 : float, optional
