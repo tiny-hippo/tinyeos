@@ -78,6 +78,7 @@ class InterpolantsBuilder(TableLoader):
             "sio2",
             "fe",
             "co",
+            "aqua_original_h2o",
             "aqua_revised_h2o",
             "paleos_fe",
             "aneos_mg2sio4",
