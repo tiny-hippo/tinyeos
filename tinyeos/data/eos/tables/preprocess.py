@@ -28,7 +28,7 @@ T = TableLoader(which_hhe="cms")
 #     )
 
 # Convert heavy-element tables from (logT, logP) to (logT, logRho)
-elements = ["h2o", "fe", "mg2sio4"]
+elements = ["h2o", "h2o", "fe", "mg2sio4"]
 prefixes = ["aqua_original", "aqua_revised", "paleos", "aneos"]
 for i, element in enumerate(elements):
     T.invert_z_table(
