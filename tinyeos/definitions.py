@@ -6,6 +6,7 @@ array indices for the output.
 heavy_elements = [
     "h2o",
     "sesame_h2o",
+    "aqua_original_h2o",
     "aqua_revised_h2o",
     "sio2",
     "aneos_mg2sio4",
@@ -17,6 +18,7 @@ heavy_elements = [
 atomic_masses = {
     "h2o": 18.015,
     "sesame_h2o": 18.015,
+    "aqua_original_h2o": 18.015,
     "aqua_revised_h2o": 18.015,
     "sio2": 60.080,
     "aneos_mg2sio4": 140.691,
@@ -28,6 +30,7 @@ atomic_masses = {
 ionic_charges = {
     "h2o": 10,
     "sesame_h2o": 10,
+    "aqua_original_h2o": 10,
     "aqua_revised_h2o": 10,
     "sio2": 30,
     "aneos_mg2sio4": 70,

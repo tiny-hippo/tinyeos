@@ -19,7 +19,7 @@ class TableLoader:
 
         Heavy element:
             H2O (QEOS, More et al. 1988, SESAME (Lyon & Johnson 1992),
-            and PALEOS (Attia et al. 2026)),
+            AQUA (Haldemann et al. (2020), and PALEOS (Attia et al. 2026)),
             SiO2 (QEOS, More et al. 1988),
             Fe (QEOS, More et al. 1998) and PALEOS (Attia et al. 2026),
             CO (QEOS, Podolak et al. 2022),
@@ -251,6 +251,8 @@ class TableLoader:
             fname = f"qeos_{extra}dt_fe.data"
         elif which_heavy == "co":
             fname = f"qeos_{extra}dt_co.data"
+        elif which_heavy == "aqua_original_h2o":
+            fname = "aqua_original_dt_h2o.data"
         elif which_heavy == "aqua_revised_h2o":
             fname = "aqua_revised_dt_h2o.data"
         elif which_heavy == "aneos_mg2sio4":
@@ -316,6 +318,8 @@ class TableLoader:
             fname = f"qeos_{extra}pt_fe.data"
         elif which_heavy == "co":
             fname = f"qeos_{extra}pt_co.data"
+        elif which_heavy == "aqua_original_h2o":
+            fname = "aqua_original_pt_h2o.data"
         elif which_heavy == "aqua_revised_h2o":
             fname = "aqua_revised_pt_h2o.data"
         elif which_heavy == "aneos_mg2sio4":
